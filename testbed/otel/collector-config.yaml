@@ -1,0 +1,34 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    timeout: 1s
+
+exporters:
+  # Reference trace target: Jaeger's own OTLP ingest.
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+  # Console echo so we can confirm spans arrive without opening the UI.
+  debug:
+    verbosity: normal
+  # LiveProbe target. Enabled by adding it to the traces pipeline below once
+  # LiveProbe's OTLP collector is running (testbed task T5). One-line switch.
+  # otlp/liveprobe:
+  #   endpoint: liveprobe:4318
+  #   tls:
+  #     insecure: true
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp/jaeger, debug]

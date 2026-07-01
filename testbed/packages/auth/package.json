@@ -1,0 +1,11 @@
+{
+  "name": "@shopwave/auth",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "dependencies": {
+    "@shopwave/shared": "*",
+    "jsonwebtoken": "^9.0.2"
+  }
+}
