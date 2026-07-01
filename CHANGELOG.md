@@ -2,6 +2,18 @@
 
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
+## [2026-07-01 15:30]
+- UI/dashboard features: (1) span waterfall + attribute drill-down on the trace page
+  (Waterfall/Sequence tabs; auto-selects the failing span); (2) error explorer (/errors) —
+  errored traces grouped by endpoint + error label; (3) clickable flow node -> service page
+  (/service/:name) with deps/error-rate/top-ops; (4) latency-over-time chart per endpoint on
+  the day dashboard. Server: spans in trace detail, error_label + errorGroups, serviceDetail,
+  endpointLatency; endpoints /api/service/:name, /api/errors, /api/day/:date/latency.
+- Bugfix: an old trace without `spans` crashed WaterfallView and unmounted the app (blank
+  trace + errors pages until reload). Fixed with a spans default + a route-keyed ErrorBoundary.
+- Verified all four in a headless browser against live data. Files: packages/server
+  (summary, history-store, server), packages/ui (pages/components/api/types/styles), docs.
+
 ## [2026-07-01 13:45]
 - Flow graph zoom-to-fit: the whole topology now scales into view (datastore nodes no longer
   render off-screen), with wheel-zoom, drag-to-pan, and +/-/Fit controls.

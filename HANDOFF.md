@@ -4,13 +4,18 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 `CHANGELOG.md`). Updated after every task.
 
 ## Last task
-Built **span waterfall + attribute drill-down** on the trace page. Server: `detail()` now
-includes `spans` (flattened trace tree with timing + attributes) — `packages/server/src/summary.ts`.
-UI: `waterfall-view.tsx` (Gantt bars nested by depth, colored per service, red on error) with a
-click-to-open span-detail panel (attributes/kind/status/timing); trace page gained
-Waterfall/Sequence tabs. Typecheck + 10 tests pass, UI builds. **Not yet browser-verified against
-real spans** — needs a fresh trace (span capture is new, so only traces ingested after a server
-restart carry spans).
+Built and verified **three UI/dashboard features** (browser-verified at :5173 against live data):
+1. **Error explorer** (`/errors`) — errored traces grouped by endpoint + error label, each links to
+   its trace. Server: `error_label` column + `errorGroups()` + `GET /api/errors`.
+2. **Clickable service → service page** (`/service/:name`) — click a flow node → deps (in/out),
+   error rate, spans, top operations. Server: `serviceDetail()` (live window) + `GET /api/service/:name`.
+3. **Latency-over-time** — on the day page, click a top endpoint → p50/p95/p99 line chart. Server:
+   `endpointLatency()` + `GET /api/day/:date/latency?endpoint=`.
+Also: waterfall now auto-selects the failing span. **Bugfix:** an old historical trace (no
+`spans`) crashed `WaterfallView` (`spans.find` on undefined), which unmounted the whole app —
+blanking the trace page and the Errors page until reload. Fixed by defaulting `spans` to `[]`
+and adding a route-keyed `ErrorBoundary` so one view crash can't take down the app. 10 tests
+pass, UI builds. **Uncommitted — awaiting review + "sync".** (Prior task: span waterfall.)
 
 ## Current state
 LiveProbe is a working MVP, end to end, verified against the live testbed.

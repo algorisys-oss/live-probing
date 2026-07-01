@@ -1,6 +1,9 @@
 import type {
   DayInfo,
   DaySummary,
+  ErrorGroup,
+  LatencyBucket,
+  ServiceDetail,
   TraceDetail,
   TraceSummary,
   Topology,
@@ -62,6 +65,20 @@ export function fetchTopology(): Promise<{
   mermaidFlow: string;
 }> {
   return getJson<{ topology: Topology; mermaidFlow: string }>(`/api/topology`);
+}
+
+export function fetchErrors(limit = 100): Promise<{ groups: ErrorGroup[] }> {
+  return getJson<{ groups: ErrorGroup[] }>(`/api/errors?limit=${limit}`);
+}
+
+export function fetchService(name: string): Promise<ServiceDetail> {
+  return getJson<ServiceDetail>(`/api/service/${encodeURIComponent(name)}`);
+}
+
+export function fetchEndpointLatency(date: string, endpoint: string): Promise<{ buckets: LatencyBucket[] }> {
+  return getJson<{ buckets: LatencyBucket[] }>(
+    `/api/day/${encodeURIComponent(date)}/latency?endpoint=${encodeURIComponent(endpoint)}`,
+  );
 }
 
 export interface SearchParams {

@@ -65,11 +65,15 @@ The spine. All pure functions, unit-tested, no network or framework.
   - `GET /api/traces/:id` — one trace: summary + sequence model + Mermaid (falls back to the
     history store once a trace has aged out of the live window)
   - `GET /api/topology` — the aggregate graph + Mermaid
+  - `GET /api/service/:name` — one service from the live window: inbound/outbound deps, error
+    rate, span count, and top operations
 - **REST (history)**:
   - `GET /api/days` — days that have data, with request/error counts
   - `GET /api/day/:date/summary` — requests, error rate, p50/p95/p99 latency, per-minute
     throughput, top endpoints, and the slowest traces
   - `GET /api/day/:date/traces?limit=` — that day's trace summaries
+  - `GET /api/day/:date/latency?endpoint=` — p50/p95/p99 per minute for one endpoint
+  - `GET /api/errors?limit=` — errored traces grouped by endpoint + error label, with a sample trace
   - `GET /api/search?q=&service=&error=&minMs=&maxMs=&minSpans=&sort=&traceId=&limit=` —
     search all persisted traces (endpoint substring, service, error-only, latency range,
     min span count, sort by recent or slowest, or exact id)
@@ -90,8 +94,11 @@ The spine. All pure functions, unit-tested, no network or framework.
   once in the root layout so it survives navigation.
 - **Routes**:
   - `/` — the **live page**: trace-list sidebar + the flow view.
-  - `/trace/:traceId` — a **dedicated trace page**: back link, summary header, and the
-    sequence diagram for that one trace. Deep-linkable (served via the SPA index fallback).
+  - `/trace/:traceId` — a **dedicated trace page** (deep-linkable): summary + two tabs — a
+    **span waterfall** (Gantt nested by depth, click a span → its attributes) and the sequence.
+  - `/service/:name` — a **service page** (also reached by clicking a flow node): deps, error
+    rate, top operations.
+  - `/errors` — the **error explorer**: errored traces grouped by endpoint + error label.
   - `/history` — days that have data.
   - `/day/:date` — the **daily dashboard**: rollup cards (requests, error rate, p50/p95/p99),
     a throughput chart, top endpoints, and the slowest traces (each linking to its trace page).

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useLiveStore } from "../store/use-live-store";
 import { computeLayout, type LayoutResult } from "../lib/layout";
 import { formatMicros, isDatastore } from "../lib/format";
@@ -58,13 +59,17 @@ function contentBox(positions: Record<string, { x: number; y: number }>, nodes: 
   };
 }
 
-function NodeShape({ id, x, y }: { id: string; x: number; y: number }) {
+function NodeShape({ id, x, y, onClick }: { id: string; x: number; y: number; onClick?: () => void }) {
   const ds = isDatastore(id);
   const left = x - NODE_W / 2;
   const top = y - NODE_H / 2;
   const label = id.length > 16 ? id.slice(0, 15) + "…" : id;
   return (
-    <g>
+    <g
+      className={onClick ? "flow-node-group clickable" : "flow-node-group"}
+      onClick={onClick}
+      onMouseDown={onClick ? (e) => e.stopPropagation() : undefined}
+    >
       <rect
         x={left}
         y={top}
@@ -82,6 +87,7 @@ function NodeShape({ id, x, y }: { id: string; x: number; y: number }) {
 
 export function FlowView() {
   const topology = useLiveStore((s) => s.topology);
+  const navigate = useNavigate();
 
   // Stable layout: recompute only when the *set* of node ids changes.
   const nodeKey = useMemo(() => [...topology.nodes].sort().join("|"), [topology.nodes]);
@@ -234,7 +240,15 @@ export function FlowView() {
           {topology.nodes.map((n) => {
             const p = positions[n];
             if (!p) return null;
-            return <NodeShape key={n} id={n} x={p.x} y={p.y} />;
+            return (
+              <NodeShape
+                key={n}
+                id={n}
+                x={p.x}
+                y={p.y}
+                onClick={isDatastore(n) ? undefined : () => navigate(`/service/${encodeURIComponent(n)}`)}
+              />
+            );
           })}
         </g>
       </svg>

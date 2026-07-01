@@ -75,15 +75,15 @@ items: **S** = hours, **M** = ~a day, **L** = multi-day.
 ## Backlog (enhancements)
 
 ### A. Visualization & interaction
-- [ ] Clickable service nodes → a service page (endpoints, deps, error rate, p95) **M**
+- [x] Clickable service nodes → a service page (deps, error rate, spans, top operations)
 - [ ] Tighter flow layout (less whitespace, edge-bundling for parallel edges) **M**
 - [x] Span waterfall on the trace page + click-to-expand span attributes (Waterfall tab: Gantt bars nested by depth, colored per service, click a span → attributes panel)
 - [ ] Filter the live view (pin flow/feed to one service or endpoint) **S**
 - [ ] Export: copy Mermaid, download SVG/PNG, add D2 export **S–M**
 
 ### B. Diagnostics & analysis
-- [ ] Error explorer (errored traces grouped by endpoint + error type, failing span highlighted) **M**
-- [ ] Latency-over-time per endpoint (p50/p95/p99 line chart across the day) **M**
+- [x] Error explorer (errored traces grouped by endpoint + error label, each links to a trace)
+- [x] Latency-over-time per endpoint (p50/p95/p99 line chart on the day dashboard)
 - [ ] Search by span attribute (userId, productId, http.status, …) **M**
 - [ ] Trace compare / diff (structure + timing of two traces) **L**
 - [ ] Anomaly/alert hooks (error-rate or latency spike → banner/webhook) **M–L**
@@ -114,7 +114,7 @@ items: **S** = hours, **M** = ~a day, **L** = multi-day.
 
 ## Top 5 picks (value per effort)
 1. [x] Span waterfall + attribute drill-down on the trace page (B) — most useful for debugging
-2. [ ] Clickable service nodes → service page (A) — makes the flow graph navigable
+2. [x] Clickable service nodes → service page (A) — makes the flow graph navigable
 3. [ ] Search by span attribute (B) — "all traces for user X" / "all 500s on /checkout"
 4. [ ] Retention / pruning (C) — small, keeps the DB bounded
 5. [ ] A Python service in the testbed (F) — validates the core polyglot promise

@@ -99,6 +99,36 @@ export function createServer(opts: ServerOptions = {}): LiveProbeServer {
   }, opts.topologyIntervalMs ?? 750);
   timer.unref();
 
+  // Per-service view from the live window: deps (from the topology graph) + the service's
+  // own operations and error rate (scanned from its spans).
+  const serviceDetail = (name: string) => {
+    const topology = window.topology();
+    const inbound = [...new Set(topology.edges.filter((e) => e.to === name).map((e) => e.from))];
+    const outbound = [...new Set(topology.edges.filter((e) => e.from === name).map((e) => e.to))];
+    const ops = new Map<string, { calls: number; errors: number; dur: number }>();
+    let spans = 0;
+    let errors = 0;
+    for (const id of window.traceIds()) {
+      const t = window.assemble(id);
+      if (!t) continue;
+      for (const e of t.events) {
+        if (e.participant !== name) continue;
+        spans++;
+        if (e.status === "error") errors++;
+        const o = ops.get(e.operation) ?? { calls: 0, errors: 0, dur: 0 };
+        o.calls++;
+        if (e.status === "error") o.errors++;
+        o.dur += e.duration;
+        ops.set(e.operation, o);
+      }
+    }
+    const operations = [...ops.entries()]
+      .map(([operation, o]) => ({ operation, calls: o.calls, errors: o.errors, avgMicros: Math.round(o.dur / o.calls) }))
+      .sort((a, b) => b.calls - a.calls)
+      .slice(0, 30);
+    return { name, spans, errors, errorRate: spans > 0 ? errors / spans : 0, inbound, outbound, operations };
+  };
+
   async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     res.setHeader("access-control-allow-origin", "*");
     res.setHeader("access-control-allow-headers", "content-type");
@@ -132,6 +162,20 @@ export function createServer(opts: ServerOptions = {}): LiveProbeServer {
       if (req.method === "GET" && path === "/api/topology") {
         const topology = window.topology();
         return json(res, 200, { topology, mermaidFlow: toMermaidFlow(topology) });
+      }
+      if (req.method === "GET" && path.startsWith("/api/service/")) {
+        const name = decodeURIComponent(path.slice("/api/service/".length));
+        return json(res, 200, serviceDetail(name));
+      }
+      if (req.method === "GET" && path === "/api/errors") {
+        const limit = Number(url.searchParams.get("limit") ?? "100");
+        return json(res, 200, { groups: store.errorGroups(Number.isFinite(limit) && limit > 0 ? limit : 100) });
+      }
+      if (req.method === "GET" && /^\/api\/day\/[^/]+\/latency$/.test(path)) {
+        const day = decodeURIComponent(path.split("/")[3]!);
+        const endpoint = url.searchParams.get("endpoint");
+        if (!endpoint) return json(res, 400, { error: "endpoint_required" });
+        return json(res, 200, { buckets: store.endpointLatency(day, endpoint) });
       }
       if (req.method === "GET" && path === "/api/search") {
         const q = url.searchParams;

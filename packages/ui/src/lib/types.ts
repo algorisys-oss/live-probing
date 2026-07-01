@@ -99,3 +99,36 @@ export type WsMessage =
     }
   | { type: "traces"; traces: TraceSummary[] }
   | { type: "topology"; topology: Topology; mermaidFlow: string };
+
+export interface ErrorGroup {
+  endpoint: string;
+  label: string;
+  count: number;
+  lastSeen: number; // micros
+  sampleTraceId: string;
+}
+
+export interface ServiceOperation {
+  operation: string;
+  calls: number;
+  errors: number;
+  avgMicros: number;
+}
+
+export interface ServiceDetail {
+  name: string;
+  spans: number;
+  errors: number;
+  errorRate: number;
+  inbound: string[];
+  outbound: string[];
+  operations: ServiceOperation[];
+}
+
+export interface LatencyBucket {
+  minute: number; // epoch minutes (UTC)
+  count: number;
+  p50: number;
+  p95: number;
+  p99: number;
+}

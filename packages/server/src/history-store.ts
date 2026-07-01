@@ -1,6 +1,35 @@
 import { DatabaseSync } from "node:sqlite";
-import type { AssembledTrace } from "@liveprobe/core";
+import type { AssembledTrace, Event } from "@liveprobe/core";
 import { detail, summarize, type TraceDetail, type TraceSummary } from "./summary.js";
+
+export interface ErrorGroup {
+  endpoint: string; // the trace's root operation
+  label: string; // "<service>: <exception|HTTP status|operation>"
+  count: number;
+  lastSeen: number; // micros
+  sampleTraceId: string;
+}
+
+export interface LatencyBucket {
+  minute: number; // epoch minutes (UTC)
+  count: number;
+  p50: number;
+  p95: number;
+  p99: number;
+}
+
+// A human error label from the first errored span: prefer an exception type, then an HTTP
+// status, else the failing operation.
+function errorLabelFor(events: Event[]): string | null {
+  const err = events.find((e) => e.status === "error");
+  if (!err) return null;
+  const a = err.attributes;
+  const exc = a["exception.type"] ?? a["exception_name"] ?? a["error.type"];
+  const status = a["http.status_code"] ?? a["http.response.status_code"];
+  if (typeof exc === "string" && exc) return `${err.participant}: ${exc}`;
+  if (status !== undefined && Number(status) >= 400) return `${err.participant}: HTTP ${status}`;
+  return `${err.participant}: ${err.operation}`;
+}
 
 // Persists trace summaries + detail, partitioned by UTC day, so LiveProbe can answer
 // "what happened on this day" after traces have aged out of the live window. Uses Node's
@@ -92,19 +121,27 @@ export class HistoryStore {
       CREATE INDEX IF NOT EXISTS idx_traces_day_dur ON traces(day, duration_micros);
       CREATE INDEX IF NOT EXISTS idx_traces_day_op ON traces(day, root_operation);
     `);
+    // Added after the fact; ALTER for existing DBs (idempotent).
+    this.ensureColumn("traces", "error_label", "TEXT");
+    this.db.exec("CREATE INDEX IF NOT EXISTS idx_traces_error ON traces(has_error, start_time)");
+  }
+
+  private ensureColumn(table: string, col: string, type: string): void {
+    const cols = this.db.prepare(`PRAGMA table_info(${table})`).all().map((r) => String(r["name"]));
+    if (!cols.includes(col)) this.db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${type}`);
   }
 
   // A trace grows as spans stream in, so upsert the latest snapshot each time.
   upsertMany(traces: AssembledTrace[]): void {
     const stmt = this.db.prepare(`
       INSERT INTO traces (trace_id, day, start_time, duration_micros, root_operation,
-                          span_count, service_count, has_error, services, detail_json)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                          span_count, service_count, has_error, services, detail_json, error_label)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(trace_id) DO UPDATE SET
         day=excluded.day, start_time=excluded.start_time, duration_micros=excluded.duration_micros,
         root_operation=excluded.root_operation, span_count=excluded.span_count,
         service_count=excluded.service_count, has_error=excluded.has_error,
-        services=excluded.services, detail_json=excluded.detail_json
+        services=excluded.services, detail_json=excluded.detail_json, error_label=excluded.error_label
     `);
     this.db.exec("BEGIN");
     try {
@@ -122,6 +159,7 @@ export class HistoryStore {
           s.hasError ? 1 : 0,
           JSON.stringify(s.services),
           JSON.stringify(d),
+          s.hasError ? errorLabelFor(t.events) : null,
         );
       }
       this.db.exec("COMMIT");
@@ -148,6 +186,66 @@ export class HistoryStore {
       .prepare(`SELECT ${SUMMARY_COLS} FROM traces WHERE day = ? ORDER BY start_time DESC LIMIT ?`)
       .all(day, limit)
       .map(rowToSummary);
+  }
+
+  // Errored traces grouped by endpoint + error label, with a sample trace to jump to.
+  errorGroups(limit: number): ErrorGroup[] {
+    return this.db
+      .prepare(
+        `SELECT root_operation AS endpoint,
+                COALESCE(error_label, 'error') AS label,
+                count(*) AS count,
+                max(start_time) AS lastSeen,
+                (SELECT s.trace_id FROM traces s
+                 WHERE s.has_error = 1 AND s.root_operation = traces.root_operation
+                   AND IFNULL(s.error_label, '') = IFNULL(traces.error_label, '')
+                 ORDER BY s.start_time DESC LIMIT 1) AS sampleTraceId
+         FROM traces
+         WHERE has_error = 1
+         GROUP BY root_operation, error_label
+         ORDER BY count DESC
+         LIMIT ?`,
+      )
+      .all(limit)
+      .map((r) => ({
+        endpoint: String(r["endpoint"]),
+        label: String(r["label"]),
+        count: Number(r["count"]),
+        lastSeen: Number(r["lastSeen"]),
+        sampleTraceId: String(r["sampleTraceId"]),
+      }));
+  }
+
+  // p50/p95/p99 per minute for one endpoint on a day (percentiles computed in JS).
+  endpointLatency(day: string, endpoint: string): LatencyBucket[] {
+    const rows = this.db
+      .prepare(
+        "SELECT (start_time/60000000) AS minute, duration_micros AS d FROM traces WHERE day = ? AND root_operation = ? ORDER BY minute",
+      )
+      .all(day, endpoint);
+    const byMinute = new Map<number, number[]>();
+    for (const r of rows) {
+      const m = Number(r["minute"]);
+      let list = byMinute.get(m);
+      if (!list) {
+        list = [];
+        byMinute.set(m, list);
+      }
+      list.push(Number(r["d"]));
+    }
+    const pct = (arr: number[], p: number): number => {
+      const sorted = [...arr].sort((a, b) => a - b);
+      return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * p))] ?? 0;
+    };
+    return [...byMinute.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([minute, ds]) => ({
+        minute,
+        count: ds.length,
+        p50: pct(ds, 0.5),
+        p95: pct(ds, 0.95),
+        p99: pct(ds, 0.99),
+      }));
   }
 
   // Search across all persisted traces. Every filter is optional and ANDed together.

@@ -1005,3 +1005,146 @@ body {
   font-size: 10px;
   letter-spacing: 0.05em;
 }
+
+/* --- errors page / service page / shared bits --- */
+.errors-page,
+.service-page {
+  padding: 16px 20px;
+  overflow-y: auto;
+}
+.mono {
+  font-family: var(--mono, ui-monospace, monospace);
+}
+.link {
+  color: var(--accent);
+  text-decoration: none;
+}
+.link:hover {
+  text-decoration: underline;
+}
+.err-text {
+  color: var(--error);
+}
+.err-label {
+  color: var(--error);
+  font-family: var(--mono, ui-monospace, monospace);
+}
+.row-clickable {
+  cursor: pointer;
+}
+.row-clickable:hover {
+  background: var(--bg-panel);
+}
+.row-selected {
+  background: var(--accent-soft);
+}
+
+.cards {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 12px 0 16px;
+}
+.card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  min-width: 120px;
+}
+.card-value {
+  font-size: 22px;
+  font-weight: 700;
+}
+.card-label {
+  color: var(--text-dim);
+  font-size: 12px;
+  margin-top: 2px;
+}
+.svc-deps {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0;
+}
+.svc-deps-label {
+  color: var(--text-dim);
+  font-size: 12px;
+  width: 96px;
+  flex-shrink: 0;
+}
+.chip-link {
+  text-decoration: none;
+  cursor: pointer;
+}
+.chip-link:hover {
+  border-color: var(--accent);
+}
+
+.flow-node-group.clickable {
+  cursor: pointer;
+}
+.flow-node-group.clickable:hover .flow-node {
+  stroke-width: 2.5;
+}
+
+/* --- latency chart --- */
+.latency-legend {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.lg {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.lg::before {
+  content: "";
+  width: 12px;
+  height: 3px;
+  border-radius: 2px;
+  display: inline-block;
+}
+.lg-p50::before {
+  background: var(--accent);
+}
+.lg-p95::before {
+  background: var(--new);
+}
+.lg-p99::before {
+  background: var(--error);
+}
+.latency-endpoint {
+  margin-left: auto;
+  font-family: var(--mono, ui-monospace, monospace);
+}
+.latency-chart {
+  width: 100%;
+  height: auto;
+}
+.latency-chart .axis {
+  stroke: var(--border-strong);
+  stroke-width: 1;
+}
+.latency-chart .axis-label {
+  fill: var(--text-faint);
+  font-size: 10px;
+}
+.lat-line {
+  fill: none;
+  stroke-width: 2;
+}
+.lat-p50 {
+  stroke: var(--accent);
+}
+.lat-p95 {
+  stroke: var(--new);
+}
+.lat-p99 {
+  stroke: var(--error);
+}

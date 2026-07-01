@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ApiError, fetchDaySummary } from "../lib/api";
+import { ApiError, fetchDaySummary, fetchEndpointLatency } from "../lib/api";
 import { formatMicros } from "../lib/format";
 import { ThroughputChart } from "../components/throughput-chart";
-import type { DaySummary } from "../lib/types";
+import { LatencyChart } from "../components/latency-chart";
+import type { DaySummary, LatencyBucket } from "../lib/types";
 
 type LoadState =
   | { kind: "loading" }
@@ -23,6 +24,17 @@ function RollupCard({ label, value }: { label: string; value: string }) {
 export function DayPage() {
   const { date } = useParams();
   const [state, setState] = useState<LoadState>({ kind: "loading" });
+  const [latEndpoint, setLatEndpoint] = useState<string | null>(null);
+  const [latBuckets, setLatBuckets] = useState<LatencyBucket[] | null>(null);
+
+  const selectEndpoint = (op: string) => {
+    if (!date) return;
+    setLatEndpoint(op);
+    setLatBuckets(null);
+    fetchEndpointLatency(date, op)
+      .then((r) => setLatBuckets(r.buckets))
+      .catch(() => setLatBuckets([]));
+  };
 
   useEffect(() => {
     if (!date) {
@@ -125,7 +137,13 @@ export function DayPage() {
                   </thead>
                   <tbody>
                     {state.summary.topEndpoints.map((e) => (
-                      <tr key={e.operation}>
+                      <tr
+                        key={e.operation}
+                        className={
+                          "row-clickable" + (e.operation === latEndpoint ? " row-selected" : "")
+                        }
+                        onClick={() => selectEndpoint(e.operation)}
+                      >
                         <td className="op-cell" title={e.operation}>
                           {e.operation}
                         </td>
@@ -139,6 +157,19 @@ export function DayPage() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+          </section>
+
+          <section className="day-section">
+            <h2 className="section-title">Latency over time</h2>
+            {latEndpoint === null ? (
+              <div className="muted">Click an endpoint above to see its p50 / p95 / p99 over the day.</div>
+            ) : latBuckets === null ? (
+              <div className="muted">Loading…</div>
+            ) : (
+              <div className="chart-card">
+                <LatencyChart buckets={latBuckets} endpoint={latEndpoint} />
               </div>
             )}
           </section>

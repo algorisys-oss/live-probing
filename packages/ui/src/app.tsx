@@ -1,5 +1,6 @@
 import { useEffect } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { ErrorBoundary } from "./components/error-boundary";
 import { useLiveStore } from "./store/use-live-store";
 import { WsClient } from "./lib/ws-client";
 import { fetchTopology, fetchTraces } from "./lib/api";
@@ -9,8 +10,11 @@ import { TracePage } from "./pages/trace-page";
 import { HistoryPage } from "./pages/history-page";
 import { DayPage } from "./pages/day-page";
 import { SearchPage } from "./pages/search-page";
+import { ErrorsPage } from "./pages/errors-page";
+import { ServicePage } from "./pages/service-page";
 
 export function App() {
+  const location = useLocation();
   // The websocket + REST fallback live in the root layout so the connection
   // survives navigation between the live feed and trace-detail pages.
   useEffect(() => {
@@ -46,14 +50,18 @@ export function App() {
   return (
     <div className="app">
       <Header />
-      <Routes>
-        <Route path="/" element={<LivePage />} />
-        <Route path="/history" element={<HistoryPage />} />
-        <Route path="/day/:date" element={<DayPage />} />
-        <Route path="/search" element={<SearchPage />} />
-        <Route path="/trace/:traceId" element={<TracePage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <ErrorBoundary key={location.pathname}>
+        <Routes>
+          <Route path="/" element={<LivePage />} />
+          <Route path="/history" element={<HistoryPage />} />
+          <Route path="/day/:date" element={<DayPage />} />
+          <Route path="/search" element={<SearchPage />} />
+          <Route path="/errors" element={<ErrorsPage />} />
+          <Route path="/service/:name" element={<ServicePage />} />
+          <Route path="/trace/:traceId" element={<TracePage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </ErrorBoundary>
     </div>
   );
 }

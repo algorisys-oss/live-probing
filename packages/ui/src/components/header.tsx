@@ -54,6 +54,12 @@ export function Header() {
             History
           </NavLink>
           <NavLink
+            to="/errors"
+            className={({ isActive }) => (isActive ? "nav-link nav-link-active" : "nav-link")}
+          >
+            Errors
+          </NavLink>
+          <NavLink
             to="/search"
             className={({ isActive }) => (isActive ? "nav-link nav-link-active" : "nav-link")}
           >

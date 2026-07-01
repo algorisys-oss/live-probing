@@ -112,7 +112,7 @@ export function TracePage() {
 
           {tab === "waterfall" ? (
             <WaterfallView
-              spans={state.detail.spans}
+              spans={state.detail.spans ?? []}
               traceStart={state.detail.summary.startTime}
               traceDuration={state.detail.summary.durationMicros}
             />

@@ -58,13 +58,16 @@ function SpanDetail({ span, traceStart }: { span: SpanRow; traceStart: number })
   );
 }
 
-export function WaterfallView({ spans, traceStart, traceDuration }: { spans: SpanRow[]; traceStart: number; traceDuration: number }) {
-  const [selectedId, setSelectedId] = useState<string | null>(spans[0]?.spanId ?? null);
+export function WaterfallView({ spans = [], traceStart, traceDuration }: { spans?: SpanRow[]; traceStart: number; traceDuration: number }) {
+  // Land on the failing span when there is one, else the root. `spans` can be undefined for
+  // traces recorded before span capture — guard so an old trace never crashes the page.
+  const initial = spans.find((s) => s.status === "error")?.spanId ?? spans[0]?.spanId ?? null;
+  const [selectedId, setSelectedId] = useState<string | null>(initial);
 
   if (spans.length === 0) {
     return (
       <div className="empty-hint">
-        Waterfall not available for this trace (it may have been recorded before span capture).
+        Waterfall not available for this trace (recorded before span capture). Try the Sequence tab.
       </div>
     );
   }
