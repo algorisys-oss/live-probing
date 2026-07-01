@@ -9,8 +9,12 @@ import type {
   Topology,
 } from "./types";
 
+// API/ws origin. Prefer an explicit build-time override; otherwise use the
+// origin the app was served from (port-agnostic static deploy). Only in the
+// Vite dev server (UI on :5173, API elsewhere) do we fall back to :4319.
 export const BASE_URL: string =
-  import.meta.env.VITE_LIVEPROBE_URL ?? "http://localhost:4319";
+  import.meta.env.VITE_LIVEPROBE_URL ??
+  (import.meta.env.DEV ? "http://localhost:4319" : window.location.origin);
 
 export function wsUrl(): string {
   const httpBase = BASE_URL.replace(/\/+$/, "");

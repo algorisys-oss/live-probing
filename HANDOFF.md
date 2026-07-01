@@ -10,7 +10,9 @@ error flag + pause), the trace page (waterfall + sequence tab + back link), sear
 span attribute), errors, and history→day. Deterministic fixtures seeded via `POST /v1/events`
 (`e2e/seed.ts`); `playwright.config.ts` webServer builds the UI and serves it from the server on an
 isolated port (`:4399`) + temp DB — **no docker/testbed needed**. `npm run test:e2e` (11 pass),
-unit `npm test` (13) + typecheck still green. Not yet committed/synced.
+unit `npm test` (13) + typecheck still green. Also fixed the UI's hardcoded API base: it now
+uses `window.location.origin` in prod (falls back to `:4319` only in the Vite dev server), so a
+static deploy on any port works — and the e2e no longer needs a build-time URL override.
 
 Prior task: `examples/otel-react-go/` — OTel integration reference for a React + Go app (Go→collector
 `encoding:json`→LiveProbe; React→LiveProbe direct). Synced (`d998250`).
@@ -67,9 +69,11 @@ Details/ports: `README.md`. Jaeger at http://localhost:16687. Sample login `alic
 - **OTLP ingest is gzip-aware** (the `otlphttp` exporter compresses by default). Keep the gunzip.
 - **Attribute search / waterfall** only cover traces ingested after those features shipped; the DB
   was reset, so that's effectively everything now.
-- **e2e**: the built UI's API base is `VITE_LIVEPROBE_URL ?? http://localhost:4319`, so `e2e:serve`
-  builds with `VITE_LIVEPROBE_URL=http://localhost:4399` to point the browser at the test server.
-  First run needs `npx playwright install chromium`. Runs on `:4399` + `.e2e-data/` (both isolated
-  from dev). Don't prefix test runs with `pkill` in this environment — it can nuke the session.
+- **UI API base is now origin-relative**: the built UI uses `VITE_LIVEPROBE_URL ?? window.location.origin`
+  (prod) and only falls back to `http://localhost:4319` in the Vite dev server. So a static deploy on
+  any port just works — nothing hardcoded. (`packages/ui/src/lib/api.ts`.)
+- **e2e**: runs on an isolated `:4399` + `.e2e-data/` (both separate from dev); the browser hits its
+  own origin, no build-time URL override needed. First run needs `npx playwright install chromium`.
+  Don't prefix test runs with `pkill` in this environment — it can nuke the session.
 - **Client format spec** is private in `adapters-hidden/` (gitignored); only a generic reference
   adapter lives in the repo.

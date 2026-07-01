@@ -2,6 +2,14 @@
 
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
+## [2026-07-01 20:40]
+- Fix hardcoded UI API base: `BASE_URL` (and the derived ws URL) now default to
+  `window.location.origin` in a production build, falling back to `http://localhost:4319` only in
+  the Vite dev server (`import.meta.env.DEV`). A static UI deploy on any port now talks to its own
+  origin instead of a fixed :4319. Removed the `VITE_LIVEPROBE_URL=…:4399` override from `e2e:serve`
+  — the e2e browser now uses its serving origin. All 11 e2e + 13 unit + typecheck green.
+  (`packages/ui/src/lib/api.ts`.)
+
 ## [2026-07-01 20:15]
 - UI e2e tests: Playwright suite under `e2e/` (11 specs across live dashboard, trace page
   waterfall/sequence, search by endpoint + span attribute, errors, history→day). Deterministic
