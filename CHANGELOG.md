@@ -2,6 +2,13 @@
 
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
+## [2026-07-01 10:30]
+- Added stop.sh (stop the LiveProbe server + tear down the whole Docker stack; --wipe drops data).
+- Added docs/: architecture.md (full pipeline + packages + testbed + T5), event-model.md
+  (the normalized Event structure and OTLP mapping), shopwave-events.md (per-action HTTP +
+  RabbitMQ message payloads and the trace each action produces). Linked from the README.
+- Files: stop.sh, docs/*, README.md.
+
 ## [2026-07-01 10:00]
 - LiveProbe: derive real endpoint titles ("POST /api/checkout") from HTTP span attributes
   instead of the bare method the instrumentation emits; fixes uninformative trace titles in

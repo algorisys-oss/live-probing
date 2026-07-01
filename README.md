@@ -145,7 +145,14 @@ the UI:
 ```
 
 `./dev.sh --no-load` skips the traffic generator; `./dev.sh --no-build` reuses the last UI
-build. Or do it manually:
+build. Stop everything with one script:
+
+```bash
+./stop.sh           # stop the LiveProbe server + tear down the Docker stack
+./stop.sh --wipe    # also drop the Postgres data
+```
+
+Or do it manually:
 
 ```bash
 # 1. Start the testbed (it exports OTLP to a collector that fans out to Jaeger + LiveProbe)
@@ -192,7 +199,10 @@ via `createRequire` so their spans actually appear. See
 
 ## Working docs
 
-- [CLAUDE.md](CLAUDE.md) — architecture and how we work here.
+- [docs/](docs/) — detailed docs: [architecture](docs/architecture.md), the
+  [event model](docs/event-model.md), and [Shopwave events](docs/shopwave-events.md)
+  (per-action message payloads and traces).
+- [CLAUDE.md](CLAUDE.md) — short architecture overview and how we work here.
 - [plan.md](plan.md) — LiveProbe plan and its Phase 1 contract.
 - [plan-testbed.md](plan-testbed.md) — Shopwave testbed plan and contract.
 - [IMPLEMENT.md](IMPLEMENT.md) — decision-to-code audit trail.
