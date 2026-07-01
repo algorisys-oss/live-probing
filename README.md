@@ -211,6 +211,7 @@ via `createRequire` so their spans actually appear. See
 
 ## Working docs
 
+- [todo.md](todo.md) — what's done (`[x]`) and the enhancement backlog.
 - [docs/](docs/) — detailed docs: [architecture](docs/architecture.md), the
   [event model](docs/event-model.md), and [Shopwave events](docs/shopwave-events.md)
   (per-action message payloads and traces).
