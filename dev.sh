@@ -3,18 +3,18 @@
 # LiveProbe end-to-end dev runner.
 #
 # Modes:
-#   ./dev.sh            Build the UI and run everything. The LiveProbe server serves the
-#                       built UI at :4319. No hot reload (good for a demo / just using it).
-#   ./dev.sh --watch    Hot-reload dev loop:
+#   ./dev.sh            Hot-reload dev loop (DEFAULT):
 #                         - LiveProbe UI runs under Vite with HMR at http://localhost:5173
 #                         - LiveProbe server runs under `tsx watch` (restarts on change)
 #                         - testbed services run under `tsx watch` (via docker-compose.dev.yml)
-#                       Edit any source and it reloads.
+#                       Edit any source and it reloads. Open http://localhost:5173.
+#   ./dev.sh --static   Build the UI and serve it statically from the server at :4319.
+#                       No hot reload (good for a demo / just using it).
 #   ./dev.sh --no-load  Don't start the traffic generator.
-#   ./dev.sh --no-build (build mode only) Reuse the existing UI build.
+#   ./dev.sh --no-build (static mode only) Reuse the existing UI build.
 #
-# The foreground process is the LiveProbe server; Ctrl-C stops it (and, in --watch, the UI
-# dev server). The Docker stack keeps running — stop it all with ./stop.sh.
+# The foreground process is the LiveProbe server; Ctrl-C stops it (and, in watch mode, the
+# UI dev server). The Docker stack keeps running — stop it all with ./stop.sh.
 
 set -euo pipefail
 
@@ -23,12 +23,13 @@ cd "$ROOT"
 
 LIVEPROBE_PORT="${LIVEPROBE_PORT:-4319}"
 UI_DEV_PORT="${UI_DEV_PORT:-5173}"
-WATCH=0
+WATCH=1
 DO_BUILD=1
 DO_LOAD=1
 for arg in "$@"; do
   case "$arg" in
-    --watch) WATCH=1 ;;
+    --watch) WATCH=1 ;;                 # default; kept for back-compat
+    --static | --build) WATCH=0 ;;      # build the UI and serve it statically
     --no-build) DO_BUILD=0 ;;
     --no-load) DO_LOAD=0 ;;
     *) echo "unknown option: $arg" >&2; exit 1 ;;

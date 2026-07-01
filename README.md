@@ -136,35 +136,33 @@ docker compose --profile ui up -d frontend      # storefront SPA on :8088
 
 ## Running LiveProbe
 
-One command brings up the whole thing — testbed, traffic, and the LiveProbe server serving
-the UI:
+One command brings up the whole thing — testbed, traffic, and LiveProbe — with **hot reload
+by default**:
 
 ```bash
 ./dev.sh
-# then open http://localhost:4319
+# then open http://localhost:5173
 ```
 
-`./dev.sh --no-load` skips the traffic generator; `./dev.sh --no-build` reuses the last UI
-build. Stop everything with one script:
+In this default (watch) mode: the **UI runs under Vite with HMR** at http://localhost:5173
+(edits apply instantly), the **LiveProbe server** runs under `tsx watch` (restarts on
+server/core changes), and the **testbed services** run under `tsx watch` too (via
+`testbed/docker-compose.dev.yml`, which bind-mounts the source). Edit any source and it
+reloads. The API/ws stays on :4319.
+
+For a demo / non-dev run, build the UI once and serve it statically from the server:
+
+```bash
+./dev.sh --static   # then open http://localhost:4319
+```
+
+`--no-load` skips the traffic generator; `--no-build` (static mode) reuses the last UI build.
+Stop everything with one script:
 
 ```bash
 ./stop.sh           # stop the LiveProbe server + tear down the Docker stack
 ./stop.sh --wipe    # also drop the Postgres data
 ```
-
-### Hot-reload dev loop
-
-Plain `./dev.sh` builds the UI once and serves it statically — no hot reload. For a live
-editing loop use `--watch`:
-
-```bash
-./dev.sh --watch    # then open http://localhost:5173
-```
-
-In watch mode: the **UI runs under Vite with HMR** at http://localhost:5173 (edits apply
-instantly), the **LiveProbe server** runs under `tsx watch` (restarts on server/core changes),
-and the **testbed services** run under `tsx watch` too (via `testbed/docker-compose.dev.yml`,
-which bind-mounts the source). Edit any source and it reloads. The API/ws stays on :4319.
 
 Or do it manually:
 

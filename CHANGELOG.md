@@ -2,6 +2,16 @@
 
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
+## [2026-07-01 13:45]
+- Flow graph zoom-to-fit: the whole topology now scales into view (datastore nodes no longer
+  render off-screen), with wheel-zoom, drag-to-pan, and +/-/Fit controls.
+- Richer search: added latency ceiling (maxMs), min span count, sort (recent | slowest), and a
+  service autocomplete from the live topology. Server /api/search + the search page updated.
+- dev.sh now hot-reloads by DEFAULT (Vite HMR UI + tsx watch server/testbed); use --static for
+  the build-and-serve mode. 10 tests pass.
+- Files: packages/ui/components/flow-view, pages/search-page, lib/api, styles; packages/server
+  history-store + server + test; dev.sh; README; docs/architecture.md.
+
 ## [2026-07-01 13:00]
 - Added a hot-reload dev loop: `./dev.sh --watch` runs the LiveProbe UI under Vite HMR (:5173),
   the LiveProbe server under `tsx watch`, and the testbed services under `tsx watch` via

@@ -69,6 +69,11 @@ test("HistoryStore search filters by text, service, error, and latency", () => {
   assert.equal(store.search({ error: false }).length, 0);
   assert.equal(store.search({ minMicros: 5_000 }).length, 1); // 10ms trace
   assert.equal(store.search({ minMicros: 50_000 }).length, 0);
+  assert.equal(store.search({ maxMicros: 5_000 }).length, 0); // 10ms > 5ms ceiling
+  assert.equal(store.search({ maxMicros: 20_000 }).length, 1);
+  assert.equal(store.search({ minSpans: 2 }).length, 1); // trace has 2 spans
+  assert.equal(store.search({ minSpans: 3 }).length, 0);
+  assert.equal(store.search({ sort: "slowest" }).length, 1);
   assert.equal(store.search({ traceId: "t1" }).length, 1);
   store.close();
 });

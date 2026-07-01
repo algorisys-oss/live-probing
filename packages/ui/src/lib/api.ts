@@ -69,6 +69,9 @@ export interface SearchParams {
   service?: string;
   error?: string; // "", "true", "false"
   minMs?: string;
+  maxMs?: string;
+  minSpans?: string;
+  sort?: string; // "recent" | "slowest"
   limit?: number;
 }
 
@@ -78,6 +81,9 @@ export function fetchSearch(params: SearchParams): Promise<{ traces: TraceSummar
   if (params.service) qs.set("service", params.service);
   if (params.error) qs.set("error", params.error);
   if (params.minMs) qs.set("minMs", params.minMs);
+  if (params.maxMs) qs.set("maxMs", params.maxMs);
+  if (params.minSpans) qs.set("minSpans", params.minSpans);
+  if (params.sort) qs.set("sort", params.sort);
   qs.set("limit", String(params.limit ?? 200));
   return getJson<{ traces: TraceSummary[] }>(`/api/search?${qs.toString()}`);
 }

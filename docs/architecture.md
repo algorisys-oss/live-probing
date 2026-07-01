@@ -70,8 +70,9 @@ The spine. All pure functions, unit-tested, no network or framework.
   - `GET /api/day/:date/summary` — requests, error rate, p50/p95/p99 latency, per-minute
     throughput, top endpoints, and the slowest traces
   - `GET /api/day/:date/traces?limit=` — that day's trace summaries
-  - `GET /api/search?q=&service=&error=&minMs=&traceId=&limit=` — search all persisted
-    traces (endpoint substring, service, error-only, min latency, or exact id)
+  - `GET /api/search?q=&service=&error=&minMs=&maxMs=&minSpans=&sort=&traceId=&limit=` —
+    search all persisted traces (endpoint substring, service, error-only, latency range,
+    min span count, sort by recent or slowest, or exact id)
 - **WebSocket** (`/ws`): on connect sends a `snapshot`; then pushes `traces` deltas (per
   ingest) and `topology` deltas (throttled, ~750 ms).
 - Serves the built UI from `packages/server/public` with SPA fallback.
@@ -100,8 +101,9 @@ The spine. All pure functions, unit-tested, no network or framework.
   freezes the visible list (new traces still buffer into the map and a "N new" counter ticks);
   Resume flushes. Topology keeps updating regardless.
 - **Flow view** — a custom SVG of the topology with a stable layout (positions recompute only
-  when the node set changes, so deltas don't make it jump). Datastore nodes styled apart;
-  edge width scales with call volume; red on errors.
+  when the node set changes, so deltas don't make it jump). Zoom-to-fit by default (the whole
+  graph scales into view), with wheel-zoom, drag-to-pan, and +/−/Fit controls. Datastore nodes
+  styled apart; edge width scales with call volume; red on errors.
 - **Sequence view** — a custom SVG lifeline diagram for a trace (dashed for async, red for
   errors), used on the trace page.
 - Talks to the server via REST (initial load + trace detail) and the websocket (live).

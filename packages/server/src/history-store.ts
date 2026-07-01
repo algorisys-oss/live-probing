@@ -17,7 +17,10 @@ export interface SearchOptions {
   service?: string; // trace involves this service
   error?: boolean; // only errored / only clean
   minMicros?: number; // duration floor
+  maxMicros?: number; // duration ceiling
+  minSpans?: number; // at least this many spans
   traceId?: string; // exact id
+  sort?: "recent" | "slowest"; // default recent
   limit?: number;
 }
 
@@ -168,14 +171,23 @@ export class HistoryStore {
       where.push("duration_micros >= ?");
       params.push(opts.minMicros);
     }
+    if (opts.maxMicros !== undefined) {
+      where.push("duration_micros <= ?");
+      params.push(opts.maxMicros);
+    }
+    if (opts.minSpans !== undefined) {
+      where.push("span_count >= ?");
+      params.push(opts.minSpans);
+    }
     if (opts.traceId) {
       where.push("trace_id = ?");
       params.push(opts.traceId);
     }
     const clause = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
+    const orderBy = opts.sort === "slowest" ? "duration_micros DESC" : "start_time DESC";
     const limit = opts.limit ?? 100;
     return this.db
-      .prepare(`SELECT ${SUMMARY_COLS} FROM traces ${clause} ORDER BY start_time DESC LIMIT ?`)
+      .prepare(`SELECT ${SUMMARY_COLS} FROM traces ${clause} ORDER BY ${orderBy} LIMIT ?`)
       .all(...params, limit)
       .map(rowToSummary);
   }

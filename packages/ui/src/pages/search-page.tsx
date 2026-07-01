@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ApiError, fetchSearch } from "../lib/api";
+import { useLiveStore } from "../store/use-live-store";
 import type { TraceSummary } from "../lib/types";
 import { formatMicros } from "../lib/format";
 
@@ -8,14 +9,21 @@ import { formatMicros } from "../lib/format";
 // back button works.
 export function SearchPage() {
   const [params, setParams] = useSearchParams();
+  const knownServices = useLiveStore((s) => s.topology.nodes);
   const q = params.get("q") ?? "";
   const service = params.get("service") ?? "";
   const error = params.get("error") ?? "";
   const minMs = params.get("minMs") ?? "";
-  const hasQuery = Boolean(q || service || error || minMs);
+  const maxMs = params.get("maxMs") ?? "";
+  const minSpans = params.get("minSpans") ?? "";
+  const sort = params.get("sort") ?? "recent";
+  const hasQuery = Boolean(q || service || error || minMs || maxMs || minSpans);
 
-  const [form, setForm] = useState({ q, service, error, minMs });
-  useEffect(() => setForm({ q, service, error, minMs }), [q, service, error, minMs]);
+  const [form, setForm] = useState({ q, service, error, minMs, maxMs, minSpans, sort });
+  useEffect(
+    () => setForm({ q, service, error, minMs, maxMs, minSpans, sort }),
+    [q, service, error, minMs, maxMs, minSpans, sort],
+  );
 
   const [results, setResults] = useState<TraceSummary[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -29,14 +37,14 @@ export function SearchPage() {
     let cancelled = false;
     setLoading(true);
     setErr(null);
-    fetchSearch({ q, service, error, minMs })
+    fetchSearch({ q, service, error, minMs, maxMs, minSpans, sort })
       .then((r) => !cancelled && setResults(r.traces))
       .catch((e) => !cancelled && setErr(e instanceof ApiError ? `Error ${e.status}` : "Search failed"))
       .finally(() => !cancelled && setLoading(false));
     return () => {
       cancelled = true;
     };
-  }, [q, service, error, minMs, hasQuery]);
+  }, [q, service, error, minMs, maxMs, minSpans, sort, hasQuery]);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,6 +53,9 @@ export function SearchPage() {
     if (form.service.trim()) next.service = form.service.trim();
     if (form.error) next.error = form.error;
     if (form.minMs) next.minMs = form.minMs;
+    if (form.maxMs) next.maxMs = form.maxMs;
+    if (form.minSpans) next.minSpans = form.minSpans;
+    if (form.sort && form.sort !== "recent") next.sort = form.sort;
     setParams(next);
   };
 
@@ -62,9 +73,15 @@ export function SearchPage() {
         <input
           className="search-input"
           placeholder="service (e.g. payment-worker)"
+          list="known-services"
           value={form.service}
           onChange={(e) => setForm({ ...form, service: e.target.value })}
         />
+        <datalist id="known-services">
+          {knownServices.map((s) => (
+            <option key={s} value={s} />
+          ))}
+        </datalist>
         <select
           className="search-input"
           value={form.error}
@@ -82,6 +99,31 @@ export function SearchPage() {
           value={form.minMs}
           onChange={(e) => setForm({ ...form, minMs: e.target.value })}
         />
+        <input
+          className="search-input search-input-num"
+          type="number"
+          min="0"
+          placeholder="max ms"
+          value={form.maxMs}
+          onChange={(e) => setForm({ ...form, maxMs: e.target.value })}
+        />
+        <input
+          className="search-input search-input-num"
+          type="number"
+          min="0"
+          placeholder="min spans"
+          value={form.minSpans}
+          onChange={(e) => setForm({ ...form, minSpans: e.target.value })}
+        />
+        <select
+          className="search-input"
+          value={form.sort}
+          onChange={(e) => setForm({ ...form, sort: e.target.value })}
+          title="Sort order"
+        >
+          <option value="recent">newest first</option>
+          <option value="slowest">slowest first</option>
+        </select>
         <button type="submit" className="btn btn-accent">
           Search
         </button>

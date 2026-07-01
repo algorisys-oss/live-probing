@@ -345,14 +345,49 @@ body {
 }
 
 /* ---------- flow view ---------- */
-.flow-scroll {
+.flow-fit {
+  position: relative;
   flex: 1;
-  overflow: auto;
-  padding: 20px;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .flow-svg {
   display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+.flow-svg.grabbing {
+  cursor: grabbing;
+}
+
+.flow-controls {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  gap: 6px;
+  z-index: 2;
+}
+.flow-btn {
+  min-width: 30px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+.flow-btn:hover {
+  border-color: var(--accent);
+}
+.flow-btn-fit {
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .flow-node {
