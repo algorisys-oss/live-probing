@@ -5,13 +5,17 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-Built + verified the **client-integration MVP** (the adapter layer): native `POST /v1/events`
-ingest (`coerceEvents` in `@liveprobe/core`; the server shares the ingest path with OTLP), a
-**collector** (`packages/collector`) with `stdin`/`rabbitmq` sources + adapter registry +
-batching sink, and a reference **`adapter-id-1`** mapping (structured client event → `Event[]`).
-Verified end to end: piped sample client events (stdin) → adapter → `/v1/events` → LiveProbe
-rendered a `web-gateway → orders-api → payments` trace (payment span = error) with matching
-topology/sequence. Synced (`127b6c4`).
+Added **`examples/otel-react-go/`** — a reference integration for a greenfield React + Go app via
+OpenTelemetry (docs/snippets, no product code touched). Key fact it captures: LiveProbe ingest is
+**OTLP/JSON**, so the Go side (protobuf exporter) must route through an **OTel Collector** with
+`encoding: json` (mirrors `testbed/otel/collector-config.yaml`), while React's browser exporter is
+already JSON and posts straight to `/v1/traces`. Includes `telemetry.go` + `main.go` (net/http +
+`otelhttp` + pgx/`otelpgx`), `otel-collector.yaml`, and `tracing.ts` (fetch/XHR auto-instrument +
+W3C propagation for one connected trace). Not yet committed/synced.
+
+Prior task: client-integration MVP (adapter layer): native `POST /v1/events` ingest (`coerceEvents`
+in `@liveprobe/core`), a **collector** (`packages/collector`) with `stdin`/`rabbitmq` sources +
+adapter registry + batching sink, and reference **`adapter-id-1`**. Synced (`127b6c4`).
 
 ## Current state
 LiveProbe is a mature working app, verified end to end against the live testbed. **13 tests pass**,

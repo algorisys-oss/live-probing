@@ -2,6 +2,15 @@
 
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
+## [2026-07-01 19:30]
+- Docs/examples: added examples/otel-react-go/ — a reference integration for a greenfield
+  React + Go app via OpenTelemetry. Documents the load-bearing fact that LiveProbe ingest is
+  OTLP/JSON, so Go (protobuf exporter) routes through an OTel Collector with encoding:json while
+  React (browser JSON exporter) posts straight to /v1/traces. Files: README.md, otel-collector.yaml,
+  go-backend/{telemetry.go,main.go,go.mod} (net/http + otelhttp + pgx/otelpgx), react-frontend/
+  tracing.ts (fetch/XHR auto-instrumentation + W3C propagation). Reference snippets, not a runnable
+  service; no product code changed.
+
 ## [2026-07-01 18:45]
 - Client integration MVP (the adapter layer): native POST /v1/events ingest (coerceEvents in
   @liveprobe/core; server shares the ingest path with OTLP) + a collector (packages/collector)

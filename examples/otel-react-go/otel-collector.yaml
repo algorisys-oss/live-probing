@@ -1,0 +1,33 @@
+# OpenTelemetry Collector config for the Go backend.
+#
+# Why this exists: the Go OTLP/HTTP exporter emits protobuf, but LiveProbe's
+# ingest reads OTLP/JSON. This collector receives protobuf from the Go app and
+# re-exports JSON to LiveProbe. (React skips this — its browser exporter is
+# already JSON and posts straight to LiveProbe.)
+#
+# Run: otelcol --config examples/otel-react-go/otel-collector.yaml
+
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318   # Go app exports here (OTEL_COLLECTOR=localhost:4318)
+      grpc:
+        endpoint: 0.0.0.0:4317   # optional: if you use the gRPC exporter instead
+
+processors:
+  batch: {}
+
+exporters:
+  otlphttp/liveprobe:
+    endpoint: http://localhost:4319   # LiveProbe ingest (API/ws port)
+    encoding: json                    # ← load-bearing: LiveProbe's normalizer reads JSON
+    tls:
+      insecure: true
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp/liveprobe]

@@ -97,6 +97,8 @@ items: **S** = hours, **M** = ~a day, **L** = multi-day.
 - [x] **Client integration via adapters** (MVP): native `POST /v1/events` + collector
       (`packages/collector`) with stdin/rabbitmq sources + adapter registry + `adapter-id-1`
       reference mapping. Verified end to end. (http source, more adapters = later)
+- [x] **OTel integration reference** (`examples/otel-react-go/`): React + Go via OpenTelemetry —
+      Go→collector(`encoding:json`)→LiveProbe, React→LiveProbe direct. Docs/snippets.
 - [ ] Native SDK (`packages/sdk-js`) — drop-in tracer, use LiveProbe without OpenTelemetry **L**
 - [ ] Config/env surface for ports, retention, window horizon, OTLP path **S**
 - [ ] Package & publish core/server with a CLI (`npx liveprobe`) **M**
