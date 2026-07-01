@@ -77,7 +77,7 @@ items: **S** = hours, **M** = ~a day, **L** = multi-day.
 ### A. Visualization & interaction
 - [ ] Clickable service nodes → a service page (endpoints, deps, error rate, p95) **M**
 - [ ] Tighter flow layout (less whitespace, edge-bundling for parallel edges) **M**
-- [ ] Span waterfall on the trace page + click-to-expand span attributes **M**
+- [x] Span waterfall on the trace page + click-to-expand span attributes (Waterfall tab: Gantt bars nested by depth, colored per service, click a span → attributes panel)
 - [ ] Filter the live view (pin flow/feed to one service or endpoint) **S**
 - [ ] Export: copy Mermaid, download SVG/PNG, add D2 export **S–M**
 
@@ -113,7 +113,7 @@ items: **S** = hours, **M** = ~a day, **L** = multi-day.
 ---
 
 ## Top 5 picks (value per effort)
-1. [ ] Span waterfall + attribute drill-down on the trace page (B) — most useful for debugging
+1. [x] Span waterfall + attribute drill-down on the trace page (B) — most useful for debugging
 2. [ ] Clickable service nodes → service page (A) — makes the flow graph navigable
 3. [ ] Search by span attribute (B) — "all traces for user X" / "all 500s on /checkout"
 4. [ ] Retention / pruning (C) — small, keeps the DB bounded

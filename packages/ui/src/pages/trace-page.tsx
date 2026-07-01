@@ -3,7 +3,10 @@ import { Link, useParams } from "react-router-dom";
 import { ApiError, fetchTraceDetail } from "../lib/api";
 import { formatMicros } from "../lib/format";
 import { SequenceView } from "../components/sequence-view";
+import { WaterfallView } from "../components/waterfall-view";
 import type { TraceDetail } from "../lib/types";
+
+type TraceTab = "waterfall" | "sequence";
 
 type LoadState =
   | { kind: "loading" }
@@ -14,6 +17,7 @@ type LoadState =
 export function TracePage() {
   const { traceId } = useParams();
   const [state, setState] = useState<LoadState>({ kind: "loading" });
+  const [tab, setTab] = useState<TraceTab>("waterfall");
 
   useEffect(() => {
     if (!traceId) {
@@ -91,7 +95,30 @@ export function TracePage() {
             </div>
           </div>
 
-          <SequenceView traceId={traceId} showSummary={false} />
+          <div className="tabs">
+            <button
+              className={tab === "waterfall" ? "tab tab-active" : "tab"}
+              onClick={() => setTab("waterfall")}
+            >
+              Waterfall
+            </button>
+            <button
+              className={tab === "sequence" ? "tab tab-active" : "tab"}
+              onClick={() => setTab("sequence")}
+            >
+              Sequence
+            </button>
+          </div>
+
+          {tab === "waterfall" ? (
+            <WaterfallView
+              spans={state.detail.spans}
+              traceStart={state.detail.summary.startTime}
+              traceDuration={state.detail.summary.durationMicros}
+            />
+          ) : (
+            <SequenceView traceId={traceId} showSummary={false} />
+          )}
         </>
       )}
     </div>

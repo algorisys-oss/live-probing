@@ -4,12 +4,13 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 `CHANGELOG.md`). Updated after every task.
 
 ## Last task
-Designed the client-integration approach and wrote it up in `docs/integration-adapters.md`
-(adapter layer: client format → normalized `Event[]` → native `/v1/events` ingest; collector
-with rabbitmq + stdout sources). Also converted the client instrumentation PDF to
-`adapters-hidden/adapter-id-1.md` (client-proprietary; kept out of the repo via .gitignore).
-Prior:
-handoff-doc convention (`febb860`). LiveProbe app work is on `origin/main`.
+Built **span waterfall + attribute drill-down** on the trace page. Server: `detail()` now
+includes `spans` (flattened trace tree with timing + attributes) — `packages/server/src/summary.ts`.
+UI: `waterfall-view.tsx` (Gantt bars nested by depth, colored per service, red on error) with a
+click-to-open span-detail panel (attributes/kind/status/timing); trace page gained
+Waterfall/Sequence tabs. Typecheck + 10 tests pass, UI builds. **Not yet browser-verified against
+real spans** — needs a fresh trace (span capture is new, so only traces ingested after a server
+restart carry spans).
 
 ## Current state
 LiveProbe is a working MVP, end to end, verified against the live testbed.

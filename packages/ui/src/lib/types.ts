@@ -36,10 +36,25 @@ export interface Sequence {
   messages: Message[];
 }
 
+export interface SpanRow {
+  spanId: string;
+  parentSpanId?: string;
+  depth: number;
+  participant: string;
+  operation: string;
+  kind: string;
+  status: string;
+  startTime: number; // absolute micros
+  duration: number; // micros
+  peer?: string;
+  attributes: Record<string, string | number | boolean>;
+}
+
 export interface TraceDetail {
   summary: TraceSummary;
   sequence: Sequence;
   mermaidSequence: string;
+  spans: SpanRow[];
 }
 
 export interface DayInfo {
