@@ -33,3 +33,6 @@ coverage/
 # LOOPS doctrine artifacts
 archive/
 *.backup.*
+
+# Built UI copied into the server for serving
+packages/server/public/

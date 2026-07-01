@@ -2,6 +2,28 @@
 
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
+## [2026-07-01 08:30]
+- LiveProbe UI (packages/ui): React + zustand live dashboard. Trace list, custom-SVG flow
+  view (stable-layout topology, datastore nodes, log-scaled edges, red on errors), and
+  per-trace sequence view (lifelines, async/error styling). Live over websocket with REST
+  fallback and auto-reconnect. Built and served by the LiveProbe server at :4319.
+- dev.sh runs it all end to end (build UI -> testbed up -> loadgen -> server serving UI).
+- Verified live: UI served (index + assets 200, SPA fallback), and /api shows the full
+  Shopwave topology (12 nodes, 26 edges) + streaming traces from real traffic.
+- Files: packages/ui/*, dev.sh, .gitignore, README.md.
+
+## [2026-07-01 07:30]
+- LiveProbe server (packages/server): OTLP/HTTP JSON ingest (gzip-aware) into the trace
+  window; REST for recent traces, per-trace sequence + Mermaid, aggregate topology +
+  Mermaid; websocket pushing snapshot + deltas. 7 tests pass.
+- T5 wired and verified with LIVE traffic: the testbed OTel collector now fans out OTLP/JSON
+  to LiveProbe on the host (host.docker.internal:4319, added host-gateway to the collector).
+  LiveProbe renders the full Shopwave topology (order->postgresql, order->rabbitmq, etc.)
+  and a real 52-span checkout sequence.
+- Added dev.sh (end-to-end runner) and expanded the README with LiveProbe run instructions.
+- Files: packages/server/*, testbed/otel/collector-config.yaml, testbed/docker-compose.yml,
+  tsconfig.json (scope to node packages), dev.sh, README.md.
+
 ## [2026-07-01 06:00]
 - LiveProbe core (packages/core): normalized Event model, OTLP/HTTP JSON -> Event[]
   normalizer, TraceWindow (out-of-order trace assembly, horizon+cap eviction, service/

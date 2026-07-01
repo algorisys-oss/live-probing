@@ -2,6 +2,34 @@
 
 Decision-to-code audit trail (LOOPS rule XXV). Newest first.
 
+## [2026-07-01] LiveProbe core + server + T5 (live end to end)
+
+**Discussed:** build LiveProbe; UI in React + zustand; lowercase-hyphenated names; commit
+and push; keep README updated; add a single dev.sh.
+
+**Implemented:**
+- `packages/core`: normalized Event model, OTLP/HTTP JSON normalizer, TraceWindow (out-of-
+  order assembly, horizon+cap eviction, service/datastore topology), sequence projection,
+  Mermaid sequence/flow export. 6 tests.
+- `packages/server`: OTLP ingest (gzip-aware) into the window; REST (recent traces, trace
+  detail with sequence + Mermaid, topology + Mermaid); websocket snapshot + deltas. 1 test.
+- T5: testbed collector now exports OTLP/JSON to LiveProbe on the host via
+  host.docker.internal (added host-gateway to the collector service).
+- `packages/ui` (in progress, subagent): React + zustand live dashboard.
+- `dev.sh`: one script to run testbed + loadgen + LiveProbe (serving the UI) end to end.
+
+**Decisions:** OTLP-first ingest (pivot from native-first — the testbed already emits OTLP).
+Server uses Node http + ws only (minimal deps). UI kept out of the root tsconfig (browser
+app with its own config). LiveProbe runs on the host; the collector reaches it via
+host-gateway, so the two compose stacks stay decoupled.
+
+**Verified:** 7 tests pass; typecheck clean. With live loadgen traffic, LiveProbe's
+/api/topology shows the full Shopwave graph and /api/traces/:id renders a real 52-span
+checkout sequence. The gzip trap (otlphttp compresses by default) was found and fixed.
+
+**Status:** core + server + T5 done and pushed (275b7ba). UI being built, then dev.sh
+end-to-end verification and final commit.
+
 ## [2026-07-01] Testbed T2 + T3 + T4 built and verified ("continue all")
 
 **Discussed:** continue building the rest of the testbed.

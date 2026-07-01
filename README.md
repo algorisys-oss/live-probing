@@ -20,7 +20,7 @@ This repo has two parts:
 |------|-------|
 | LiveProbe core (event model, OTLP normalizer, trace window, sequence, Mermaid) | **done, tested** |
 | LiveProbe server (OTLP ingest + REST + websocket) | **done, tested** |
-| LiveProbe UI (React live dashboard) | in progress |
+| LiveProbe UI (React + zustand live dashboard: flow + sequence views) | **done** |
 | Testbed T0–T4 (full 8-service system + SPA + load gen) | **done, verified** |
 | Testbed T5 (OTel collector -> LiveProbe) | **done, verified with live traffic** |
 
@@ -94,7 +94,16 @@ docker compose --profile load up -d loadgen     # continuous traffic (set DURATI
 
 ## Running LiveProbe
 
-The quickest path is `./dev.sh` (below), which brings up the whole thing. Manually:
+One command brings up the whole thing — testbed, traffic, and the LiveProbe server serving
+the UI:
+
+```bash
+./dev.sh
+# then open http://localhost:4319
+```
+
+`./dev.sh --no-load` skips the traffic generator; `./dev.sh --no-build` reuses the last UI
+build. Or do it manually:
 
 ```bash
 # 1. Start the testbed (it exports OTLP to a collector that fans out to Jaeger + LiveProbe)
