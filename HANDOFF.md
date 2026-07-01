@@ -5,17 +5,15 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-Added **`examples/otel-react-go/`** — a reference integration for a greenfield React + Go app via
-OpenTelemetry (docs/snippets, no product code touched). Key fact it captures: LiveProbe ingest is
-**OTLP/JSON**, so the Go side (protobuf exporter) must route through an **OTel Collector** with
-`encoding: json` (mirrors `testbed/otel/collector-config.yaml`), while React's browser exporter is
-already JSON and posts straight to `/v1/traces`. Includes `telemetry.go` + `main.go` (net/http +
-`otelhttp` + pgx/`otelpgx`), `otel-collector.yaml`, and `tracing.ts` (fetch/XHR auto-instrument +
-W3C propagation for one connected trace). Not yet committed/synced.
+Added a **Playwright e2e suite** (`e2e/`, 11 specs) covering the live dashboard (feed + flow +
+error flag + pause), the trace page (waterfall + sequence tab + back link), search (endpoint +
+span attribute), errors, and history→day. Deterministic fixtures seeded via `POST /v1/events`
+(`e2e/seed.ts`); `playwright.config.ts` webServer builds the UI and serves it from the server on an
+isolated port (`:4399`) + temp DB — **no docker/testbed needed**. `npm run test:e2e` (11 pass),
+unit `npm test` (13) + typecheck still green. Not yet committed/synced.
 
-Prior task: client-integration MVP (adapter layer): native `POST /v1/events` ingest (`coerceEvents`
-in `@liveprobe/core`), a **collector** (`packages/collector`) with `stdin`/`rabbitmq` sources +
-adapter registry + batching sink, and reference **`adapter-id-1`**. Synced (`127b6c4`).
+Prior task: `examples/otel-react-go/` — OTel integration reference for a React + Go app (Go→collector
+`encoding:json`→LiveProbe; React→LiveProbe direct). Synced (`d998250`).
 
 ## Current state
 LiveProbe is a mature working app, verified end to end against the live testbed. **13 tests pass**,
@@ -43,6 +41,7 @@ typecheck clean, UI verified in a headless browser. Nothing known broken.
 ./dev.sh              # hot reload; open http://localhost:5173  (API/ws on :4319)
 ./dev.sh --static     # build + serve the UI from the server at http://localhost:4319
 npm test              # core + server + collector tests (13)
+npm run test:e2e      # Playwright UI e2e (11); first run: npx playwright install chromium
 ./stop.sh             # tear down (--wipe drops data)
 # feed a non-OTLP client: cat events.ndjson | SOURCE=stdin ADAPTER=adapter-id-1 \
 #   LIVEPROBE_URL=http://localhost:4319 npx tsx packages/collector/src/index.ts
@@ -68,5 +67,9 @@ Details/ports: `README.md`. Jaeger at http://localhost:16687. Sample login `alic
 - **OTLP ingest is gzip-aware** (the `otlphttp` exporter compresses by default). Keep the gunzip.
 - **Attribute search / waterfall** only cover traces ingested after those features shipped; the DB
   was reset, so that's effectively everything now.
+- **e2e**: the built UI's API base is `VITE_LIVEPROBE_URL ?? http://localhost:4319`, so `e2e:serve`
+  builds with `VITE_LIVEPROBE_URL=http://localhost:4399` to point the browser at the test server.
+  First run needs `npx playwright install chromium`. Runs on `:4399` + `.e2e-data/` (both isolated
+  from dev). Don't prefix test runs with `pkill` in this environment — it can nuke the session.
 - **Client format spec** is private in `adapters-hidden/` (gitignored); only a generic reference
   adapter lives in the repo.

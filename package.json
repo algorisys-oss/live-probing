@@ -11,9 +11,12 @@
   },
   "scripts": {
     "test": "node --import tsx --test \"packages/*/src/**/*.test.ts\"",
+    "test:e2e": "playwright test",
+    "e2e:serve": "VITE_LIVEPROBE_URL=http://localhost:4399 npm run build -w @liveprobe/ui && rm -rf packages/server/public && cp -r packages/ui/dist packages/server/public && rm -rf .e2e-data && mkdir -p .e2e-data && PORT=4399 DB_PATH=.e2e-data/liveprobe.db npx tsx packages/server/src/index.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "@playwright/test": "^1.49.1",
     "@types/amqplib": "^0.10.6",
     "@types/node": "^22.10.0",
     "@types/ws": "^8.18.1",

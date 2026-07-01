@@ -2,6 +2,17 @@
 
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
+## [2026-07-01 20:15]
+- UI e2e tests: Playwright suite under `e2e/` (11 specs across live dashboard, trace page
+  waterfall/sequence, search by endpoint + span attribute, errors, history→day). Deterministic
+  fixtures seeded via `POST /v1/events` (`e2e/seed.ts`); ingest persists synchronously so all
+  pages see the data. `playwright.config.ts` webServer builds the UI, serves it from the server on
+  an isolated port (:4399) + temp DB — no docker/testbed/loadgen. Scripts: `npm run test:e2e`,
+  `e2e:serve`. Added `@playwright/test` devDep; gitignored test-results/report/.e2e-data.
+- Gotcha surfaced + handled: the built UI's API base is `VITE_LIVEPROBE_URL ?? http://localhost:4319`,
+  so `e2e:serve` builds with `VITE_LIVEPROBE_URL=http://localhost:4399` to point the browser at the
+  test server. 13 unit tests + typecheck still green.
+
 ## [2026-07-01 19:30]
 - Docs/examples: added examples/otel-react-go/ — a reference integration for a greenfield
   React + Go app via OpenTelemetry. Documents the load-bearing fact that LiveProbe ingest is

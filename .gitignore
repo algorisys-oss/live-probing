@@ -24,6 +24,12 @@ yarn-error.log*
 coverage/
 .nyc_output/
 
+# Playwright e2e
+/test-results/
+/playwright-report/
+/playwright/.cache/
+/.e2e-data/
+
 # Editor / OS
 .DS_Store
 .idea/

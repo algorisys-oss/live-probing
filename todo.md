@@ -104,7 +104,8 @@ items: **S** = hours, **M** = ~a day, **L** = multi-day.
 - [ ] Package & publish core/server with a CLI (`npx liveprobe`) **M**
 
 ### E. Quality & hardening
-- [ ] UI tests (component + Playwright e2e) **M**
+- [~] UI tests — **Playwright e2e done** (`e2e/`, 11 specs: live/trace/search/errors/history,
+      seeded via `/v1/events`, isolated port+DB, no docker). Component tests still open. **M**
 - [ ] Raise coverage to the LOOPS bar (malformed OTLP, ws reconnect, ingest edges) **M**
 - [ ] Security pass (optional API auth, tighten CORS before shared deployment) **M**
 
@@ -118,5 +119,5 @@ items: **S** = hours, **M** = ~a day, **L** = multi-day.
 1. [x] Span waterfall + attribute drill-down on the trace page (B) — most useful for debugging
 2. [x] Clickable service nodes → service page (A) — makes the flow graph navigable
 3. [x] Search by span attribute (B) — "all traces for user X" / "all 500s on /checkout"
-4. [ ] Retention / pruning (C) — small, keeps the DB bounded
-5. [ ] A Python service in the testbed (F) — validates the core polyglot promise
+4. [~] UI e2e tests (E) — Playwright suite landed (11 specs); component tests still open
+5. [ ] Retention / pruning (C) — small, keeps the DB bounded
