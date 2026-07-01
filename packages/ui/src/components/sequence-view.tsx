@@ -10,8 +10,25 @@ const ROW_H = 46;
 const MARGIN_X = 40;
 const MARGIN_TOP = 20;
 
-export function SequenceView() {
-  const selectedTraceId = useLiveStore((s) => s.selectedTraceId);
+interface SequenceViewProps {
+  /**
+   * When provided, render this trace's sequence instead of reading
+   * `selectedTraceId` from the store (used by the dedicated trace page).
+   */
+  traceId?: string;
+  /**
+   * When false, the built-in summary header is not rendered (the trace page
+   * shows its own header). Defaults to true.
+   */
+  showSummary?: boolean;
+}
+
+export function SequenceView({
+  traceId,
+  showSummary = true,
+}: SequenceViewProps = {}) {
+  const storeSelectedTraceId = useLiveStore((s) => s.selectedTraceId);
+  const selectedTraceId = traceId ?? storeSelectedTraceId;
   const [detail, setDetail] = useState<TraceDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -75,26 +92,28 @@ export function SequenceView() {
 
   return (
     <div className="seq-container">
-      <div className="seq-summary">
-        <div className="seq-summary-op">{summary.rootOperation}</div>
-        <div className="seq-summary-meta">
-          <span>{summary.services.length} services</span>
-          <span>·</span>
-          <span>{summary.spanCount} spans</span>
-          <span>·</span>
-          <span>{formatMicros(summary.durationMicros)}</span>
-          {summary.hasError && (
-            <span className="badge badge-error">error</span>
-          )}
+      {showSummary && (
+        <div className="seq-summary">
+          <div className="seq-summary-op">{summary.rootOperation}</div>
+          <div className="seq-summary-meta">
+            <span>{summary.services.length} services</span>
+            <span>·</span>
+            <span>{summary.spanCount} spans</span>
+            <span>·</span>
+            <span>{formatMicros(summary.durationMicros)}</span>
+            {summary.hasError && (
+              <span className="badge badge-error">error</span>
+            )}
+          </div>
+          <div className="seq-summary-services">
+            {summary.services.map((s) => (
+              <span key={s} className="chip">
+                {s}
+              </span>
+            ))}
+          </div>
         </div>
-        <div className="seq-summary-services">
-          {summary.services.map((s) => (
-            <span key={s} className="chip">
-              {s}
-            </span>
-          ))}
-        </div>
-      </div>
+      )}
 
       <div className="seq-scroll">
         <svg

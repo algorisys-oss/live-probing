@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { useLiveStore } from "../store/use-live-store";
 import { formatMicros } from "../lib/format";
 
@@ -46,8 +47,9 @@ function useNewFlags(ids: string[]): Set<string> {
 
 export function TraceList() {
   const traces = useLiveStore((s) => s.traces);
-  const selectedTraceId = useLiveStore((s) => s.selectedTraceId);
   const selectTrace = useLiveStore((s) => s.selectTrace);
+  const navigate = useNavigate();
+  const { traceId: routeTraceId } = useParams();
 
   const ids = traces.map((t) => t.traceId);
   const fresh = useNewFlags(ids);
@@ -59,7 +61,7 @@ export function TraceList() {
   return (
     <ul className="trace-list">
       {traces.map((t) => {
-        const selected = t.traceId === selectedTraceId;
+        const selected = t.traceId === routeTraceId;
         const isNew = fresh.has(t.traceId);
         return (
           <li
@@ -71,7 +73,10 @@ export function TraceList() {
             ]
               .filter(Boolean)
               .join(" ")}
-            onClick={() => selectTrace(t.traceId)}
+            onClick={() => {
+              selectTrace(t.traceId);
+              navigate(`/trace/${encodeURIComponent(t.traceId)}`);
+            }}
           >
             <div className="trace-row-top">
               <span className="trace-op" title={t.rootOperation}>

@@ -9,10 +9,19 @@ export function wsUrl(): string {
   return `${ws}/ws`;
 }
 
+export class ApiError extends Error {
+  readonly status: number;
+  constructor(path: string, status: number) {
+    super(`GET ${path} failed: ${status}`);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 async function getJson<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`);
   if (!res.ok) {
-    throw new Error(`GET ${path} failed: ${res.status}`);
+    throw new ApiError(path, res.status);
   }
   return (await res.json()) as T;
 }

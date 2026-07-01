@@ -70,16 +70,24 @@ The spine. All pure functions, unit-tested, no network or framework.
 - **`summary.ts`** — `summarize(trace)` (title, services, span count, duration, error flag)
   and `detail(trace)` (summary + sequence + Mermaid).
 
-### `packages/ui` — React dashboard (React + zustand)
+### `packages/ui` — React dashboard (React + zustand + react-router)
 
 - A zustand store holds the recent traces (Map, capped 200, newest first), the topology, and
-  connection state; it applies websocket messages on the hot path.
+  connection state; it applies websocket messages on the hot path. The websocket is opened
+  once in the root layout so it survives navigation.
+- **Routes**:
+  - `/` — the **live page**: trace-list sidebar + the flow view.
+  - `/trace/:traceId` — a **dedicated trace page**: back link, summary header, and the
+    sequence diagram for that one trace. Deep-linkable (served via the SPA index fallback).
+- **Pause** — the live list reorders as traces stream, which fights inspection. A Pause toggle
+  freezes the visible list (new traces still buffer into the map and a "N new" counter ticks);
+  Resume flushes. Topology keeps updating regardless.
 - **Flow view** — a custom SVG of the topology with a stable layout (positions recompute only
   when the node set changes, so deltas don't make it jump). Datastore nodes styled apart;
   edge width scales with call volume; red on errors.
-- **Sequence view** — a custom SVG lifeline diagram for a selected trace (dashed for async,
-  red for errors).
-- Talks to the server via REST (initial/fallback) and the websocket (live).
+- **Sequence view** — a custom SVG lifeline diagram for a trace (dashed for async, red for
+  errors), used on the trace page.
+- Talks to the server via REST (initial load + trace detail) and the websocket (live).
 
 ## Message/websocket contracts
 

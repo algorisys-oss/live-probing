@@ -2,6 +2,14 @@
 
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
+## [2026-07-01 11:00]
+- LiveProbe UI UX: added client-side routing (react-router). Clicking a trace now opens a
+  dedicated /trace/:id page (own URL, back link, summary + sequence) instead of churning the
+  live list. Added a Pause control that freezes the live trace feed (with an "N new" counter)
+  so you can inspect calmly. Verified in a headless browser: routing, pause, and the enriched
+  sequence render with no JS errors.
+- Files: packages/ui/* (routing, pause, header, live-page, trace-page), docs/architecture.md.
+
 ## [2026-07-01 10:30]
 - Added stop.sh (stop the LiveProbe server + tear down the whole Docker stack; --wipe drops data).
 - Added docs/: architecture.md (full pipeline + packages + testbed + T5), event-model.md

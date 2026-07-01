@@ -20,12 +20,16 @@ interface LiveState {
   mermaidFlow: string;
   connected: boolean;
   selectedTraceId: string | null;
+  paused: boolean;
+  pendingCount: number;
 
   // internal hot-path map (kept off the render surface)
   _traceMap: Map<string, TraceSummary>;
 
   setConnected: (connected: boolean) => void;
   selectTrace: (id: string | null) => void;
+  setPaused: (v: boolean) => void;
+  resumeFeed: () => void;
   applyWsMessage: (msg: WsMessage) => void;
   applyTraces: (traces: TraceSummary[]) => void;
   applyTopology: (topology: Topology, mermaidFlow: string) => void;
@@ -44,15 +48,32 @@ export const useLiveStore = create<LiveState>((set, get) => ({
   mermaidFlow: "",
   connected: false,
   selectedTraceId: null,
+  paused: false,
+  pendingCount: 0,
   _traceMap: new Map<string, TraceSummary>(),
 
   setConnected: (connected) => set({ connected }),
 
   selectTrace: (id) => set({ selectedTraceId: id }),
 
+  setPaused: (v) => {
+    if (v) {
+      set({ paused: true });
+    } else {
+      get().resumeFeed();
+    }
+  },
+
+  resumeFeed: () => {
+    const map = get()._traceMap;
+    set({ paused: false, pendingCount: 0, traces: toSortedCapped(map) });
+  },
+
   applyTraces: (incoming) => {
     const map = get()._traceMap;
+    let newIds = 0;
     for (const t of incoming) {
+      if (!map.has(t.traceId)) newIds++;
       map.set(t.traceId, t);
     }
     // cap the underlying map too, so it doesn't grow unbounded
@@ -66,6 +87,14 @@ export const useLiveStore = create<LiveState>((set, get) => ({
         map.set(s.traceId, s);
       }
     }
+    // While paused, keep the map fresh (so lookups/detail work) but freeze
+    // the visible list; surface how many genuinely-new traces are waiting.
+    if (get().paused) {
+      if (newIds > 0) {
+        set((s) => ({ pendingCount: s.pendingCount + newIds }));
+      }
+      return;
+    }
     set({ traces: toSortedCapped(map) });
   },
 
@@ -77,6 +106,7 @@ export const useLiveStore = create<LiveState>((set, get) => ({
     set({
       _traceMap: map,
       traces: toSortedCapped(map),
+      pendingCount: 0,
       topology,
       mermaidFlow,
     });
