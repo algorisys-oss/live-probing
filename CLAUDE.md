@@ -105,14 +105,37 @@ system prompt, not a suggestion. The load-bearing rules for this codebase:
 - **Reference oracle (XXXVII).** OTel span semantics decide arrow direction.
 - **Continuous input is correctness (XXXIX).** The renderer batches to rAF.
 - **Naming.** Lowercase-hyphenated files and folders, everywhere.
+- **Handoff doc.** After every task, update `HANDOFF.md` (see below).
+
+## Handoff doc (after every task)
+
+After completing any task, update `HANDOFF.md` at the repo root so the next session can pick
+up cold. It is a single rolling doc that reflects the **current** state — not append-only
+(that is `CHANGELOG.md`'s job). Keep it short. Include:
+
+- **Last task** — what was just done, and the commit(s).
+- **Current state** — what works / what is running (ports), and anything broken.
+- **How to run / verify** — the one command and where to look.
+- **Next** — the obvious next steps or open items (link `todo.md`).
+- **Gotchas** — anything non-obvious that would trip up the next session.
+
+Do this as the final step of a task, alongside `CHANGELOG.md` and `todo.md`. (This is a
+convention Claude follows each session, not an automated hook — ask for a Stop hook in
+`settings.json` if you want it hard-enforced.)
 
 ## Where to look
 
+- `HANDOFF.md` — current state and how to resume. **Start here.**
+- `todo.md` — what is done (`[x]`) and the enhancement backlog.
 - `plan.md` — phased plan and the MVP contract (the testable success criteria).
-- `IMPLEMENT.md` — decision-to-code audit trail. Start here to see what was decided.
-- `CHANGELOG.md` — timestamped functional changes (starts with the first code).
+- `plan-testbed.md` — the Shopwave testbed plan and contract.
+- `IMPLEMENT.md` — decision-to-code audit trail.
+- `CHANGELOG.md` — timestamped functional changes.
+- `docs/` — architecture, event model, and Shopwave per-action events.
 - `LOOPS.md` — engineering principles and agent-loop doctrine.
 
 ## Commands
 
-Filled in as they exist. Nothing to run yet; Phase 1 is not built.
+- `./dev.sh` — run everything with hot reload (UI at :5173). `--static` builds + serves at :4319.
+- `./stop.sh` — tear it all down (`--wipe` also drops data).
+- `npm test` — LiveProbe core + server tests. `npm run typecheck` — typecheck.

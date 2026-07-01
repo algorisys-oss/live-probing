@@ -13,6 +13,7 @@ items: **S** = hours, **M** = ~a day, **L** = multi-day.
 - [x] `CLAUDE.md`, `plan.md`, `plan-testbed.md`, `IMPLEMENT.md`, `CHANGELOG.md`
 - [x] `docs/` — architecture, event model, Shopwave per-action events
 - [x] `README.md` — run instructions, ports, sample users, loadgen control
+- [x] Handoff-doc convention — `HANDOFF.md` (current state), updated after every task; documented in `CLAUDE.md`
 - [x] Git repo initialized and pushed to `origin/main`
 
 ### Testbed (Shopwave) — a real 8-service e-commerce system
