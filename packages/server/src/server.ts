@@ -10,9 +10,11 @@ import {
   type OtlpPayload,
 } from "@liveprobe/core";
 import { detail, summarize, type TraceSummary } from "./summary.js";
+import { HistoryStore } from "./history-store.js";
 
 export interface ServerOptions {
   publicDir?: string; // built UI, if present
+  dbPath?: string; // sqlite history db; ":memory:" (default) or a file path
   maxTraces?: number;
   horizonMicros?: number;
   topologyIntervalMs?: number;
@@ -35,6 +37,7 @@ export interface LiveProbeServer {
 
 export function createServer(opts: ServerOptions = {}): LiveProbeServer {
   const window = new TraceWindow({ maxTraces: opts.maxTraces ?? 2000, horizonMicros: opts.horizonMicros });
+  const store = new HistoryStore(opts.dbPath ?? ":memory:");
   const clients = new Set<WebSocket>();
   let topologyDirty = false;
 
@@ -60,11 +63,13 @@ export function createServer(opts: ServerOptions = {}): LiveProbeServer {
     window.add(events);
 
     const affected = [...new Set(events.map((e) => e.traceId))];
-    const traces = affected
+    const assembled = affected
       .map((id) => window.assemble(id))
-      .filter((t): t is NonNullable<typeof t> => t !== null)
-      .map(summarize);
-    if (traces.length > 0) broadcast({ type: "traces", traces });
+      .filter((t): t is NonNullable<typeof t> => t !== null);
+    if (assembled.length > 0) {
+      broadcast({ type: "traces", traces: assembled.map(summarize) });
+      store.upsertMany(assembled); // persist for the daily/history view
+    }
     topologyDirty = true;
   };
 
@@ -118,12 +123,27 @@ export function createServer(opts: ServerOptions = {}): LiveProbeServer {
       if (req.method === "GET" && path.startsWith("/api/traces/")) {
         const id = decodeURIComponent(path.slice("/api/traces/".length));
         const trace = window.assemble(id);
-        if (!trace) return json(res, 404, { error: "trace_not_found" });
-        return json(res, 200, detail(trace));
+        // Fall back to history for traces that have aged out of the live window.
+        if (trace) return json(res, 200, detail(trace));
+        const stored = store.getDetail(id);
+        if (stored) return json(res, 200, stored);
+        return json(res, 404, { error: "trace_not_found" });
       }
       if (req.method === "GET" && path === "/api/topology") {
         const topology = window.topology();
         return json(res, 200, { topology, mermaidFlow: toMermaidFlow(topology) });
+      }
+      if (req.method === "GET" && path === "/api/days") {
+        return json(res, 200, { days: store.days() });
+      }
+      if (req.method === "GET" && /^\/api\/day\/[^/]+\/summary$/.test(path)) {
+        const day = decodeURIComponent(path.split("/")[3]!);
+        return json(res, 200, store.daySummary(day));
+      }
+      if (req.method === "GET" && /^\/api\/day\/[^/]+\/traces$/.test(path)) {
+        const day = decodeURIComponent(path.split("/")[3]!);
+        const limit = Number(url.searchParams.get("limit") ?? "200");
+        return json(res, 200, { traces: store.dayTraces(day, Number.isFinite(limit) ? limit : 200) });
       }
       if (req.method === "GET") return serveStatic(res, path, opts.publicDir);
       return json(res, 404, { error: "not_found" });
@@ -140,7 +160,10 @@ export function createServer(opts: ServerOptions = {}): LiveProbeServer {
       new Promise((resolvePromise) => {
         clearInterval(timer);
         for (const ws of clients) ws.close();
-        wss.close(() => httpServer.close(() => resolvePromise()));
+        wss.close(() => httpServer.close(() => {
+          store.close();
+          resolvePromise();
+        }));
       }),
   };
 }

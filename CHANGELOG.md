@@ -2,6 +2,14 @@
 
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
+## [2026-07-01 11:45]
+- LiveProbe history/persistence: the server now persists trace summaries + detail to SQLite
+  (node:sqlite, no dep), partitioned by UTC day. New APIs: GET /api/days, /api/day/:date/summary
+  (requests, error rate, p50/p95/p99, per-minute throughput, top endpoints, slowest traces),
+  /api/day/:date/traces. /api/traces/:id now falls back to history after a trace ages out of the
+  live window. 9 tests pass. Verified on live traffic (360 requests, p95 50ms, endpoint rollups).
+- Files: packages/server/src/history-store.ts (+test), server.ts, index.ts, .gitignore.
+
 ## [2026-07-01 11:00]
 - LiveProbe UI UX: added client-side routing (react-router). Clicking a trace now opens a
   dedicated /trace/:id page (own URL, back link, summary + sequence) instead of churning the

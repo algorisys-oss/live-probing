@@ -36,3 +36,6 @@ archive/
 
 # Built UI copied into the server for serving
 packages/server/public/
+
+# LiveProbe history db
+packages/server/data/
