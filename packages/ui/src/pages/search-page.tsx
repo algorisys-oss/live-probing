@@ -12,17 +12,18 @@ export function SearchPage() {
   const knownServices = useLiveStore((s) => s.topology.nodes);
   const q = params.get("q") ?? "";
   const service = params.get("service") ?? "";
+  const attr = params.get("attr") ?? "";
   const error = params.get("error") ?? "";
   const minMs = params.get("minMs") ?? "";
   const maxMs = params.get("maxMs") ?? "";
   const minSpans = params.get("minSpans") ?? "";
   const sort = params.get("sort") ?? "recent";
-  const hasQuery = Boolean(q || service || error || minMs || maxMs || minSpans);
+  const hasQuery = Boolean(q || service || attr || error || minMs || maxMs || minSpans);
 
-  const [form, setForm] = useState({ q, service, error, minMs, maxMs, minSpans, sort });
+  const [form, setForm] = useState({ q, service, attr, error, minMs, maxMs, minSpans, sort });
   useEffect(
-    () => setForm({ q, service, error, minMs, maxMs, minSpans, sort }),
-    [q, service, error, minMs, maxMs, minSpans, sort],
+    () => setForm({ q, service, attr, error, minMs, maxMs, minSpans, sort }),
+    [q, service, attr, error, minMs, maxMs, minSpans, sort],
   );
 
   const [results, setResults] = useState<TraceSummary[] | null>(null);
@@ -37,20 +38,21 @@ export function SearchPage() {
     let cancelled = false;
     setLoading(true);
     setErr(null);
-    fetchSearch({ q, service, error, minMs, maxMs, minSpans, sort })
+    fetchSearch({ q, service, attr, error, minMs, maxMs, minSpans, sort })
       .then((r) => !cancelled && setResults(r.traces))
       .catch((e) => !cancelled && setErr(e instanceof ApiError ? `Error ${e.status}` : "Search failed"))
       .finally(() => !cancelled && setLoading(false));
     return () => {
       cancelled = true;
     };
-  }, [q, service, error, minMs, maxMs, minSpans, sort, hasQuery]);
+  }, [q, service, attr, error, minMs, maxMs, minSpans, sort, hasQuery]);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     const next: Record<string, string> = {};
     if (form.q.trim()) next.q = form.q.trim();
     if (form.service.trim()) next.service = form.service.trim();
+    if (form.attr.trim()) next.attr = form.attr.trim();
     if (form.error) next.error = form.error;
     if (form.minMs) next.minMs = form.minMs;
     if (form.maxMs) next.maxMs = form.maxMs;
@@ -82,6 +84,12 @@ export function SearchPage() {
             <option key={s} value={s} />
           ))}
         </datalist>
+        <input
+          className="search-input search-input-wide"
+          placeholder="attribute: key=value or value (e.g. http.status_code=500)"
+          value={form.attr}
+          onChange={(e) => setForm({ ...form, attr: e.target.value })}
+        />
         <select
           className="search-input"
           value={form.error}

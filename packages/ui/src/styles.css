@@ -1148,3 +1148,8 @@ body {
 .lat-p99 {
   stroke: var(--error);
 }
+
+.search-input-wide {
+  min-width: 300px;
+  flex: 1;
+}

@@ -84,6 +84,7 @@ export function fetchEndpointLatency(date: string, endpoint: string): Promise<{ 
 export interface SearchParams {
   q?: string;
   service?: string;
+  attr?: string;
   error?: string; // "", "true", "false"
   minMs?: string;
   maxMs?: string;
@@ -96,6 +97,7 @@ export function fetchSearch(params: SearchParams): Promise<{ traces: TraceSummar
   const qs = new URLSearchParams();
   if (params.q) qs.set("q", params.q);
   if (params.service) qs.set("service", params.service);
+  if (params.attr) qs.set("attr", params.attr);
   if (params.error) qs.set("error", params.error);
   if (params.minMs) qs.set("minMs", params.minMs);
   if (params.maxMs) qs.set("maxMs", params.maxMs);

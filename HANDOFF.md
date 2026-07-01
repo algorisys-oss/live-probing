@@ -4,6 +4,15 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 `CHANGELOG.md`). Updated after every task.
 
 ## Last task
+Built + verified **search by span attribute** (uncommitted, awaiting "sync"): each trace stores a
+compact `attrs_text` (distinct `key=value` pairs across its spans); search gained an `attr` filter
+(`http.status_code=500` precise, or a bare value) — server `history-store.ts` + `/api/search`, UI
+search page field. Verified discrimination (rabbitmq → only checkouts; nonexistent → 0).
+Also: **cleaned the history DB (555MB → 28KB)** via DELETE+VACUUM, and killed a stale duplicate
+LiveProbe server I'd left on :4319 (it was serving old code / blocking the watch server). Note:
+attribute search only matches traces ingested *after* the attrs_text change (older rows: NULL).
+
+## Earlier task
 Built and verified **three UI/dashboard features** (browser-verified at :5173 against live data):
 1. **Error explorer** (`/errors`) — errored traces grouped by endpoint + error label, each links to
    its trace. Server: `error_label` column + `errorGroups()` + `GET /api/errors`.

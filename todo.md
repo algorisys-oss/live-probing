@@ -84,7 +84,7 @@ items: **S** = hours, **M** = ~a day, **L** = multi-day.
 ### B. Diagnostics & analysis
 - [x] Error explorer (errored traces grouped by endpoint + error label, each links to a trace)
 - [x] Latency-over-time per endpoint (p50/p95/p99 line chart on the day dashboard)
-- [ ] Search by span attribute (userId, productId, http.status, …) **M**
+- [x] Search by span attribute (key=value or value; e.g. http.status_code=500, a userId)
 - [ ] Trace compare / diff (structure + timing of two traces) **L**
 - [ ] Anomaly/alert hooks (error-rate or latency spike → banner/webhook) **M–L**
 
@@ -115,6 +115,6 @@ items: **S** = hours, **M** = ~a day, **L** = multi-day.
 ## Top 5 picks (value per effort)
 1. [x] Span waterfall + attribute drill-down on the trace page (B) — most useful for debugging
 2. [x] Clickable service nodes → service page (A) — makes the flow graph navigable
-3. [ ] Search by span attribute (B) — "all traces for user X" / "all 500s on /checkout"
+3. [x] Search by span attribute (B) — "all traces for user X" / "all 500s on /checkout"
 4. [ ] Retention / pruning (C) — small, keeps the DB bounded
 5. [ ] A Python service in the testbed (F) — validates the core polyglot promise

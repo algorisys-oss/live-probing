@@ -75,5 +75,9 @@ test("HistoryStore search filters by text, service, error, and latency", () => {
   assert.equal(store.search({ minSpans: 3 }).length, 0);
   assert.equal(store.search({ sort: "slowest" }).length, 1);
   assert.equal(store.search({ traceId: "t1" }).length, 1);
+  // attribute search (fixture spans carry db.system=postgresql, http.target=/api/checkout)
+  assert.equal(store.search({ attr: "db.system=postgresql" }).length, 1);
+  assert.equal(store.search({ attr: "postgresql" }).length, 1);
+  assert.equal(store.search({ attr: "db.system=redis" }).length, 0);
   store.close();
 });

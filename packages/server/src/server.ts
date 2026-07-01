@@ -190,6 +190,7 @@ export function createServer(opts: ServerOptions = {}): LiveProbeServer {
         const traces = store.search({
           q: q.get("q") ?? undefined,
           service: q.get("service") ?? undefined,
+          attr: q.get("attr") ?? undefined,
           error: errParam === null || errParam === "" ? undefined : errParam === "true",
           minMicros: minMs !== undefined ? minMs * 1000 : undefined,
           maxMicros: maxMs !== undefined ? maxMs * 1000 : undefined,

@@ -18,6 +18,19 @@ export interface LatencyBucket {
   p99: number;
 }
 
+// A compact, searchable projection of a trace's span attributes: the distinct "key=value"
+// pairs across all spans. Enables attribute search (e.g. "http.status_code=500", "42abc").
+function attrsTextFor(events: Event[]): string {
+  const pairs = new Set<string>();
+  for (const e of events) {
+    for (const [k, v] of Object.entries(e.attributes)) {
+      pairs.add(`${k}=${v}`);
+      if (pairs.size >= 400) return [...pairs].join(" | "); // bound row size
+    }
+  }
+  return [...pairs].join(" | ");
+}
+
 // A human error label from the first errored span: prefer an exception type, then an HTTP
 // status, else the failing operation.
 function errorLabelFor(events: Event[]): string | null {
@@ -44,6 +57,7 @@ export interface DayInfo {
 export interface SearchOptions {
   q?: string; // substring of the operation/endpoint
   service?: string; // trace involves this service
+  attr?: string; // matches a span attribute: "key=value" (precise) or any value substring
   error?: boolean; // only errored / only clean
   minMicros?: number; // duration floor
   maxMicros?: number; // duration ceiling
@@ -123,6 +137,7 @@ export class HistoryStore {
     `);
     // Added after the fact; ALTER for existing DBs (idempotent).
     this.ensureColumn("traces", "error_label", "TEXT");
+    this.ensureColumn("traces", "attrs_text", "TEXT");
     this.db.exec("CREATE INDEX IF NOT EXISTS idx_traces_error ON traces(has_error, start_time)");
   }
 
@@ -135,13 +150,14 @@ export class HistoryStore {
   upsertMany(traces: AssembledTrace[]): void {
     const stmt = this.db.prepare(`
       INSERT INTO traces (trace_id, day, start_time, duration_micros, root_operation,
-                          span_count, service_count, has_error, services, detail_json, error_label)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                          span_count, service_count, has_error, services, detail_json, error_label, attrs_text)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(trace_id) DO UPDATE SET
         day=excluded.day, start_time=excluded.start_time, duration_micros=excluded.duration_micros,
         root_operation=excluded.root_operation, span_count=excluded.span_count,
         service_count=excluded.service_count, has_error=excluded.has_error,
-        services=excluded.services, detail_json=excluded.detail_json, error_label=excluded.error_label
+        services=excluded.services, detail_json=excluded.detail_json, error_label=excluded.error_label,
+        attrs_text=excluded.attrs_text
     `);
     this.db.exec("BEGIN");
     try {
@@ -160,6 +176,7 @@ export class HistoryStore {
           JSON.stringify(s.services),
           JSON.stringify(d),
           s.hasError ? errorLabelFor(t.events) : null,
+          attrsTextFor(t.events),
         );
       }
       this.db.exec("COMMIT");
@@ -260,6 +277,12 @@ export class HistoryStore {
       // services is a JSON array of strings; match the quoted name
       where.push("services LIKE ?");
       params.push(`%"${opts.service}"%`);
+    }
+    if (opts.attr) {
+      // attrs_text holds "key=value" pairs; "key=value" matches precisely, a bare word matches
+      // any value/key containing it.
+      where.push("attrs_text LIKE ?");
+      params.push(`%${opts.attr}%`);
     }
     if (opts.error !== undefined) {
       where.push("has_error = ?");

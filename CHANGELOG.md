@@ -2,6 +2,15 @@
 
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
+## [2026-07-01 16:30]
+- Search by span attribute: each trace stores a compact `attrs_text` (distinct key=value pairs
+  across its spans); `/api/search` + the search page gained an `attr` filter ("key=value" precise,
+  or a bare value). Verified discrimination on live data (messaging.system=rabbitmq -> only
+  checkouts; nonexistent -> 0). Only matches traces ingested after this change (older rows NULL).
+- Ops: cleaned the history DB (555MB -> 28KB, DELETE + VACUUM); killed a stale duplicate LiveProbe
+  server left on :4319 that was serving old code and blocking the watch server.
+- Files: packages/server/src/history-store.ts (+test), server.ts; packages/ui search page/api/types.
+
 ## [2026-07-01 15:30]
 - UI/dashboard features: (1) span waterfall + attribute drill-down on the trace page
   (Waterfall/Sequence tabs; auto-selects the failing span); (2) error explorer (/errors) —
