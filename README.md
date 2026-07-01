@@ -7,28 +7,29 @@ Mermaid or D2.
 
 This repo has two parts:
 
-- **LiveProbe** — the tool itself. Not built yet. See [plan.md](plan.md) and
-  [CLAUDE.md](CLAUDE.md).
+- **LiveProbe** — the tool. Consumes OTLP traces, assembles them into a rolling window,
+  and serves live sequence (per trace) and flow/topology (aggregate) diagrams over a
+  websocket, plus Mermaid export. Lives in [packages/](packages/). See [plan.md](plan.md).
 - **Shopwave testbed** — a real full-stack e-commerce system with Postgres, Redis,
-  RabbitMQ, and OpenTelemetry, used as an honest trace source to develop LiveProbe
-  against. See [plan-testbed.md](plan-testbed.md). Lives in [testbed/](testbed/).
+  RabbitMQ, and OpenTelemetry, used as an honest trace source. Lives in [testbed/](testbed/).
+  See [plan-testbed.md](plan-testbed.md).
 
 ## Status
 
 | Part | State |
 |------|-------|
-| LiveProbe core | planned, not started |
-| Testbed T0 (infra + gateway/catalog end to end in Jaeger) | **done, verified** |
-| Testbed T1 (auth, cart, order; checkout publishes order.created) | **done, verified** |
-| Testbed T2 (payment/inventory/notification workers + choreography saga) | **done, verified** |
-| Testbed T3 (storefront SPA) | **done, verified** |
-| Testbed T4 (load generator) | **done, verified** |
-| Testbed T5 (point the OTel collector at LiveProbe) | blocked on LiveProbe core |
+| LiveProbe core (event model, OTLP normalizer, trace window, sequence, Mermaid) | **done, tested** |
+| LiveProbe server (OTLP ingest + REST + websocket) | **done, tested** |
+| LiveProbe UI (React live dashboard) | in progress |
+| Testbed T0–T4 (full 8-service system + SPA + load gen) | **done, verified** |
+| Testbed T5 (OTel collector -> LiveProbe) | **done, verified with live traffic** |
 
-The full system is 8 services (gateway, auth, catalog, cart, order + payment/inventory/
+The testbed is 8 services (gateway, auth, catalog, cart, order + payment/inventory/
 notification workers) over Postgres, Redis, and RabbitMQ, all OpenTelemetry-instrumented.
 A checkout is one connected trace across all of them, including the async choreography
 saga that advances order status (pending -> confirmed / cancelled) across RabbitMQ.
+LiveProbe consumes that trace stream live: it already renders the full Shopwave topology
+and per-trace sequences from real traffic.
 
 ## Running the testbed (what works today)
 
@@ -91,11 +92,42 @@ docker compose --profile ui up -d frontend      # storefront SPA on :8088
 docker compose --profile load up -d loadgen     # continuous traffic (set DURATION_SECONDS=0 to run forever)
 ```
 
+## Running LiveProbe
+
+The quickest path is `./dev.sh` (below), which brings up the whole thing. Manually:
+
+```bash
+# 1. Start the testbed (it exports OTLP to a collector that fans out to Jaeger + LiveProbe)
+cd testbed && docker compose up -d --build && cd ..
+
+# 2. Start the LiveProbe server (OTLP ingest on :4319, REST + ws)
+npm install
+PORT=4319 npx tsx packages/server/src/index.ts
+
+# 3. Generate traffic and watch LiveProbe fill up
+cd testbed && docker compose --profile load up -d loadgen && cd ..
+curl -s http://localhost:4319/api/topology | python3 -m json.tool   # live service graph
+curl -s "http://localhost:4319/api/traces?limit=5"                  # recent traces
+```
+
+The testbed collector is already wired to export OTLP/JSON to LiveProbe on the host
+(`host.docker.internal:4319`) in
+[testbed/otel/collector-config.yaml](testbed/otel/collector-config.yaml). LiveProbe endpoints:
+
+| Endpoint | What |
+|----------|------|
+| `POST /v1/traces` | OTLP/HTTP ingest (gzip-aware) |
+| `GET /api/traces?limit=` | recent trace summaries |
+| `GET /api/traces/:id` | one trace: sequence model + Mermaid |
+| `GET /api/topology` | aggregate service/datastore graph + Mermaid |
+| `ws /ws` | live snapshot + deltas |
+
+Run the LiveProbe tests with `npm test`.
+
 ## How the testbed is instrumented
 
 Services use standard OpenTelemetry auto-instrumentation and export OTLP to an OTel
-collector, which forwards to Jaeger. Adding LiveProbe later is a one-line change in
-[testbed/otel/collector-config.yaml](testbed/otel/collector-config.yaml).
+collector, which fans out to both Jaeger and LiveProbe.
 
 One gotcha worth knowing: some OTel instrumentations (ioredis, and likely amqplib) only
 hook the CommonJS `require` path, not ESM `import`. The shared layer loads those clients

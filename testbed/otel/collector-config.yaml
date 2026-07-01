@@ -19,16 +19,17 @@ exporters:
   # Console echo so we can confirm spans arrive without opening the UI.
   debug:
     verbosity: normal
-  # LiveProbe target. Enabled by adding it to the traces pipeline below once
-  # LiveProbe's OTLP collector is running (testbed task T5). One-line switch.
-  # otlp/liveprobe:
-  #   endpoint: liveprobe:4318
-  #   tls:
-  #     insecure: true
+  # LiveProbe target: OTLP/HTTP with JSON encoding (LiveProbe's normalizer reads JSON).
+  # Runs on the host; reachable via the host-gateway alias set in docker-compose.
+  otlphttp/liveprobe:
+    endpoint: http://host.docker.internal:4319
+    encoding: json
+    tls:
+      insecure: true
 
 service:
   pipelines:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [otlp/jaeger, debug]
+      exporters: [otlp/jaeger, otlphttp/liveprobe, debug]

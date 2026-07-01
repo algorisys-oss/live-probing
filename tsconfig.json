@@ -13,5 +13,6 @@
     "resolveJsonModule": true,
     "noEmit": true
   },
-  "include": ["packages/*/src/**/*.ts"]
+  "comment": "Node packages only. packages/ui is a browser app with its own tsconfig.",
+  "include": ["packages/core/src/**/*.ts", "packages/server/src/**/*.ts"]
 }

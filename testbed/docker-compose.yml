@@ -68,6 +68,9 @@ services:
     ports:
       - "24317:4317"   # OTLP gRPC (host)
       - "24318:4318"   # OTLP HTTP (host)
+    # Lets the collector reach LiveProbe running on the host (T5).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       jaeger:
         condition: service_healthy
