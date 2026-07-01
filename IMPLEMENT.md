@@ -2,6 +2,115 @@
 
 Decision-to-code audit trail (LOOPS rule XXV). Newest first.
 
+## [2026-07-01] Testbed T2 + T3 + T4 built and verified ("continue all")
+
+**Discussed:** continue building the rest of the testbed.
+
+**Approach:** foundation first (shared `consume()`, gateway CORS, order-service saga), then
+five parallel subagents — three workers, the load generator, and the React SPA — each in a
+separate directory. Integrated compose/Dockerfile and verified myself. One agent (SPA) hit a
+transient 529 near the end; its files were complete, I finished the build and Docker wiring.
+
+**Implemented:**
+- `packages/payment-worker`: consumes order.created, 15% random decline, writes payments,
+  publishes payment.completed/failed.
+- `packages/inventory-worker`: consumes order.created, real stock decrement in a transaction,
+  out_of_stock path (seeded low stock on p-005/p-008), publishes inventory.reserved/out_of_stock.
+- `packages/notification-worker`: consumes payment.*/inventory.*, redis SET NX dedupe, logs.
+- `packages/order/src/saga.ts` + repo/db: choreography saga consuming payment.*/inventory.*,
+  advancing status via one atomic UPDATE (CASE) so events can't race; new payment_status /
+  inventory_status columns.
+- `packages/shared/src/amqp.ts`: added `consume(queue, routingKeys, handler)` (assert+bind+ack,
+  drop on throw).
+- `packages/loadgen`: concurrent virtual users running full journeys, env-tunable.
+- `testbed/frontend`: Vite + React + TS storefront (browse, auth, cart, checkout, order-status
+  polling), nginx-served; gateway CORS opened. `ui` and `load` compose profiles added.
+
+**Verified:**
+- T2 (contract 6–11): a checkout is ONE connected trace across all 8 services + Postgres +
+  Redis + RabbitMQ, following publish->consume->publish->consume unbroken. Both terminal saga
+  paths confirmed: p-003 -> confirmed, p-005 x5 -> cancelled (out_of_stock). The amqplib
+  createRequire fix carries context across every queue hop.
+- T3 (contract 13): SPA builds clean, served on :8088, SPA-routing fallback works, API-backed.
+- T4 (contract 12): 20s loadgen run = 51 journeys, 51 checkouts, 0 errors, ~17 rps.
+
+**Blocked:** T5 (point the OTel collector at LiveProbe) needs the LiveProbe core, which is not
+built. The collector config has the exporter stubbed for a one-line switch.
+
+**Status:** testbed T0–T4 complete and running (14 containers). The honest, richly-traced
+system LiveProbe will consume now exists. Next real work is the LiveProbe core (plan.md).
+
+**Files:** testbed/packages/{payment-worker,inventory-worker,notification-worker,loadgen} new;
+testbed/frontend new; packages/order + packages/shared changed; docker-compose.yml, Dockerfile,
+README updated.
+
+## [2026-07-01] Testbed T1 (sync core) built and verified
+
+**Discussed:** continue building; parallelize with multiple agents.
+
+**Approach:** built the shared amqp helper and dependencies myself (cross-cutting), then
+spawned three subagents in parallel — one each for auth, cart, order — since each is a
+separate package with no file overlap. Each got the exact shared API, integration
+contract (ports, headers, request/response shapes), and house conventions. I then did the
+gateway extension, compose wiring, Dockerfile copies, and the end-to-end verification.
+
+**Implemented:**
+- `packages/auth`: scrypt password hashing, JWT (HS256), Redis-backed revocable sessions;
+  `/signup`, `/login`, `/verify`.
+- `packages/cart`: Redis hash cart, catalog price validation over HTTP, `/cart`,
+  `/cart/items`, `/cart/checkout` (calls order, clears cart).
+- `packages/order`: Postgres orders + order_items, atomic create transaction, publishes
+  `order.created` to the shopwave.orders topic exchange; `/orders`, `/orders/:id`.
+- `packages/gateway`: auth verification hop, cart/order/checkout proxying with `x-user-id`.
+- `packages/shared/src/amqp.ts`: connect + assert exchange + publish (createRequire).
+
+**Verified (contract items 2, 3, 5 met):** a full signup -> add-to-cart -> checkout journey
+produces one 26-span trace across gateway, auth, cart, catalog, order, Postgres, Redis, and
+a RabbitMQ publish; the captured order.created message carries a traceparent header, proving
+trace context crosses the RabbitMQ boundary. The amqplib createRequire fix predicted at T0
+holds. Order creation confirmed atomic (single client BEGIN/COMMIT/ROLLBACK).
+
+**Fixes during integration:** gateway had a bad Fastify request type helper (used
+FastifyRequest from shared instead). A checkout 400 in the test harness was a harness bug
+(sent application/json content-type with an empty body, which Fastify rejects), not a
+service bug.
+
+**Status:** T0 and T1 complete and running (11 containers). Next: T2 (payment, inventory,
+notification workers consuming order.created with context propagation, failure injection).
+
+**Files:** testbed/packages/{auth,cart,order} new; gateway, shared, docker-compose.yml,
+Dockerfile, package.json changed; README updated.
+
+## [2026-07-01] Testbed T0 built and verified
+
+**Discussed:** start building; use Fastify for the services.
+
+**Implemented:** the Shopwave T0 vertical slice.
+- Compose stack: Postgres, Redis, RabbitMQ, Jaeger (reference oracle), OTel collector.
+- `packages/shared`: Fastify factory + graceful shutdown, pg pool helper, redis helper,
+  env parsing, RabbitMQ/domain contracts.
+- `packages/catalog`: Postgres schema + seed (12 products), read-through Redis cache,
+  `/products` and `/products/:id` routes.
+- `packages/gateway`: Fastify BFF proxying to catalog via fetch (context propagation).
+- Instrumentation via `@opentelemetry/auto-instrumentations-node/register` (zero-code),
+  OTLP to the collector to Jaeger.
+
+**Verified (contract items 1–5 partial, 4 met):** one gateway request is a single
+9-span Jaeger trace across gateway, catalog, Postgres, and Redis; context propagates
+across HTTP and datastore boundaries; cache miss/hit shows redis get/set spans.
+
+**Root-caused during the build:** redis spans were missing because OTel's ioredis
+instrumentation only patches the CommonJS `require` path, not ESM `import`. Fix: load the
+client via `createRequire` in `shared/src/redis.ts`. Same trap is expected for `amqplib`
+at T2 (the async-boundary risk called out in the plan, surfacing early). Also remapped
+all host ports to a private range because Postgres/Redis/RabbitMQ/Jaeger/OTLP were already
+bound by other stacks on this machine (left those untouched, scope lock).
+
+**Status:** T0 complete and running. Next: T1 (auth, cart, order + publish order.created).
+
+**Files created:** testbed/* (compose, Dockerfile, otel config, pg init, shared, gateway,
+catalog), README.md.
+
 ## [2026-07-01] Testbed (Shopwave) planned and committed
 
 **Discussed:** a full-featured full-stack app to test LiveProbe against, "as real as
