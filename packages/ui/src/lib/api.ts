@@ -1,4 +1,10 @@
-import type { TraceDetail, TraceSummary, Topology } from "./types";
+import type {
+  DayInfo,
+  DaySummary,
+  TraceDetail,
+  TraceSummary,
+  Topology,
+} from "./types";
 
 export const BASE_URL: string =
   import.meta.env.VITE_LIVEPROBE_URL ?? "http://localhost:4319";
@@ -34,9 +40,44 @@ export function fetchTraceDetail(id: string): Promise<TraceDetail> {
   return getJson<TraceDetail>(`/api/traces/${encodeURIComponent(id)}`);
 }
 
+export function fetchDays(): Promise<{ days: DayInfo[] }> {
+  return getJson<{ days: DayInfo[] }>(`/api/days`);
+}
+
+export function fetchDaySummary(date: string): Promise<DaySummary> {
+  return getJson<DaySummary>(`/api/day/${encodeURIComponent(date)}/summary`);
+}
+
+export function fetchDayTraces(
+  date: string,
+  limit = 200,
+): Promise<{ traces: TraceSummary[] }> {
+  return getJson<{ traces: TraceSummary[] }>(
+    `/api/day/${encodeURIComponent(date)}/traces?limit=${limit}`,
+  );
+}
+
 export function fetchTopology(): Promise<{
   topology: Topology;
   mermaidFlow: string;
 }> {
   return getJson<{ topology: Topology; mermaidFlow: string }>(`/api/topology`);
+}
+
+export interface SearchParams {
+  q?: string;
+  service?: string;
+  error?: string; // "", "true", "false"
+  minMs?: string;
+  limit?: number;
+}
+
+export function fetchSearch(params: SearchParams): Promise<{ traces: TraceSummary[] }> {
+  const qs = new URLSearchParams();
+  if (params.q) qs.set("q", params.q);
+  if (params.service) qs.set("service", params.service);
+  if (params.error) qs.set("error", params.error);
+  if (params.minMs) qs.set("minMs", params.minMs);
+  qs.set("limit", String(params.limit ?? 200));
+  return getJson<{ traces: TraceSummary[] }>(`/api/search?${qs.toString()}`);
 }

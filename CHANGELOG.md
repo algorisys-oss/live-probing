@@ -2,6 +2,16 @@
 
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
+## [2026-07-01 12:30]
+- LiveProbe UI: daily dashboard (/history + /day/:date) with rollup cards (requests, error
+  rate, p50/p95/p99), a throughput chart (errors overlaid red), top-endpoints table, and
+  slowest traces. Plus a Search feature: /search page (endpoint / service / error / min-latency
+  filters, shareable via URL) and a header search box; backed by GET /api/search over SQLite.
+- Verified in a headless browser: history drill-down, the day dashboard (3,243 requests, p95
+  59ms, per-endpoint rollups), and search (200 results linking to trace pages), no JS errors.
+- Files: packages/ui/* (pages/history, day, search; components/header, throughput-chart;
+  lib/api, types; app, styles), packages/server/src/history-store.ts (search) + server.ts, docs.
+
 ## [2026-07-01 11:45]
 - LiveProbe history/persistence: the server now persists trace summaries + detail to SQLite
   (node:sqlite, no dep), partitioned by UTC day. New APIs: GET /api/days, /api/day/:date/summary

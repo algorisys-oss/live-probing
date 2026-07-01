@@ -6,6 +6,9 @@ import { fetchTopology, fetchTraces } from "./lib/api";
 import { Header } from "./components/header";
 import { LivePage } from "./pages/live-page";
 import { TracePage } from "./pages/trace-page";
+import { HistoryPage } from "./pages/history-page";
+import { DayPage } from "./pages/day-page";
+import { SearchPage } from "./pages/search-page";
 
 export function App() {
   // The websocket + REST fallback live in the root layout so the connection
@@ -45,6 +48,9 @@ export function App() {
       <Header />
       <Routes>
         <Route path="/" element={<LivePage />} />
+        <Route path="/history" element={<HistoryPage />} />
+        <Route path="/day/:date" element={<DayPage />} />
+        <Route path="/search" element={<SearchPage />} />
         <Route path="/trace/:traceId" element={<TracePage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

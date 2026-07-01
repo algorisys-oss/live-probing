@@ -42,6 +42,39 @@ export interface TraceDetail {
   mermaidSequence: string;
 }
 
+export interface DayInfo {
+  day: string;
+  requests: number;
+  errors: number;
+}
+
+export interface EndpointRollup {
+  operation: string;
+  calls: number;
+  errors: number;
+  avgMicros: number;
+  maxMicros: number;
+}
+
+export interface ThroughputBucket {
+  minute: number;
+  count: number;
+  errors: number;
+}
+
+export interface DaySummary {
+  day: string;
+  requests: number;
+  errors: number;
+  errorRate: number;
+  p50Micros: number;
+  p95Micros: number;
+  p99Micros: number;
+  throughput: ThroughputBucket[];
+  topEndpoints: EndpointRollup[];
+  slowest: TraceSummary[];
+}
+
 export type WsMessage =
   | {
       type: "snapshot";

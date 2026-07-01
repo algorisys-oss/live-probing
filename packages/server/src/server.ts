@@ -133,6 +133,21 @@ export function createServer(opts: ServerOptions = {}): LiveProbeServer {
         const topology = window.topology();
         return json(res, 200, { topology, mermaidFlow: toMermaidFlow(topology) });
       }
+      if (req.method === "GET" && path === "/api/search") {
+        const q = url.searchParams;
+        const errParam = q.get("error");
+        const minMs = Number(q.get("minMs"));
+        const limit = Number(q.get("limit"));
+        const traces = store.search({
+          q: q.get("q") ?? undefined,
+          service: q.get("service") ?? undefined,
+          error: errParam === null || errParam === "" ? undefined : errParam === "true",
+          minMicros: Number.isFinite(minMs) && minMs > 0 ? minMs * 1000 : undefined,
+          traceId: q.get("traceId") ?? undefined,
+          limit: Number.isFinite(limit) && limit > 0 ? limit : 100,
+        });
+        return json(res, 200, { traces });
+      }
       if (req.method === "GET" && path === "/api/days") {
         return json(res, 200, { days: store.days() });
       }

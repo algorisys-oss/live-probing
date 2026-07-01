@@ -12,6 +12,15 @@ export interface DayInfo {
   errors: number;
 }
 
+export interface SearchOptions {
+  q?: string; // substring of the operation/endpoint
+  service?: string; // trace involves this service
+  error?: boolean; // only errored / only clean
+  minMicros?: number; // duration floor
+  traceId?: string; // exact id
+  limit?: number;
+}
+
 export interface EndpointRollup {
   operation: string;
   calls: number;
@@ -135,6 +144,39 @@ export class HistoryStore {
     return this.db
       .prepare(`SELECT ${SUMMARY_COLS} FROM traces WHERE day = ? ORDER BY start_time DESC LIMIT ?`)
       .all(day, limit)
+      .map(rowToSummary);
+  }
+
+  // Search across all persisted traces. Every filter is optional and ANDed together.
+  search(opts: SearchOptions): TraceSummary[] {
+    const where: string[] = [];
+    const params: (string | number)[] = [];
+    if (opts.q) {
+      where.push("root_operation LIKE ?");
+      params.push(`%${opts.q}%`);
+    }
+    if (opts.service) {
+      // services is a JSON array of strings; match the quoted name
+      where.push("services LIKE ?");
+      params.push(`%"${opts.service}"%`);
+    }
+    if (opts.error !== undefined) {
+      where.push("has_error = ?");
+      params.push(opts.error ? 1 : 0);
+    }
+    if (opts.minMicros !== undefined) {
+      where.push("duration_micros >= ?");
+      params.push(opts.minMicros);
+    }
+    if (opts.traceId) {
+      where.push("trace_id = ?");
+      params.push(opts.traceId);
+    }
+    const clause = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
+    const limit = opts.limit ?? 100;
+    return this.db
+      .prepare(`SELECT ${SUMMARY_COLS} FROM traces ${clause} ORDER BY start_time DESC LIMIT ?`)
+      .all(...params, limit)
       .map(rowToSummary);
   }
 

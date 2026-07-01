@@ -60,15 +60,27 @@ The spine. All pure functions, unit-tested, no network or framework.
 
 - **OTLP ingest**: `POST /v1/traces` accepts OTLP/HTTP JSON, gzip-aware, and feeds
   `normalizeOtlp` → `TraceWindow.add`.
-- **REST**:
+- **REST (live)**:
   - `GET /api/traces?limit=` — recent trace summaries
-  - `GET /api/traces/:id` — one trace: summary + sequence model + Mermaid
+  - `GET /api/traces/:id` — one trace: summary + sequence model + Mermaid (falls back to the
+    history store once a trace has aged out of the live window)
   - `GET /api/topology` — the aggregate graph + Mermaid
+- **REST (history)**:
+  - `GET /api/days` — days that have data, with request/error counts
+  - `GET /api/day/:date/summary` — requests, error rate, p50/p95/p99 latency, per-minute
+    throughput, top endpoints, and the slowest traces
+  - `GET /api/day/:date/traces?limit=` — that day's trace summaries
+  - `GET /api/search?q=&service=&error=&minMs=&traceId=&limit=` — search all persisted
+    traces (endpoint substring, service, error-only, min latency, or exact id)
 - **WebSocket** (`/ws`): on connect sends a `snapshot`; then pushes `traces` deltas (per
   ingest) and `topology` deltas (throttled, ~750 ms).
 - Serves the built UI from `packages/server/public` with SPA fallback.
 - **`summary.ts`** — `summarize(trace)` (title, services, span count, duration, error flag)
   and `detail(trace)` (summary + sequence + Mermaid).
+- **`history-store.ts`** — persistence. On ingest, each affected trace (summary + detail) is
+  upserted into **SQLite** (`node:sqlite`, no external dependency), partitioned by UTC day.
+  This is what powers the daily view and lets trace detail survive eviction from the live
+  window. The live window stays in memory for speed; the store is the durable record.
 
 ### `packages/ui` — React dashboard (React + zustand + react-router)
 
@@ -79,6 +91,11 @@ The spine. All pure functions, unit-tested, no network or framework.
   - `/` — the **live page**: trace-list sidebar + the flow view.
   - `/trace/:traceId` — a **dedicated trace page**: back link, summary header, and the
     sequence diagram for that one trace. Deep-linkable (served via the SPA index fallback).
+  - `/history` — days that have data.
+  - `/day/:date` — the **daily dashboard**: rollup cards (requests, error rate, p50/p95/p99),
+    a throughput chart, top endpoints, and the slowest traces (each linking to its trace page).
+  - `/search` — search all recorded traces by endpoint / service / error / min latency; there
+    is also a search box in the header.
 - **Pause** — the live list reorders as traces stream, which fights inspection. A Pause toggle
   freezes the visible list (new traces still buffer into the map and a "N new" counter ticks);
   Resume flushes. Topology keeps updating regardless.

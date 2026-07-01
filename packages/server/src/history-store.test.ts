@@ -54,3 +54,21 @@ test("HistoryStore persists and aggregates by day", () => {
 
   store.close();
 });
+
+test("HistoryStore search filters by text, service, error, and latency", () => {
+  const window = new TraceWindow();
+  window.add(normalizeOtlp(payload));
+  const store = new HistoryStore(":memory:");
+  store.upsertMany([window.assemble("t1")!]);
+
+  assert.equal(store.search({ q: "checkout" }).length, 1);
+  assert.equal(store.search({ q: "nonexistent" }).length, 0);
+  assert.equal(store.search({ service: "gateway" }).length, 1);
+  assert.equal(store.search({ service: "catalog" }).length, 0);
+  assert.equal(store.search({ error: true }).length, 1); // g1 errored
+  assert.equal(store.search({ error: false }).length, 0);
+  assert.equal(store.search({ minMicros: 5_000 }).length, 1); // 10ms trace
+  assert.equal(store.search({ minMicros: 50_000 }).length, 0);
+  assert.equal(store.search({ traceId: "t1" }).length, 1);
+  store.close();
+});
