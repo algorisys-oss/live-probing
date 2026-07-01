@@ -66,6 +66,24 @@ RabbitMQ publish, with context propagated across every boundary (including into 
 
 Tear down with `docker compose down` (add `-v` to also drop the Postgres volume).
 
+### Sample users
+
+The auth service seeds a few accounts on startup, so you can log in (via the storefront SPA
+at :8088 or the API) without signing up. All share the same password:
+
+| Email | Password |
+|-------|----------|
+| `alice@shopwave.test` | `password123` |
+| `bob@shopwave.test` | `password123` |
+| `carol@shopwave.test` | `password123` |
+
+```bash
+curl -s -X POST localhost:3000/api/login -H 'content-type: application/json' \
+  -d '{"email":"alice@shopwave.test","password":"password123"}'
+```
+
+Signing up new accounts still works too; the seed is idempotent and never overwrites them.
+
 ### Ports (host side)
 
 | Service | URL / port |
@@ -137,6 +155,11 @@ Run the LiveProbe tests with `npm test`.
 
 Services use standard OpenTelemetry auto-instrumentation and export OTLP to an OTel
 collector, which fans out to both Jaeger and LiveProbe.
+
+**Jaeger** is an open-source distributed-tracing UI (http://localhost:16687). It stores the
+same traces LiveProbe sees and shows each one as a waterfall of spans. We run it as a
+known-good reference: if LiveProbe's diagram of a trace disagrees with Jaeger's view of it,
+LiveProbe is wrong. It's a development aid, not part of LiveProbe itself.
 
 One gotcha worth knowing: some OTel instrumentations (ioredis, and likely amqplib) only
 hook the CommonJS `require` path, not ESM `import`. The shared layer loads those clients

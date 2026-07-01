@@ -2,6 +2,11 @@
 
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
+## [2026-07-01 09:00]
+- Testbed auth seeds sample users on startup (alice/bob/carol @shopwave.test / password123),
+  idempotent via ON CONFLICT. Documented in the README, plus a note explaining what Jaeger is.
+- Files: testbed/packages/auth/src/seed-users.ts, db.ts, README.md.
+
 ## [2026-07-01 08:30]
 - LiveProbe UI (packages/ui): React + zustand live dashboard. Trace list, custom-SVG flow
   view (stable-layout topology, datastore nodes, log-scaled edges, red on errors), and

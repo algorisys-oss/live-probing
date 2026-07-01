@@ -1,4 +1,5 @@
 import { createPool, waitForPg, type Pool } from "@shopwave/shared";
+import { seedUsers } from "./seed-users.js";
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS users (
@@ -13,5 +14,6 @@ export async function initDb(): Promise<Pool> {
   const pool = createPool(process.env.POSTGRES_DB ?? "auth");
   await waitForPg(pool);
   await pool.query(SCHEMA);
+  await seedUsers(pool);
   return pool;
 }
