@@ -2,6 +2,16 @@
 
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
+## [2026-07-01 17:45]
+- Four features: (1) tighter flow layout via barycenter ordering (crossing reduction) + spacing;
+  (2) export diagrams — copy Mermaid + download standalone SVG/PNG for the flow, copy Mermaid for
+  a trace's sequence (lib/export-diagram.ts inlines computed styles); (3) multi-day trends chart on
+  /history (requests/day bars, errors overlaid); (4) trace compare (/compare?a=&b=) with a
+  per-operation timing diff (A vs B vs delta) and a compare link on the trace page.
+- Verified all four in a headless browser (SVG download fires, compare diff renders, no errors).
+- Files: packages/ui (layout, export-diagram, flow-view, trace-page, trends-chart, history-page,
+  compare-page, app, styles).
+
 ## [2026-07-01 17:00]
 - Filter the live view: a service dropdown on the Live page (store `filterService`). The trace
   feed shows only traces touching the service, and the flow graph collapses to that service's

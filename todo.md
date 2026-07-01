@@ -76,22 +76,22 @@ items: **S** = hours, **M** = ~a day, **L** = multi-day.
 
 ### A. Visualization & interaction
 - [x] Clickable service nodes → a service page (deps, error rate, spans, top operations)
-- [ ] Tighter flow layout (less whitespace, edge-bundling for parallel edges) **M**
+- [x] Tighter flow layout (barycenter ordering to reduce crossings + tighter spacing)
 - [x] Span waterfall on the trace page + click-to-expand span attributes (Waterfall tab: Gantt bars nested by depth, colored per service, click a span → attributes panel)
 - [x] Filter the live view (pick a service -> feed shows only its traces, flow shows its subgraph)
-- [ ] Export: copy Mermaid, download SVG/PNG, add D2 export **S–M**
+- [x] Export diagrams: copy Mermaid + download SVG/PNG (flow); copy Mermaid (sequence). D2 TODO
 
 ### B. Diagnostics & analysis
 - [x] Error explorer (errored traces grouped by endpoint + error label, each links to a trace)
 - [x] Latency-over-time per endpoint (p50/p95/p99 line chart on the day dashboard)
 - [x] Search by span attribute (key=value or value; e.g. http.status_code=500, a userId)
-- [ ] Trace compare / diff (structure + timing of two traces) **L**
+- [x] Trace compare / diff (/compare: operation-level timing A vs B vs delta)
 - [ ] Anomaly/alert hooks (error-rate or latency spike → banner/webhook) **M–L**
 
 ### C. Data & scale
 - [ ] Retention / pruning (drop days older than N, size cap) **S**
 - [ ] Sampling & backpressure on ingest under heavy load **M**
-- [ ] Multi-day trends overview chart on `/history` **S**
+- [x] Multi-day trends overview chart on /history (requests/day + errors)
 
 ### D. Adoption & integration
 - [ ] **Client integration via adapters** (designed — see `docs/integration-adapters.md`): native

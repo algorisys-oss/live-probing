@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { fetchDays } from "../lib/api";
+import { TrendsChart } from "../components/trends-chart";
 import type { DayInfo } from "../lib/types";
 
 type LoadState =
@@ -51,8 +52,12 @@ export function HistoryPage() {
       )}
 
       {state.kind === "ready" && state.days.length > 0 && (
-        <div className="day-table-wrap">
-          <table className="data-table">
+        <>
+          <div className="chart-card trends-card">
+            <TrendsChart days={state.days} />
+          </div>
+          <div className="day-table-wrap">
+            <table className="data-table">
             <thead>
               <tr>
                 <th>Day</th>
@@ -77,9 +82,10 @@ export function HistoryPage() {
                   </td>
                 </tr>
               ))}
-            </tbody>
-          </table>
-        </div>
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );

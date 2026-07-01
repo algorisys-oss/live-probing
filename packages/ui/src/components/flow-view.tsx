@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useLiveStore } from "../store/use-live-store";
 import { computeLayout, type LayoutResult } from "../lib/layout";
 import { formatMicros, isDatastore } from "../lib/format";
+import { copyText, downloadPng, downloadSvg } from "../lib/export-diagram";
 import type { Edge } from "../lib/types";
 
 const NODE_W = 132;
@@ -88,6 +89,7 @@ function NodeShape({ id, x, y, onClick }: { id: string; x: number; y: number; on
 export function FlowView() {
   const fullTopology = useLiveStore((s) => s.topology);
   const filterService = useLiveStore((s) => s.filterService);
+  const mermaidFlow = useLiveStore((s) => s.mermaidFlow);
   const navigate = useNavigate();
 
   // When filtered, show the subgraph around the service: it + its direct neighbors,
@@ -221,6 +223,16 @@ export function FlowView() {
         </button>
         <button className="flow-btn flow-btn-fit" title="Fit to view" onClick={() => setView(fitBox)}>
           Fit
+        </button>
+        <span className="flow-ctrl-sep" />
+        <button className="flow-btn flow-btn-fit" title="Copy Mermaid" onClick={() => mermaidFlow && copyText(mermaidFlow)}>
+          mmd
+        </button>
+        <button className="flow-btn flow-btn-fit" title="Download SVG" onClick={() => svgRef.current && downloadSvg(svgRef.current, "topology.svg")}>
+          svg
+        </button>
+        <button className="flow-btn flow-btn-fit" title="Download PNG" onClick={() => svgRef.current && downloadPng(svgRef.current, "topology.png")}>
+          png
         </button>
       </div>
       <svg

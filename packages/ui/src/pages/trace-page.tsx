@@ -4,6 +4,7 @@ import { ApiError, fetchTraceDetail } from "../lib/api";
 import { formatMicros } from "../lib/format";
 import { SequenceView } from "../components/sequence-view";
 import { WaterfallView } from "../components/waterfall-view";
+import { copyText } from "../lib/export-diagram";
 import type { TraceDetail } from "../lib/types";
 
 type TraceTab = "waterfall" | "sequence";
@@ -52,6 +53,11 @@ export function TracePage() {
         <Link to="/" className="back-link">
           ← Live
         </Link>
+        {traceId && (
+          <Link to={`/compare?a=${encodeURIComponent(traceId)}`} className="back-link compare-link">
+            compare ⇄
+          </Link>
+        )}
       </div>
 
       {state.kind === "loading" && (
@@ -107,6 +113,13 @@ export function TracePage() {
               onClick={() => setTab("sequence")}
             >
               Sequence
+            </button>
+            <button
+              className="tab-export"
+              title="Copy the sequence diagram as Mermaid"
+              onClick={() => copyText(state.detail.mermaidSequence)}
+            >
+              copy mermaid
             </button>
           </div>
 

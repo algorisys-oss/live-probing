@@ -12,6 +12,7 @@ import { DayPage } from "./pages/day-page";
 import { SearchPage } from "./pages/search-page";
 import { ErrorsPage } from "./pages/errors-page";
 import { ServicePage } from "./pages/service-page";
+import { ComparePage } from "./pages/compare-page";
 
 export function App() {
   const location = useLocation();
@@ -58,6 +59,7 @@ export function App() {
           <Route path="/search" element={<SearchPage />} />
           <Route path="/errors" element={<ErrorsPage />} />
           <Route path="/service/:name" element={<ServicePage />} />
+          <Route path="/compare" element={<ComparePage />} />
           <Route path="/trace/:traceId" element={<TracePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

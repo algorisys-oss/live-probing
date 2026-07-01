@@ -4,6 +4,18 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 `CHANGELOG.md`). Updated after every task.
 
 ## Last task
+Built + verified **four features in one shot** (browser-verified at :5173):
+1. **Tighter flow layout** — barycenter ordering (crossing reduction) + tighter spacing in
+   `lib/layout.ts`.
+2. **Export diagrams** — `lib/export-diagram.ts` (inlines computed styles → standalone SVG/PNG);
+   flow view has copy-Mermaid / SVG / PNG buttons, trace page has copy-Mermaid for the sequence.
+   (D2 export not done — Mermaid only.)
+3. **Multi-day trends** — `components/trends-chart.tsx` on `/history` (requests/day bars, errors red).
+4. **Trace compare** — `/compare?a=&b=` page: two summary heads + operation-level timing diff
+   (A vs B vs Δ, color-coded); "compare ⇄" link added to the trace page.
+10 tests pass, UI builds, no page errors. Synced.
+
+## Earlier task
 Built + verified **filter the live view** (UI-only; uncommitted, awaiting "sync"): a service
 dropdown on the Live page (`filterService` in the store) — the trace feed shows only traces whose
 `services` include it, and the flow graph shows the subgraph (that service + direct neighbors +
