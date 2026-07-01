@@ -67,9 +67,12 @@ direction (LOOPS rule XXXVII). Map to OTel, do not invent a parallel taxonomy.
   the ecosystem. Native lands first (fastest path to a live demo), OTLP second.
 - **Live-first delivery.** WebSocket pushes event and topology deltas to the browser and
   the diagram redraws in place. Snapshot export (Mermaid / D2) is the secondary path.
-- **Custom renderer, not a diagram library.** Live update needs smooth incremental
-  redraws. Under continuous input, performance is correctness (LOOPS rule XXXIX): batch
-  to requestAnimationFrame, redraw the dirty region, never relayout per event.
+- **UI: React, with zustand for global state** (only if global state is actually needed).
+  Live update still has to stay smooth (LOOPS rule XXXIX): keep the hot event stream in a
+  store/ref and drive the diagram from a batched requestAnimationFrame commit, never a
+  React re-render per event. Draw the sequence/flow views as SVG the renderer controls.
+- **Naming: all file and folder names are lowercase-hyphenated** (e.g. `trace-window.ts`,
+  `flow-view/`). Applies everywhere in this repo.
 - **Minimal dependencies.** Node built-in `http` for the server, `ws` for websockets,
   `node:test` for tests. A graph-layout dep (d3-force or similar) for the flow view is
   justified and called out explicitly. Nothing else without a written reason (rule VIII).
@@ -101,6 +104,7 @@ system prompt, not a suggestion. The load-bearing rules for this codebase:
 - **Disk, not context (XXX).** State lives in `plan.md`, `IMPLEMENT.md`, `CHANGELOG.md`.
 - **Reference oracle (XXXVII).** OTel span semantics decide arrow direction.
 - **Continuous input is correctness (XXXIX).** The renderer batches to rAF.
+- **Naming.** Lowercase-hyphenated files and folders, everywhere.
 
 ## Where to look
 

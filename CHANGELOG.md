@@ -2,6 +2,17 @@
 
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
+## [2026-07-01 06:00]
+- LiveProbe core (packages/core): normalized Event model, OTLP/HTTP JSON -> Event[]
+  normalizer, TraceWindow (out-of-order trace assembly, horizon+cap eviction, service/
+  datastore topology aggregation), sequence projection, Mermaid sequence+flow exporters.
+  6 unit tests pass against an OTLP fixture shaped like real testbed traffic; typecheck clean.
+- Decisions recorded in CLAUDE.md: OTLP-first ingest (pivot from native-first, since the
+  testbed emits OTLP); UI in React + zustand; lowercase-hyphenated file/folder names.
+- Committed the testbed (code + docs) as two commits on top of the planning genesis.
+- Files: package.json, tsconfig.json, packages/core/* (event, otlp, trace-window, sequence,
+  export/mermaid, index, core.test), CLAUDE.md, plan.md.
+
 ## [2026-07-01 05:00]
 - Testbed T2 (async workers + saga): payment-worker (15% decline), inventory-worker (real
   stock, out_of_stock path), notification-worker (redis dedupe). order-service gained a

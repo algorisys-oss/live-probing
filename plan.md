@@ -58,30 +58,32 @@ End to end
 
 ### Tasks
 
+Note: pivoted to OTLP-first ingest (not native-first). The Shopwave testbed already emits
+OTLP, so consuming it is the real path and it unblocks T5. Core is built + tested against an
+OTLP fixture shaped like real testbed traffic. UI decision: React + zustand (see CLAUDE.md).
+
 ```
-Task: event-model
-  Files: packages/core/src/event.ts, packages/core/test/event.test.ts
-  Action: define Event type + native-batch normalizer + validation
-  Verify: contract 1–4 pass
-  Done: normalizer is a pure function with full test coverage of the schema
+Task: event-model + otlp-normalizer   [DONE 2026-07-01, tested]
+  Files: packages/core/src/event.ts, otlp.ts, core.test.ts
+  Action: Event type + OTLP/HTTP JSON -> Event[] normalizer (kind/status/peer/time mapping)
+  Verify: DONE — normalizer maps a gateway->catalog->pg/redis fixture correctly
+          (participant, kind, peer=postgresql/redis, micros, error status).
 
-Task: window-manager
-  Files: packages/core/src/window.ts, test/window.test.ts
-  Action: assemble spans into trace trees, rolling eviction, topology aggregation
-  Verify: contract 5–8, 13–15 pass
-  Done: crash-safe in the sense that it holds only the window, no unbounded growth
+Task: window-manager   [DONE 2026-07-01, tested]
+  Files: packages/core/src/trace-window.ts
+  Action: assemble spans into trace trees, rolling eviction (horizon + cap), topology
+  Verify: DONE — out-of-order assembly, eviction by horizon and cap, service+datastore
+          edges with call/error counts.
 
-Task: sequence-projection
-  Files: packages/core/src/sequence.ts, test/sequence.test.ts
+Task: sequence-projection   [DONE 2026-07-01, tested]
+  Files: packages/core/src/sequence.ts
   Action: trace tree → ordered messages + participants
-  Verify: contract 9–12 pass
-  Done: pure function trace → sequence model
+  Verify: DONE — messages ordered by start, participants by first appearance, datastore hops.
 
-Task: exporters
-  Files: packages/core/src/export/mermaid.ts, export/d2.ts, test/export.test.ts
-  Action: sequence model → Mermaid; topology → Mermaid/D2 text
-  Verify: contract 19–20 pass (assert output parses)
-  Done: round-trip a known trace to known-good text (oracle test)
+Task: exporters   [DONE 2026-07-01, tested — Mermaid; D2 later]
+  Files: packages/core/src/export/mermaid.ts
+  Action: sequence model → Mermaid; topology → Mermaid flow
+  Verify: DONE — output asserted. D2 export deferred to when a consumer needs it.
 
 Task: collector-server
   Files: packages/server/src/index.ts, test/server.test.ts
@@ -97,9 +99,11 @@ Task: sdk-js
 
 Task: ui
   Files: packages/ui/src/*, built to packages/server static dir
-  Action: live ws client, sequence renderer (SVG lifelines), flow renderer (graph)
-  Verify: renders live against the demo; rAF-batched redraw, dirty-region only
-  Done: both views update live and stay smooth under demo traffic (rule XXXIX)
+  Action: React SPA (zustand for global state if needed) — live ws client, sequence view
+          (SVG lifelines), flow view (graph). Keep the hot event stream out of React's
+          render path: buffer in a store/ref, commit to the diagram on a batched rAF tick.
+  Verify: renders live against the testbed; smooth under load, no per-event re-render
+  Done: both views update live and stay smooth under real traffic (rule XXXIX)
 
 Task: demo-services  (SUPERSEDED — see plan-testbed.md)
   The 3–4 service placeholder is replaced by the Shopwave testbed: a real full-stack
