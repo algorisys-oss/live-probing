@@ -2,6 +2,12 @@
 
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
+## [2026-07-01 20:55]
+- Version surfaced in the UI: root `package.json` is the single product-version source (bumped
+  0.0.0 → **0.1.0**); `packages/ui/vite.config.ts` reads it and injects `__APP_VERSION__` at build
+  time; the header (status bar) shows `v0.1.0` next to the trace/service counters. Declared the
+  global in `vite-env.d.ts`; added a `.version` style and an e2e assertion (12 e2e now).
+
 ## [2026-07-01 20:40]
 - Fix hardcoded UI API base: `BASE_URL` (and the derived ws URL) now default to
   `window.location.origin` in a production build, falling back to `http://localhost:4319` only in

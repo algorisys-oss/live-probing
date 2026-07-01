@@ -27,6 +27,11 @@ test("the errored checkout trace is flagged in the feed", async ({ page }) => {
   await expect(row.locator(".dot-error")).toBeVisible();
 });
 
+test("the header shows the app version", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator(".version")).toHaveText(/^v\d+\.\d+\.\d+/);
+});
+
 test("pause toggles the live feed control", async ({ page }) => {
   await page.goto("/");
   const pause = page.getByRole("button", { name: /pause/i });

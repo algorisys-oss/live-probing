@@ -12,7 +12,9 @@ span attribute), errors, and history→day. Deterministic fixtures seeded via `P
 isolated port (`:4399`) + temp DB — **no docker/testbed needed**. `npm run test:e2e` (11 pass),
 unit `npm test` (13) + typecheck still green. Also fixed the UI's hardcoded API base: it now
 uses `window.location.origin` in prod (falls back to `:4319` only in the Vite dev server), so a
-static deploy on any port works — and the e2e no longer needs a build-time URL override.
+static deploy on any port works — and the e2e no longer needs a build-time URL override. And
+surfaced the **app version** in the header (status bar): root `package.json` (**0.1.0**) is the
+single source, injected as `__APP_VERSION__` via `vite.config.ts`; e2e now 12.
 
 Prior task: `examples/otel-react-go/` — OTel integration reference for a React + Go app (Go→collector
 `encoding:json`→LiveProbe; React→LiveProbe direct). Synced (`d998250`).

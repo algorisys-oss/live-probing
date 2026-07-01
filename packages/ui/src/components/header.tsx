@@ -82,6 +82,9 @@ export function Header() {
         <span className="counter">
           <strong>{serviceCount}</strong> services
         </span>
+        <span className="version" title="LiveProbe version">
+          v{__APP_VERSION__}
+        </span>
       </div>
     </header>
   );

@@ -86,6 +86,14 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+.version {
+  align-self: center;
+  font-size: 11px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
+
 .status {
   display: inline-flex;
   align-items: center;
