@@ -46,16 +46,25 @@ function useNewFlags(ids: string[]): Set<string> {
 }
 
 export function TraceList() {
-  const traces = useLiveStore((s) => s.traces);
+  const allTraces = useLiveStore((s) => s.traces);
+  const filterService = useLiveStore((s) => s.filterService);
   const selectTrace = useLiveStore((s) => s.selectTrace);
   const navigate = useNavigate();
   const { traceId: routeTraceId } = useParams();
+
+  const traces = filterService
+    ? allTraces.filter((t) => t.services.includes(filterService))
+    : allTraces;
 
   const ids = traces.map((t) => t.traceId);
   const fresh = useNewFlags(ids);
 
   if (traces.length === 0) {
-    return <div className="trace-list-empty">No traces yet…</div>;
+    return (
+      <div className="trace-list-empty">
+        {filterService ? `No traces touching ${filterService}.` : "No traces yet…"}
+      </div>
+    );
   }
 
   return (

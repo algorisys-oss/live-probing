@@ -4,6 +4,12 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 `CHANGELOG.md`). Updated after every task.
 
 ## Last task
+Built + verified **filter the live view** (UI-only; uncommitted, awaiting "sync"): a service
+dropdown on the Live page (`filterService` in the store) — the trace feed shows only traces whose
+`services` include it, and the flow graph shows the subgraph (that service + direct neighbors +
+touching edges). Verified: filter=cart → 5-node subgraph, feed 175→93, no errors.
+
+## Earlier task
 Built + verified **search by span attribute** (uncommitted, awaiting "sync"): each trace stores a
 compact `attrs_text` (distinct `key=value` pairs across its spans); search gained an `attr` filter
 (`http.status_code=500` precise, or a bare value) — server `history-store.ts` + `/api/search`, UI

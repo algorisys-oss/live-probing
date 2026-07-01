@@ -1153,3 +1153,41 @@ body {
   min-width: 300px;
   flex: 1;
 }
+
+/* --- live filter toolbar --- */
+.live-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.live-toolbar-label {
+  color: var(--text-dim);
+}
+.live-filter {
+  padding: 5px 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 12px;
+  outline: none;
+}
+.live-filter:focus {
+  border-color: var(--accent);
+}
+.live-filter-clear {
+  padding: 5px 8px;
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 11px;
+}
+.live-filter-clear:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}

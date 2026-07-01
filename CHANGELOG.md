@@ -2,6 +2,13 @@
 
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
+## [2026-07-01 17:00]
+- Filter the live view: a service dropdown on the Live page (store `filterService`). The trace
+  feed shows only traces touching the service, and the flow graph collapses to that service's
+  subgraph (it + direct neighbors + touching edges). Client-side; clear button resets. Verified
+  (filter=cart -> 5-node subgraph, feed 175->93, no errors).
+- Files: packages/ui (store, live-page, trace-list, flow-view, styles).
+
 ## [2026-07-01 16:30]
 - Search by span attribute: each trace stores a compact `attrs_text` (distinct key=value pairs
   across its spans); `/api/search` + the search page gained an `attr` filter ("key=value" precise,

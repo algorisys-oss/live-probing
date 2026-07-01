@@ -78,7 +78,7 @@ items: **S** = hours, **M** = ~a day, **L** = multi-day.
 - [x] Clickable service nodes → a service page (deps, error rate, spans, top operations)
 - [ ] Tighter flow layout (less whitespace, edge-bundling for parallel edges) **M**
 - [x] Span waterfall on the trace page + click-to-expand span attributes (Waterfall tab: Gantt bars nested by depth, colored per service, click a span → attributes panel)
-- [ ] Filter the live view (pin flow/feed to one service or endpoint) **S**
+- [x] Filter the live view (pick a service -> feed shows only its traces, flow shows its subgraph)
 - [ ] Export: copy Mermaid, download SVG/PNG, add D2 export **S–M**
 
 ### B. Diagnostics & analysis

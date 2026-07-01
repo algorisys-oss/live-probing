@@ -22,12 +22,14 @@ interface LiveState {
   selectedTraceId: string | null;
   paused: boolean;
   pendingCount: number;
+  filterService: string | null;
 
   // internal hot-path map (kept off the render surface)
   _traceMap: Map<string, TraceSummary>;
 
   setConnected: (connected: boolean) => void;
   selectTrace: (id: string | null) => void;
+  setFilterService: (service: string | null) => void;
   setPaused: (v: boolean) => void;
   resumeFeed: () => void;
   applyWsMessage: (msg: WsMessage) => void;
@@ -50,11 +52,14 @@ export const useLiveStore = create<LiveState>((set, get) => ({
   selectedTraceId: null,
   paused: false,
   pendingCount: 0,
+  filterService: null,
   _traceMap: new Map<string, TraceSummary>(),
 
   setConnected: (connected) => set({ connected }),
 
   selectTrace: (id) => set({ selectedTraceId: id }),
+
+  setFilterService: (service) => set({ filterService: service }),
 
   setPaused: (v) => {
     if (v) {

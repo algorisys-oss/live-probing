@@ -6,6 +6,9 @@ export function LivePage() {
   const paused = useLiveStore((s) => s.paused);
   const pendingCount = useLiveStore((s) => s.pendingCount);
   const setPaused = useLiveStore((s) => s.setPaused);
+  const services = useLiveStore((s) => s.topology.nodes);
+  const filterService = useLiveStore((s) => s.filterService);
+  const setFilterService = useLiveStore((s) => s.setFilterService);
 
   return (
     <div className="body">
@@ -26,6 +29,26 @@ export function LivePage() {
       </aside>
 
       <main className="main">
+        <div className="live-toolbar">
+          <span className="live-toolbar-label">Filter</span>
+          <select
+            className="live-filter"
+            value={filterService ?? ""}
+            onChange={(e) => setFilterService(e.target.value || null)}
+          >
+            <option value="">all services</option>
+            {[...services].sort().map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+          {filterService && (
+            <button className="live-filter-clear" onClick={() => setFilterService(null)}>
+              clear ✕
+            </button>
+          )}
+        </div>
         <div className="tab-panel">
           <FlowView />
         </div>

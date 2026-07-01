@@ -86,8 +86,18 @@ function NodeShape({ id, x, y, onClick }: { id: string; x: number; y: number; on
 }
 
 export function FlowView() {
-  const topology = useLiveStore((s) => s.topology);
+  const fullTopology = useLiveStore((s) => s.topology);
+  const filterService = useLiveStore((s) => s.filterService);
   const navigate = useNavigate();
+
+  // When filtered, show the subgraph around the service: it + its direct neighbors,
+  // and only the edges touching it.
+  const topology = useMemo(() => {
+    if (!filterService) return fullTopology;
+    const edges = fullTopology.edges.filter((e) => e.from === filterService || e.to === filterService);
+    const nodes = [...new Set([filterService, ...edges.flatMap((e) => [e.from, e.to])])];
+    return { nodes, edges };
+  }, [fullTopology, filterService]);
 
   // Stable layout: recompute only when the *set* of node ids changes.
   const nodeKey = useMemo(() => [...topology.nodes].sort().join("|"), [topology.nodes]);
