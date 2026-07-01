@@ -2,19 +2,19 @@
 #
 # LiveProbe end-to-end dev runner.
 #
-# Brings up the whole thing: the Shopwave testbed (8 services + Postgres/Redis/RabbitMQ +
-# OTel collector + Jaeger in Docker), a traffic generator, and the LiveProbe server, which
-# also serves the built React UI. The testbed collector is already configured to export
-# OTLP to LiveProbe, so traces flow in automatically.
+# Modes:
+#   ./dev.sh            Build the UI and run everything. The LiveProbe server serves the
+#                       built UI at :4319. No hot reload (good for a demo / just using it).
+#   ./dev.sh --watch    Hot-reload dev loop:
+#                         - LiveProbe UI runs under Vite with HMR at http://localhost:5173
+#                         - LiveProbe server runs under `tsx watch` (restarts on change)
+#                         - testbed services run under `tsx watch` (via docker-compose.dev.yml)
+#                       Edit any source and it reloads.
+#   ./dev.sh --no-load  Don't start the traffic generator.
+#   ./dev.sh --no-build (build mode only) Reuse the existing UI build.
 #
-# Usage:
-#   ./dev.sh              # build UI, start testbed + loadgen + LiveProbe (foreground)
-#   ./dev.sh --no-load    # same, but do not start the traffic generator
-#   ./dev.sh --no-build   # skip rebuilding the UI (use the existing packages/server/public)
-#   LIVEPROBE_PORT=4319 ./dev.sh
-#
-# The LiveProbe server runs in the foreground; Ctrl-C stops it. The Docker stack keeps
-# running — tear it down with:  cd testbed && docker compose down   (add -v to wipe data)
+# The foreground process is the LiveProbe server; Ctrl-C stops it (and, in --watch, the UI
+# dev server). The Docker stack keeps running — stop it all with ./stop.sh.
 
 set -euo pipefail
 
@@ -22,10 +22,13 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 
 LIVEPROBE_PORT="${LIVEPROBE_PORT:-4319}"
+UI_DEV_PORT="${UI_DEV_PORT:-5173}"
+WATCH=0
 DO_BUILD=1
 DO_LOAD=1
 for arg in "$@"; do
   case "$arg" in
+    --watch) WATCH=1 ;;
     --no-build) DO_BUILD=0 ;;
     --no-load) DO_LOAD=0 ;;
     *) echo "unknown option: $arg" >&2; exit 1 ;;
@@ -35,6 +38,42 @@ done
 echo "==> Installing LiveProbe dependencies"
 npm install --silent
 
+pkill -f "packages/server/src/index.ts" 2>/dev/null || true
+
+if [[ "$WATCH" == "1" ]]; then
+  echo "==> WATCH mode: hot reload for UI, server, and testbed"
+
+  echo "==> Starting the testbed under tsx watch (docker)"
+  ( cd testbed && docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build )
+  if [[ "$DO_LOAD" == "1" ]]; then
+    ( cd testbed && docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile load up -d loadgen )
+  fi
+
+  echo "==> Starting the LiveProbe UI dev server (Vite HMR)"
+  ( cd packages/ui && npm install --silent )
+  ( cd packages/ui && npm run dev -- --host --port "$UI_DEV_PORT" ) &
+  UI_PID=$!
+  trap 'echo; echo "stopping UI dev server…"; kill "$UI_PID" 2>/dev/null || true' EXIT INT TERM
+
+  cat <<EOF
+
+------------------------------------------------------------
+  LiveProbe UI (HMR)   http://localhost:${UI_DEV_PORT}     <-- open this in --watch mode
+  LiveProbe API/ws     http://localhost:${LIVEPROBE_PORT}
+  Jaeger (compare)     http://localhost:16687
+------------------------------------------------------------
+  Edit any source and it reloads. Ctrl-C stops the server + UI dev.
+  Stop everything:  ./stop.sh
+------------------------------------------------------------
+
+EOF
+
+  echo "==> Starting the LiveProbe server under tsx watch on :${LIVEPROBE_PORT}"
+  PORT="${LIVEPROBE_PORT}" npx tsx watch packages/server/src/index.ts
+  exit 0
+fi
+
+# --- build (non-watch) mode ---
 if [[ "$DO_BUILD" == "1" ]]; then
   echo "==> Building the LiveProbe UI"
   ( cd packages/ui && npm install --silent && npm run build )
@@ -52,10 +91,7 @@ if [[ "$DO_LOAD" == "1" ]]; then
   ( cd testbed && docker compose --profile load up -d loadgen )
 fi
 
-# Free the port if a previous LiveProbe server is still holding it.
-pkill -f "packages/server/src/index.ts" 2>/dev/null || true
 sleep 1
-
 cat <<EOF
 
 ------------------------------------------------------------
@@ -64,7 +100,7 @@ cat <<EOF
   Storefront SPA    http://localhost:8088   (cd testbed && docker compose --profile ui up -d frontend)
 ------------------------------------------------------------
   Ctrl-C stops the LiveProbe server. The Docker stack stays up.
-  Stop everything:  cd testbed && docker compose down
+  Stop everything:  ./stop.sh
 ------------------------------------------------------------
 
 EOF

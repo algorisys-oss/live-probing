@@ -2,6 +2,33 @@
 
 Decision-to-code audit trail (LOOPS rule XXV). Newest first.
 
+## [2026-07-01] UX polish + daily/history mode
+
+**Discussed (from using the live UI):** trace titles showed bare GET/POST; the live sidebar
+reordered while inspecting; clicking a trace should open its own page; and the bigger vision —
+"know what happened each day." Also: sample users, a one-command stop, and detailed docs.
+
+**Decided:** do the quick UX win first, then the daily/history mode ("both, in that order").
+Persistence engine = `node:sqlite` (built into Node 24, no dependency — fits stdlib-first).
+
+**Implemented:**
+- Titles: derive `METHOD /path` from HTTP span attributes in the normalizer.
+- UI routing (react-router): `/` live, `/trace/:id` dedicated page, plus a Pause control that
+  freezes the live feed with an "N new" counter.
+- Persistence: `packages/server/history-store.ts` writes every trace (summary + detail) to
+  SQLite partitioned by UTC day. APIs: `/api/days`, `/api/day/:date/summary` (requests, error
+  rate, p50/p95/p99, throughput, top endpoints, slowest), `/api/day/:date/traces`. Trace
+  detail falls back to the store after live-window eviction.
+- UI daily dashboard (`/history`, `/day/:date`) — in progress via subagent.
+- Ops/docs: `stop.sh` (one-command teardown), sample users in auth, and `docs/`
+  (architecture, event-model, shopwave-events).
+
+**Verified:** 9 tests pass. Headless-browser check of the live UI: routing, pause, and the
+enriched sequence render with no JS errors. Day APIs verified on live traffic (360 requests,
+p95 ~50 ms, per-endpoint rollups). Fixed a gzip trap in OTLP ingest along the way.
+
+**Status:** LiveProbe MVP + history backend done and pushed. Daily dashboard UI integrating next.
+
 ## [2026-07-01] LiveProbe core + server + T5 (live end to end)
 
 **Discussed:** build LiveProbe; UI in React + zustand; lowercase-hyphenated names; commit

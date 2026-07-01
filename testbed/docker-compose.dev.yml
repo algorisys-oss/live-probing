@@ -1,0 +1,33 @@
+# Dev overlay: bind-mount the source and run each service under `tsx watch` so code
+# changes reload inside the containers. Use with the base file:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+# (dev.sh --watch does this for you.)
+#
+# The bind mount overlays /app with the host workspace, including host node_modules — safe
+# here because host and container are the same platform (Linux x64).
+
+services:
+  gateway:
+    volumes: ["./:/app"]
+    command: ["npx", "tsx", "watch", "packages/gateway/src/index.ts"]
+  auth:
+    volumes: ["./:/app"]
+    command: ["npx", "tsx", "watch", "packages/auth/src/index.ts"]
+  catalog:
+    volumes: ["./:/app"]
+    command: ["npx", "tsx", "watch", "packages/catalog/src/index.ts"]
+  cart:
+    volumes: ["./:/app"]
+    command: ["npx", "tsx", "watch", "packages/cart/src/index.ts"]
+  order:
+    volumes: ["./:/app"]
+    command: ["npx", "tsx", "watch", "packages/order/src/index.ts"]
+  payment-worker:
+    volumes: ["./:/app"]
+    command: ["npx", "tsx", "watch", "packages/payment-worker/src/index.ts"]
+  inventory-worker:
+    volumes: ["./:/app"]
+    command: ["npx", "tsx", "watch", "packages/inventory-worker/src/index.ts"]
+  notification-worker:
+    volumes: ["./:/app"]
+    command: ["npx", "tsx", "watch", "packages/notification-worker/src/index.ts"]

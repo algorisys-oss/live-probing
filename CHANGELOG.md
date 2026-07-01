@@ -2,6 +2,13 @@
 
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
+## [2026-07-01 13:00]
+- Added a hot-reload dev loop: `./dev.sh --watch` runs the LiveProbe UI under Vite HMR (:5173),
+  the LiveProbe server under `tsx watch`, and the testbed services under `tsx watch` via
+  testbed/docker-compose.dev.yml (bind-mounts source). Plain ./dev.sh stays build-and-run.
+  Verified tsx watch restarts on change and the dev overlay applies watch+mounts.
+- Files: dev.sh, testbed/docker-compose.dev.yml, README.md.
+
 ## [2026-07-01 12:30]
 - LiveProbe UI: daily dashboard (/history + /day/:date) with rollup cards (requests, error
   rate, p50/p95/p99), a throughput chart (errors overlaid red), top-endpoints table, and
