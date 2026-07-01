@@ -39,3 +39,6 @@ packages/server/public/
 
 # LiveProbe history db
 packages/server/data/
+
+# Private/client adapter material (not for the repo)
+adapters-hidden/

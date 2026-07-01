@@ -4,9 +4,12 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 `CHANGELOG.md`). Updated after every task.
 
 ## Last task
-Added the handoff-doc convention to `CLAUDE.md` and created this file. Prior task: flow-graph
-zoom-to-fit + pan/zoom, richer search filters, and hot-reload-by-default in `dev.sh`.
-Latest commit: `cd6d250` (todo.md). All work is on `origin/main`.
+Designed the client-integration approach and wrote it up in `docs/integration-adapters.md`
+(adapter layer: client format → normalized `Event[]` → native `/v1/events` ingest; collector
+with rabbitmq + stdout sources). Also converted the client instrumentation PDF to
+`adapters-hidden/adapter-id-1.md` (client-proprietary; kept out of the repo via .gitignore).
+Prior:
+handoff-doc convention (`febb860`). LiveProbe app work is on `origin/main`.
 
 ## Current state
 LiveProbe is a working MVP, end to end, verified against the live testbed.
@@ -31,10 +34,17 @@ Ports and details: `README.md`. Jaeger (reference) at http://localhost:16687. Sa
 `alice@shopwave.test` / `password123`.
 
 ## Next
-See `todo.md` for the full backlog. Recommended next picks:
-1. Span waterfall + attribute drill-down on the trace page.
-2. Clickable service nodes → a service page.
-3. Search by span attribute (userId, productId, http.status).
+**In progress (continuing later): client integration via adapters.** Design is written up in
+`docs/integration-adapters.md` — read it first. Summary: client apps (polyglot) emit a
+client-specific instrumentation format over a transport (client-1 → RabbitMQ, another →
+stdout). Plan is a collector with pluggable **sources** (rabbitmq / stdout / http) × **adapters**
+(per client format, e.g. `adapter-id-1`) that map `raw → Event[]` and POST to a new native
+`/v1/events` ingest. MVP to build: (1) `POST /v1/events`, (2) collector with rabbitmq + stdout
+sources, (3) `adapter-id-1` mapping, (4) verify end to end. Open questions listed in that doc
+(message granularity, sidecar vs single collector, whether to include per-span duration in v1).
+
+Other backlog (see `todo.md`): span waterfall + attribute drill-down on the trace page;
+clickable service nodes → a service page; search by span attribute.
 
 ## Gotchas
 - **ioredis / amqplib** in the testbed are loaded via `createRequire` because OTel only hooks

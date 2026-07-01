@@ -94,6 +94,9 @@ items: **S** = hours, **M** = ~a day, **L** = multi-day.
 - [ ] Multi-day trends overview chart on `/history` **S**
 
 ### D. Adoption & integration
+- [ ] **Client integration via adapters** (designed — see `docs/integration-adapters.md`): native
+      `POST /v1/events` ingest + a collector with pluggable sources (rabbitmq / stdout / http)
+      and per-client adapters (`adapter-id-1` first); sidecar-per-client deployment **L**
 - [ ] Native SDK (`packages/sdk-js`) — drop-in tracer, use LiveProbe without OpenTelemetry **L**
 - [ ] Config/env surface for ports, retention, window horizon, OTLP path **S**
 - [ ] Package & publish core/server with a CLI (`npx liveprobe`) **M**
