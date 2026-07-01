@@ -1,7 +1,7 @@
 # Integrating LiveProbe with client apps (adapters)
 
-**Status: designed, not built.** This is the plan to feed client apps' instrumentation into
-LiveProbe. Resume from the "What to build" section.
+**Status: MVP built and verified** (native `/v1/events` ingest + a collector with stdin/rabbitmq
+sources + the `adapter-id-1` reference adapter). See "Running the collector" below.
 
 ## Problem
 
@@ -107,18 +107,34 @@ transitions — it does not need OTel span kinds), history, and search.
 - **Span kind** — default `internal`; could be inferred from their context parser
   (http / rabbitmq / socket) if we want producer/consumer arrows.
 
-## What to build (MVP)
+## What was built (MVP)
 
-1. **`POST /v1/events`** — a native ingest endpoint on the LiveProbe server accepting a batch
-   of normalized `Event`s (the target all adapters produce). Deferred when we went OTLP-first.
-2. **A collector** (`packages/collector`) with two sources —
-   `rabbitmq` and `stdout` (ndjson) — plus an adapter registry.
-3. **`adapter-id-1`** — the mapping above, as a `(raw) => Event[]` function.
-4. **Verify end to end** — feed sample client-1 events through RabbitMQ and watch them render
-   in the LiveProbe flow / sequence / history / search.
+- [x] **`POST /v1/events`** — native ingest on the server, accepting `{ events: Event[] }` (the
+  target all adapters produce). Shares the OTLP ingest path via `coerceEvents` in `@liveprobe/core`.
+- [x] **A collector** (`packages/collector`) — sources `stdin` (ndjson) and `rabbitmq`, an adapter
+  registry, and a batching sink that POSTs to `/v1/events`.
+- [x] **`adapter-id-1`** — a reference `(raw) => Event[]` mapping for the structured-event format
+  (field mapping below). One client event → one span.
+- [x] **Verified end to end** — piped sample client events (stdin) through the adapter into
+  LiveProbe: they rendered as a `web-gateway → orders-api → payments` trace with the payment span
+  marked as an error, plus the matching topology and sequence.
 
-New client after that = **new adapter file + one config block**; the transport is just a
-source type.
+New client after this = **a new adapter file + one config block**; the transport is just a source.
+
+## Running the collector
+
+```bash
+# ndjson on stdin (one client event per line)
+cat events.ndjson | SOURCE=stdin ADAPTER=adapter-id-1 LIVEPROBE_URL=http://localhost:4319 \
+  npx tsx packages/collector/src/index.ts
+
+# consume a RabbitMQ queue (one collector per client; run as a sidecar)
+SOURCE=rabbitmq ADAPTER=adapter-id-1 RABBITMQ_URL=amqp://… QUEUE=instrumentation.events \
+  LIVEPROBE_URL=http://localhost:4319 npx tsx packages/collector/src/index.ts
+```
+
+Adapters live in `packages/collector/src/adapters/` (`adapter-id-1`, plus `liveprobe-native`
+passthrough). The client's private format spec stays in `adapters-hidden/`.
 
 ## Open questions (answer before building)
 

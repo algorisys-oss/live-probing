@@ -17,7 +17,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   mkdirSync(dataDir, { recursive: true });
   const server = createServer({
     publicDir: existsSync(publicDir) ? publicDir : undefined,
-    dbPath: join(dataDir, "liveprobe.db"),
+    dbPath: process.env.DB_PATH ?? join(dataDir, "liveprobe.db"),
   });
 
   const shutdown = () => void server.close().then(() => process.exit(0));

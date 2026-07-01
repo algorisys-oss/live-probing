@@ -14,5 +14,9 @@
     "noEmit": true
   },
   "comment": "Node packages only. packages/ui is a browser app with its own tsconfig.",
-  "include": ["packages/core/src/**/*.ts", "packages/server/src/**/*.ts"]
+  "include": [
+    "packages/core/src/**/*.ts",
+    "packages/server/src/**/*.ts",
+    "packages/collector/src/**/*.ts"
+  ]
 }

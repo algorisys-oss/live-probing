@@ -187,10 +187,15 @@ The testbed collector is already wired to export OTLP/JSON to LiveProbe on the h
 | Endpoint | What |
 |----------|------|
 | `POST /v1/traces` | OTLP/HTTP ingest (gzip-aware) |
+| `POST /v1/events` | native ingest — a batch of normalized events (what adapters produce) |
 | `GET /api/traces?limit=` | recent trace summaries |
 | `GET /api/traces/:id` | one trace: sequence model + Mermaid |
 | `GET /api/topology` | aggregate service/datastore graph + Mermaid |
 | `ws /ws` | live snapshot + deltas |
+
+Apps that don't speak OpenTelemetry can be fed via an **adapter + collector** that maps a
+client's instrumentation format to normalized events and POSTs them to `/v1/events` — see
+[docs/integration-adapters.md](docs/integration-adapters.md) (`packages/collector`).
 
 Run the LiveProbe tests with `npm test`.
 

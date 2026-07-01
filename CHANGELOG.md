@@ -2,6 +2,18 @@
 
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
+## [2026-07-01 18:45]
+- Client integration MVP (the adapter layer): native POST /v1/events ingest (coerceEvents in
+  @liveprobe/core; server shares the ingest path with OTLP) + a collector (packages/collector)
+  with stdin/rabbitmq sources, an adapter registry, and a batching sink, plus a reference
+  adapter-id-1 mapping (structured client event -> Event[]). Server gained a DB_PATH override.
+- Verified end to end: sample client events (stdin) -> adapter -> /v1/events -> LiveProbe rendered
+  a web-gateway -> orders-api -> payments trace with the payment span as an error. 13 tests pass.
+- Docs: docs/integration-adapters.md (built + run instructions), README, HANDOFF. Client's private
+  format spec stays in adapters-hidden/.
+- Files: packages/core (native.ts), packages/server (server.ts, index.ts, test), packages/collector/*,
+  tsconfig, package.json.
+
 ## [2026-07-01 17:45]
 - Four features: (1) tighter flow layout via barycenter ordering (crossing reduction) + spacing;
   (2) export diagrams — copy Mermaid + download standalone SVG/PNG for the flow, copy Mermaid for

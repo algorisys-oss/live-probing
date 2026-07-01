@@ -1,5 +1,6 @@
 export { type Event, type SpanKind, type SpanStatus, DATASTORE_SYSTEMS } from "./event.js";
 export { normalizeOtlp, type OtlpPayload } from "./otlp.js";
+export { coerceEvents } from "./native.js";
 export {
   TraceWindow,
   type AssembledTrace,

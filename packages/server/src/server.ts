@@ -6,7 +6,9 @@ import { WebSocketServer, type WebSocket } from "ws";
 import {
   TraceWindow,
   normalizeOtlp,
+  coerceEvents,
   toMermaidFlow,
+  type Event,
   type OtlpPayload,
 } from "@liveprobe/core";
 import { detail, summarize, type TraceSummary } from "./summary.js";
@@ -57,8 +59,8 @@ export function createServer(opts: ServerOptions = {}): LiveProbeServer {
       .sort((a, b) => b.startTime - a.startTime)
       .slice(0, limit);
 
-  const ingest = (payload: OtlpPayload) => {
-    const events = normalizeOtlp(payload);
+  // Shared ingest path for both OTLP and native events.
+  const ingestEvents = (events: Event[]) => {
     if (events.length === 0) return;
     window.add(events);
 
@@ -138,12 +140,19 @@ export function createServer(opts: ServerOptions = {}): LiveProbeServer {
     const path = url.pathname;
 
     try {
-      if (req.method === "POST" && path === "/v1/traces") {
+      if (req.method === "POST" && (path === "/v1/traces" || path === "/v1/events")) {
         const raw = await readBody(req);
         const encoding = String(req.headers["content-encoding"] ?? "");
         const text = encoding.includes("gzip") ? gunzipSync(raw).toString("utf8") : raw.toString("utf8");
-        ingest(text ? (JSON.parse(text) as OtlpPayload) : {});
-        return json(res, 200, {}); // OTLP success
+        const body: unknown = text ? JSON.parse(text) : {};
+        // /v1/traces = OTLP spans; /v1/events = already-normalized events (from an adapter).
+        if (path === "/v1/traces") {
+          ingestEvents(normalizeOtlp(body as OtlpPayload));
+          return json(res, 200, {}); // OTLP success (collector expects an empty response)
+        }
+        const events = coerceEvents(body);
+        ingestEvents(events);
+        return json(res, 200, { accepted: events.length });
       }
       if (req.method === "GET" && path === "/healthz") return json(res, 200, { status: "ok" });
       if (req.method === "GET" && path === "/api/traces") {

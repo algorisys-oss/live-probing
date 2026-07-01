@@ -85,3 +85,34 @@ test("server ingests OTLP and serves REST + websocket", async () => {
     await server.close();
   }
 });
+
+test("server accepts native events at /v1/events", async () => {
+  const PORT = 4400;
+  const server = createServer();
+  await server.listen(PORT);
+  const base = `http://localhost:${PORT}`;
+  try {
+    const res = await fetch(`${base}/v1/events`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        events: [
+          { traceId: "nt-1", spanId: "a", participant: "gw", operation: "GET /x", kind: "server", startTime: 1_000_000, duration: 5000, status: "ok", attributes: {} },
+          { traceId: "nt-1", spanId: "b", parentSpanId: "a", participant: "billing", operation: "charge", kind: "client", startTime: 1_001_000, duration: 2000, status: "error", attributes: { "user.id": "42" } },
+        ],
+      }),
+    });
+    assert.equal(res.status, 200);
+    assert.equal(((await res.json()) as { accepted: number }).accepted, 2);
+
+    const list = (await (await fetch(`${base}/api/traces`)).json()) as any;
+    assert.equal(list.traces.length, 1);
+    assert.equal(list.traces[0].traceId, "nt-1");
+    assert.equal(list.traces[0].hasError, true);
+
+    const det = (await (await fetch(`${base}/api/traces/nt-1`)).json()) as any;
+    assert.equal(det.spans.length, 2);
+  } finally {
+    await server.close();
+  }
+});

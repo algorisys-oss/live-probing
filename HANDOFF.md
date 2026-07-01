@@ -4,6 +4,19 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 `CHANGELOG.md`). Updated after every task.
 
 ## Last task
+Built + verified the **client-integration MVP** (the adapter layer): native `POST /v1/events`
+ingest (`coerceEvents` in core; server shares the ingest path with OTLP), a **collector**
+(`packages/collector`) with `stdin`/`rabbitmq` sources + adapter registry + batching sink, and a
+reference **`adapter-id-1`** mapping (structured client event → `Event[]`). Verified end to end:
+piped sample client events (stdin) → adapter → `/v1/events` → LiveProbe rendered a
+`web-gateway → orders-api → payments` trace (payment span = error) with matching topology/sequence.
+Server gained a `DB_PATH` env override (used to verify on an isolated port/db). 13 tests pass.
+Docs: `docs/integration-adapters.md` (status → built, run instructions), README. Client's private
+format spec stays in `adapters-hidden/`.
+NOTE: the running dev.sh `:4319` server may still be on old code (its watch didn't reload); restart
+`./dev.sh` to pick up `/v1/events`.
+
+## Earlier task
 Built + verified **four features in one shot** (browser-verified at :5173):
 1. **Tighter flow layout** — barycenter ordering (crossing reduction) + tighter spacing in
    `lib/layout.ts`.
