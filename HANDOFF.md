@@ -1,104 +1,68 @@
 # Handoff
 
 Current state and how to resume. Rolling doc — reflects the latest, not history (that's
-`CHANGELOG.md`). Updated after every task.
+`CHANGELOG.md`). Updated after every task. All work is on `origin/main` (and `dev`) at the
+latest commit unless a "Last task" note says otherwise.
 
 ## Last task
 Built + verified the **client-integration MVP** (the adapter layer): native `POST /v1/events`
-ingest (`coerceEvents` in core; server shares the ingest path with OTLP), a **collector**
-(`packages/collector`) with `stdin`/`rabbitmq` sources + adapter registry + batching sink, and a
-reference **`adapter-id-1`** mapping (structured client event → `Event[]`). Verified end to end:
-piped sample client events (stdin) → adapter → `/v1/events` → LiveProbe rendered a
-`web-gateway → orders-api → payments` trace (payment span = error) with matching topology/sequence.
-Server gained a `DB_PATH` env override (used to verify on an isolated port/db). 13 tests pass.
-Docs: `docs/integration-adapters.md` (status → built, run instructions), README. Client's private
-format spec stays in `adapters-hidden/`.
-NOTE: the running dev.sh `:4319` server may still be on old code (its watch didn't reload); restart
-`./dev.sh` to pick up `/v1/events`.
-
-## Earlier task
-Built + verified **four features in one shot** (browser-verified at :5173):
-1. **Tighter flow layout** — barycenter ordering (crossing reduction) + tighter spacing in
-   `lib/layout.ts`.
-2. **Export diagrams** — `lib/export-diagram.ts` (inlines computed styles → standalone SVG/PNG);
-   flow view has copy-Mermaid / SVG / PNG buttons, trace page has copy-Mermaid for the sequence.
-   (D2 export not done — Mermaid only.)
-3. **Multi-day trends** — `components/trends-chart.tsx` on `/history` (requests/day bars, errors red).
-4. **Trace compare** — `/compare?a=&b=` page: two summary heads + operation-level timing diff
-   (A vs B vs Δ, color-coded); "compare ⇄" link added to the trace page.
-10 tests pass, UI builds, no page errors. Synced.
-
-## Earlier task
-Built + verified **filter the live view** (UI-only; uncommitted, awaiting "sync"): a service
-dropdown on the Live page (`filterService` in the store) — the trace feed shows only traces whose
-`services` include it, and the flow graph shows the subgraph (that service + direct neighbors +
-touching edges). Verified: filter=cart → 5-node subgraph, feed 175→93, no errors.
-
-## Earlier task
-Built + verified **search by span attribute** (uncommitted, awaiting "sync"): each trace stores a
-compact `attrs_text` (distinct `key=value` pairs across its spans); search gained an `attr` filter
-(`http.status_code=500` precise, or a bare value) — server `history-store.ts` + `/api/search`, UI
-search page field. Verified discrimination (rabbitmq → only checkouts; nonexistent → 0).
-Also: **cleaned the history DB (555MB → 28KB)** via DELETE+VACUUM, and killed a stale duplicate
-LiveProbe server I'd left on :4319 (it was serving old code / blocking the watch server). Note:
-attribute search only matches traces ingested *after* the attrs_text change (older rows: NULL).
-
-## Earlier task
-Built and verified **three UI/dashboard features** (browser-verified at :5173 against live data):
-1. **Error explorer** (`/errors`) — errored traces grouped by endpoint + error label, each links to
-   its trace. Server: `error_label` column + `errorGroups()` + `GET /api/errors`.
-2. **Clickable service → service page** (`/service/:name`) — click a flow node → deps (in/out),
-   error rate, spans, top operations. Server: `serviceDetail()` (live window) + `GET /api/service/:name`.
-3. **Latency-over-time** — on the day page, click a top endpoint → p50/p95/p99 line chart. Server:
-   `endpointLatency()` + `GET /api/day/:date/latency?endpoint=`.
-Also: waterfall now auto-selects the failing span. **Bugfix:** an old historical trace (no
-`spans`) crashed `WaterfallView` (`spans.find` on undefined), which unmounted the whole app —
-blanking the trace page and the Errors page until reload. Fixed by defaulting `spans` to `[]`
-and adding a route-keyed `ErrorBoundary` so one view crash can't take down the app. 10 tests
-pass, UI builds. **Uncommitted — awaiting review + "sync".** (Prior task: span waterfall.)
+ingest (`coerceEvents` in `@liveprobe/core`; the server shares the ingest path with OTLP), a
+**collector** (`packages/collector`) with `stdin`/`rabbitmq` sources + adapter registry +
+batching sink, and a reference **`adapter-id-1`** mapping (structured client event → `Event[]`).
+Verified end to end: piped sample client events (stdin) → adapter → `/v1/events` → LiveProbe
+rendered a `web-gateway → orders-api → payments` trace (payment span = error) with matching
+topology/sequence. Synced (`127b6c4`).
 
 ## Current state
-LiveProbe is a working MVP, end to end, verified against the live testbed.
+LiveProbe is a mature working app, verified end to end against the live testbed. **13 tests pass**,
+typecheck clean, UI verified in a headless browser. Nothing known broken.
 
-- **LiveProbe** (`packages/`): OTLP ingest → in-memory window + SQLite history → REST + ws →
-  React UI. Views: live flow (zoom-to-fit) + trace list, dedicated trace page, daily dashboard
-  (`/history`, `/day/:date`), and search (`/search` + header box). Pause control on the feed.
-- **Testbed** (`testbed/`): 8-service e-commerce (gateway, auth, catalog, cart, order +
-  payment/inventory/notification workers) over Postgres/Redis/RabbitMQ, OTel-instrumented; a
-  checkout is one connected trace across all of it. Collector fans OTLP to Jaeger + LiveProbe.
-- **Tests**: 10 (core + server) pass; typecheck clean. UI verified in a headless browser.
-- Nothing known broken.
+- **Ingest**: OTLP (`POST /v1/traces`, gzip-aware) **and** native (`POST /v1/events`) → one
+  in-memory `TraceWindow` + SQLite history (`node:sqlite`, partitioned by day).
+- **Server API**: recent traces, trace detail (spans + sequence + Mermaid), topology, service
+  detail, errors (grouped), day summary + endpoint latency, search, websocket deltas.
+- **UI** (React + zustand + react-router), all built + verified:
+  - Live: flow graph (barycenter layout, zoom-to-fit/pan, click a node → service page, export
+    SVG/PNG/Mermaid) + trace feed, **Pause**, **filter by service** (feed + subgraph).
+  - Trace page: **waterfall** (+ click a span → attributes) / **sequence** tabs, copy-Mermaid,
+    **compare ⇄** link.
+  - `/service/:name`, `/errors`, `/search` (endpoint / service / **span attribute** / latency /
+    sort), `/history` (**multi-day trends**) + `/day/:date` (rollups, throughput, **latency-over-
+    time**, slowest), `/compare?a=&b=` (operation timing diff). Route-keyed `ErrorBoundary`.
+- **Client integration**: `packages/collector` (stdin/rabbitmq → adapter → `/v1/events`).
+- **Testbed** (`testbed/`): 8-service e-commerce + workers over Postgres/Redis/RabbitMQ,
+  OTel-instrumented; collector fans OTLP to Jaeger + LiveProbe. Loadgen currently **stopped**;
+  history DB is **clean** (was reset from 555MB).
 
 ## How to run / verify
 ```bash
 ./dev.sh              # hot reload; open http://localhost:5173  (API/ws on :4319)
 ./dev.sh --static     # build + serve the UI from the server at http://localhost:4319
-npm test              # core + server tests
+npm test              # core + server + collector tests (13)
 ./stop.sh             # tear down (--wipe drops data)
+# feed a non-OTLP client: cat events.ndjson | SOURCE=stdin ADAPTER=adapter-id-1 \
+#   LIVEPROBE_URL=http://localhost:4319 npx tsx packages/collector/src/index.ts
 ```
-Ports and details: `README.md`. Jaeger (reference) at http://localhost:16687. Sample login:
-`alice@shopwave.test` / `password123`.
+Details/ports: `README.md`. Jaeger at http://localhost:16687. Sample login `alice@shopwave.test` /
+`password123`. Traffic: `cd testbed && docker compose start loadgen`.
 
-## Next
-**In progress (continuing later): client integration via adapters.** Design is written up in
-`docs/integration-adapters.md` — read it first. Summary: client apps (polyglot) emit a
-client-specific instrumentation format over a transport (client-1 → RabbitMQ, another →
-stdout). Plan is a collector with pluggable **sources** (rabbitmq / stdout / http) × **adapters**
-(per client format, e.g. `adapter-id-1`) that map `raw → Event[]` and POST to a new native
-`/v1/events` ingest. MVP to build: (1) `POST /v1/events`, (2) collector with rabbitmq + stdout
-sources, (3) `adapter-id-1` mapping, (4) verify end to end. Open questions listed in that doc
-(message granularity, sidecar vs single collector, whether to include per-span duration in v1).
-
-Other backlog (see `todo.md`): span waterfall + attribute drill-down on the trace page;
-clickable service nodes → a service page; search by span attribute.
+## Next (backlog — see `todo.md`)
+- **Retention / pruning** (S) — cap/prune the SQLite history so it stops regrowing (555MB before).
+- **UI tests** (M) — the UI has many pages and no automated tests yet.
+- **Python testbed service** (M) — prove polyglot-via-OTLP renders identically.
+- **Collector follow-ups** — an `http` source, wire a real client's RabbitMQ queue, more adapters.
+- **Smaller**: D2 export; side-by-side waterfalls in `/compare`.
 
 ## Gotchas
-- **ioredis / amqplib** in the testbed are loaded via `createRequire` because OTel only hooks
-  the CommonJS require path, not ESM import — otherwise their spans vanish.
-- **OTLP ingest is gzip-aware**: the `otlphttp` exporter compresses by default; the server
-  gunzips. Don't remove that.
-- **T5 wiring**: the collector reaches the host via `host.docker.internal` (host-gateway added
-  to the collector). LiveProbe runs on the host, testbed in Docker — kept decoupled.
-- **Host ports** use a private range (55432/56379/55672/15673/16687/24317-8) to avoid clashing
-  with other stacks on the machine.
-- **Two SQLite writers**: only run one LiveProbe server against `packages/server/data`.
+- **Git flow**: work on `dev`; the word **"sync"** = commit → push dev → fast-forward `main` →
+  push main → back to dev. Don't commit/push between syncs. Check the branch before pushing.
+- **Stray servers on :4319**: only run ONE LiveProbe server against `packages/server/data`. A
+  `dev.sh --watch` server may not always reload on a server-code change — restart `./dev.sh`, and
+  don't leave background `tsx packages/server/src/index.ts` instances around (use `DB_PATH` +
+  a spare `PORT` to verify in isolation).
+- **ioredis / amqplib** are loaded via `createRequire` (OTel only hooks CommonJS require, not ESM).
+- **OTLP ingest is gzip-aware** (the `otlphttp` exporter compresses by default). Keep the gunzip.
+- **Attribute search / waterfall** only cover traces ingested after those features shipped; the DB
+  was reset, so that's effectively everything now.
+- **Client format spec** is private in `adapters-hidden/` (gitignored); only a generic reference
+  adapter lives in the repo.
