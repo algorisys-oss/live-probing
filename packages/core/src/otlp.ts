@@ -95,6 +95,17 @@ function toMicros(nano: string | number | undefined): number {
   }
 }
 
+// HTTP instrumentation often names spans by bare method ("GET"), which makes a useless
+// trace title. Rebuild "METHOD /path" from attributes so the UI shows the real endpoint.
+function httpName(attrs: Attrs): string | undefined {
+  const method = attrs["http.request.method"] ?? attrs["http.method"];
+  const path = attrs["http.route"] ?? attrs["url.path"] ?? attrs["http.target"];
+  if (typeof method === "string" && typeof path === "string") {
+    return `${method} ${String(path).split("?")[0]}`;
+  }
+  return undefined;
+}
+
 // The other side of a call. A datastore/broker if the span carries one, otherwise the
 // remote service/host. Only meaningful for spans that call out (client/producer/consumer).
 function resolvePeer(kind: SpanKind, attrs: Attrs): string | undefined {
@@ -132,7 +143,7 @@ export function normalizeOtlp(payload: OtlpPayload): Event[] {
           parentSpanId: span.parentSpanId ? String(span.parentSpanId) : undefined,
           participant,
           peer: resolvePeer(kind, attrs),
-          operation: String(span.name ?? ""),
+          operation: httpName(attrs) ?? String(span.name ?? ""),
           kind,
           startTime: start,
           duration: Math.max(0, end - start),

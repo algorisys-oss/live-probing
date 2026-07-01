@@ -2,6 +2,13 @@
 
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
+## [2026-07-01 10:00]
+- LiveProbe: derive real endpoint titles ("POST /api/checkout") from HTTP span attributes
+  instead of the bare method the instrumentation emits; fixes uninformative trace titles in
+  the list and sequence header. 8 tests pass.
+- README: documented starting/stopping/tuning the load generator.
+- Files: packages/core/src/otlp.ts, core.test.ts, README.md.
+
 ## [2026-07-01 09:00]
 - Testbed auth seeds sample users on startup (alice/bob/carol @shopwave.test / password123),
   idempotent via ON CONFLICT. Documented in the README, plus a note explaining what Jaeger is.

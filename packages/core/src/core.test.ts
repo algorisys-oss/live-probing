@@ -97,6 +97,34 @@ test("normalizeOtlp maps spans to normalized events", () => {
   assert.equal(c3.status, "unset");
 });
 
+test("normalizeOtlp rebuilds a real endpoint name from bare-method HTTP spans", () => {
+  const payload: OtlpPayload = {
+    resourceSpans: [
+      {
+        resource: { attributes: [attr("service.name", "gateway")] },
+        scopeSpans: [
+          {
+            spans: [
+              {
+                traceId: "t",
+                spanId: "s",
+                name: "POST",
+                kind: 2,
+                startTimeUnixNano: String(NS),
+                endTimeUnixNano: String(NS + 1),
+                attributes: [attr("http.method", "POST"), attr("http.target", "/api/cart/items?x=1")],
+                status: { code: 0 },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+  const [e] = normalizeOtlp(payload);
+  assert.equal(e!.operation, "POST /api/cart/items"); // method + path, query stripped
+});
+
 test("TraceWindow assembles the tree even when spans arrive out of order", () => {
   const events = normalizeOtlp(fixture);
   const w = new TraceWindow();

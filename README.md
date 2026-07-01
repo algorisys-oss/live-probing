@@ -103,11 +103,35 @@ Signing up new accounts still works too; the seed is idempotent and never overwr
 | Redis | localhost:56379 |
 | RabbitMQ | localhost:55672 (amqp), http://localhost:15673 (management) |
 
-### Optional profiles
+### Traffic generator (start / stop)
+
+The load generator drives continuous, realistic user journeys so the diagrams have
+something to show. It's off by default (it lives behind the `load` compose profile). All
+commands run from `testbed/`.
+
+```bash
+# start it (continuous, ~12 req/s by default)
+docker compose --profile load up -d loadgen
+
+# watch what it's doing
+docker compose logs -f loadgen
+
+# stop it (diagrams go quiet; drive the system yourself instead)
+docker compose stop loadgen        # pause;  `start loadgen` to resume
+docker compose --profile load down loadgen   # remove the container entirely
+
+# tune it: CONCURRENCY (parallel users), THINK_MS (pause between steps),
+# DURATION_SECONDS (0 = forever). Example — a gentle trickle:
+docker compose --profile load run --rm -e CONCURRENCY=1 -e THINK_MS=2000 loadgen
+```
+
+Note: some journeys intentionally fail (simulated payment declines and out-of-stock), so a
+nonzero error count in its stats and red edges in the LiveProbe flow view are expected.
+
+### Storefront profile
 
 ```bash
 docker compose --profile ui up -d frontend      # storefront SPA on :8088
-docker compose --profile load up -d loadgen     # continuous traffic (set DURATION_SECONDS=0 to run forever)
 ```
 
 ## Running LiveProbe
