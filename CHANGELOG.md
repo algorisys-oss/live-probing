@@ -2,6 +2,14 @@
 
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
+## [2026-07-05]
+- **`./serve.sh` — standalone server entry point.** Runs just the LiveProbe server (UI +
+  OTLP/native ingest + ws on `:4319`, env: `PORT`/`DB_PATH`/`RETENTION_DAYS`), building the
+  UI on first run — no testbed, no watch. This is the command for client machines where a
+  real app is the trace source (`dev-start.sh` is for developing LiveProbe itself, and drags
+  the Shopwave testbed up). Referenced from `README.md`, `CLAUDE.md`, and Recipe A in
+  `docs/integrating-your-app.md`. Verified: boots, serves UI + `/healthz` on :4319.
+
 ## [2026-07-02]
 - **History retention + debounced writes (review finding #4).** (1) `HistoryStore.prune`
   drops whole day-partitions older than the retention window (`RETENTION_DAYS` env /

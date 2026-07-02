@@ -156,6 +156,14 @@ For a demo / non-dev run, build the UI once and serve it statically from the ser
 ./dev-start.sh --static   # then open http://localhost:4319
 ```
 
+To run **only the LiveProbe server** (UI + ingest, no testbed) — e.g. on a machine where a
+real app is the trace source:
+
+```bash
+./serve.sh                # builds the UI if missing; serves on :4319
+# env: PORT, DB_PATH, RETENTION_DAYS (default 14)
+```
+
 `--no-load` skips the traffic generator; `--no-build` (static mode) reuses the last UI build.
 Stop everything with one script:
 

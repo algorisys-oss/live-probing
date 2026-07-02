@@ -5,7 +5,14 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-**Fixed review finding #4: history retention + debounced writes** (TDD). `HistoryStore.prune`
+**Added `./serve.sh`** — standalone server entry point (UI + ingest on :4319, builds UI on
+first run, no testbed) for client machines pointing real apps at LiveProbe; referenced from
+README/CLAUDE.md/integration guide. Context: the SkillzEngine client integration landed on
+their `feat/live-probing` branch (optional `TRACING=1` OTel auto-instrumentation; see
+`adapters-hidden/skillzengine-adapter.md` for status + verified findings, incl. Mongo v7
+instrumentation working). Uncommitted here until next sync.
+
+Prior task: **Fixed review finding #4: history retention + debounced writes** (TDD). `HistoryStore.prune`
 drops day-partitions older than `RETENTION_DAYS` (env / `retentionDays` option; default **14**,
 `0` disables) at startup + hourly, VACUUMing after deletions so the file shrinks — verified on
 a real DB (901KB → 462KB + startup log). Ingest now *stages* the latest assembly per trace and
@@ -124,9 +131,9 @@ LiveProbe is a mature working app, verified end to end against the live testbed.
     time**, slowest), `/compare?a=&b=` (operation timing diff). Route-keyed `ErrorBoundary`.
 - **Client integration**: `packages/collector` (stdin/rabbitmq → adapter → `/v1/events`).
 - **Testbed** (`testbed/`): 8-service e-commerce + workers over Postgres/Redis/RabbitMQ,
-  OTel-instrumented; collector fans OTLP to Jaeger + LiveProbe. Loadgen currently **running**
-  (recreated 2026-07-02 after the stale-network fix); history DB was reset from 555MB and is
-  now **bounded**: `RETENTION_DAYS` (default 14) prunes + VACUUMs at startup and hourly.
+  OTel-instrumented; collector fans OTLP to Jaeger + LiveProbe. Loadgen currently **stopped**
+  (2026-07-05; services still up — `docker compose start loadgen` to resume traffic); history
+  DB is **bounded**: `RETENTION_DAYS` (default 14) prunes + VACUUMs at startup and hourly.
 
 ## How to run / verify
 ```bash
