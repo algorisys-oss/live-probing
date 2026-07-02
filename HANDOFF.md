@@ -5,7 +5,16 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-**Fixed review findings #1 and #2** (from `docs/implementation-review.md`), TDD both:
+**Fixed review finding #4: history retention + debounced writes** (TDD). `HistoryStore.prune`
+drops day-partitions older than `RETENTION_DAYS` (env / `retentionDays` option; default **14**,
+`0` disables) at startup + hourly, VACUUMing after deletions so the file shrinks — verified on
+a real DB (901KB → 462KB + startup log). Ingest now *stages* the latest assembly per trace and
+flushes on a timer (`historyFlushMs`, default 1500ms) or **before any /api read**, preserving
+read-your-writes (the e2e seed contract) while killing the per-batch re-upsert amplification.
+4 new tests — **30 unit + 15 e2e green**, typecheck clean. README env notes added; review doc
+finding #4 marked FIXED; todo C checked. The dev DB is now bounded even with loadgen running.
+
+Prior task: **Fixed review findings #1 and #2** (from `docs/implementation-review.md`), TDD both:
 - **Ghost nodes for uninstrumented peers**: topology + sequence now draw `participant → peer`
   edges when the callee never reported a span (suppressed when it did — no double edges), new
   `externals` field on `Topology`/`Sequence`, dashed grey nodes/lifelines in the UI, dashed
@@ -98,7 +107,7 @@ Prior task: `examples/otel-react-go/` — OTel integration reference for a React
 `encoding:json`→LiveProbe; React→LiveProbe direct). Synced (`d998250`).
 
 ## Current state
-LiveProbe is a mature working app, verified end to end against the live testbed. **26 unit tests
+LiveProbe is a mature working app, verified end to end against the live testbed. **30 unit tests
 + 15 e2e pass**, typecheck clean, UI verified in a headless browser. Nothing known broken.
 
 - **Ingest**: OTLP (`POST /v1/traces`, gzip-aware) **and** native (`POST /v1/events`) → one
@@ -116,14 +125,14 @@ LiveProbe is a mature working app, verified end to end against the live testbed.
 - **Client integration**: `packages/collector` (stdin/rabbitmq → adapter → `/v1/events`).
 - **Testbed** (`testbed/`): 8-service e-commerce + workers over Postgres/Redis/RabbitMQ,
   OTel-instrumented; collector fans OTLP to Jaeger + LiveProbe. Loadgen currently **running**
-  (recreated 2026-07-02 after the stale-network fix); history DB was reset from 555MB — watch
-  its size while loadgen runs (retention still unimplemented).
+  (recreated 2026-07-02 after the stale-network fix); history DB was reset from 555MB and is
+  now **bounded**: `RETENTION_DAYS` (default 14) prunes + VACUUMs at startup and hourly.
 
 ## How to run / verify
 ```bash
 ./dev-start.sh              # hot reload; open http://localhost:5173  (API/ws on :4319)
 ./dev-start.sh --static     # build + serve the UI from the server at http://localhost:4319
-npm test              # core + server + collector tests (26)
+npm test              # core + server + collector tests (30)
 npm run test:e2e      # Playwright UI e2e (15); first run: npx playwright install chromium
 ./dev-stop.sh             # tear down (--wipe drops data)
 # feed a non-OTLP client: cat events.ndjson | SOURCE=stdin ADAPTER=adapter-id-1 \
@@ -133,7 +142,6 @@ Details/ports: `README.md`. Jaeger at http://localhost:16687. Sample login `alic
 `password123`. Traffic: `cd testbed && docker compose start loadgen`.
 
 ## Next (backlog — see `todo.md`)
-- **Retention / pruning** (S) — cap/prune the SQLite history so it stops regrowing (555MB before).
 - **UI tests** (M) — the UI has many pages and no automated tests yet.
 - **Python testbed service** (M) — prove polyglot-via-OTLP renders identically.
 - **Collector follow-ups** — an `http` source, wire a real client's RabbitMQ queue, more adapters.
@@ -163,5 +171,7 @@ Details/ports: `README.md`. Jaeger at http://localhost:16687. Sample login `alic
 - **e2e**: runs on an isolated `:4399` + `.e2e-data/` (both separate from dev); the browser hits its
   own origin, no build-time URL override needed. First run needs `npx playwright install chromium`.
   Don't prefix test runs with `pkill` in this environment — it can nuke the session.
-- **Client format spec** is private in `adapters-hidden/` (gitignored); only a generic reference
-  adapter lives in the repo.
+- **Client-private material** lives in `adapters-hidden/` (gitignored): the client format spec
+  (`adapter-id-1.md`) and per-client integration notes (`skillzengine-adapter.md` — OTel/ESM
+  `--import` recipe for the Remix app, its caveats, and the granularity Q&A). Only a generic
+  reference adapter lives in the repo.

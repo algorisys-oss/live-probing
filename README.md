@@ -173,6 +173,8 @@ cd testbed && docker compose up -d --build && cd ..
 # 2. Start the LiveProbe server (OTLP ingest on :4319, REST + ws)
 npm install
 PORT=4319 npx tsx packages/server/src/index.ts
+#   env: DB_PATH=<file> (history db location), RETENTION_DAYS=N (keep the N most recent
+#   UTC days of history; default 14, 0 disables — pruned at startup and hourly)
 
 # 3. Generate traffic and watch LiveProbe fill up
 cd testbed && docker compose --profile load up -d loadgen && cd ..

@@ -86,6 +86,64 @@ test("server ingests OTLP and serves REST + websocket", async () => {
   }
 });
 
+test("history writes are debounced but flushed on API reads (read-your-writes)", async () => {
+  const PORT = 4401;
+  // A flush interval far longer than the test: only flush-on-read can make the data visible.
+  const server = createServer({ historyFlushMs: 60_000 });
+  await server.listen(PORT);
+  const base = `http://localhost:${PORT}`;
+  try {
+    const res = await fetch(`${base}/v1/events`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        events: [
+          { traceId: "d-1", spanId: "a", participant: "gw", operation: "GET /debounced", kind: "server", startTime: Date.now() * 1000, duration: 5000, status: "ok", attributes: {} },
+        ],
+      }),
+    });
+    assert.equal(res.status, 200);
+
+    // These endpoints are served from the history store, not the live window.
+    const search = (await (await fetch(`${base}/api/search?q=debounced`)).json()) as any;
+    assert.equal(search.traces.length, 1);
+    const days = (await (await fetch(`${base}/api/days`)).json()) as any;
+    assert.equal(days.days.length, 1);
+  } finally {
+    await server.close();
+  }
+});
+
+test("retentionDays prunes old history on startup", async (t) => {
+  const { mkdtempSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const dbPath = join(mkdtempSync(join(tmpdir(), "lp-retention-")), "history.db");
+
+  // Seed a trace from 1970 directly into the store, then reopen via the server with retention.
+  const { HistoryStore } = await import("./history-store.js");
+  const { TraceWindow } = await import("@liveprobe/core");
+  const w = new TraceWindow();
+  w.add([
+    { traceId: "ancient", spanId: "s", participant: "gw", operation: "GET /old", kind: "server", startTime: 1_000_000, duration: 1000, status: "ok", attributes: {} },
+  ]);
+  const seedStore = new HistoryStore(dbPath);
+  seedStore.upsertMany([w.assemble("ancient")!]);
+  assert.equal(seedStore.days().length, 1);
+  seedStore.close();
+
+  const PORT = 4402;
+  const server = createServer({ dbPath, retentionDays: 7 });
+  await server.listen(PORT);
+  try {
+    const days = (await (await fetch(`http://localhost:${PORT}/api/days`)).json()) as any;
+    assert.equal(days.days.length, 0, "1970 day pruned at startup");
+  } finally {
+    await server.close();
+  }
+  t.diagnostic(`db: ${dbPath}`);
+});
+
 test("server accepts native events at /v1/events", async () => {
   const PORT = 4400;
   const server = createServer();

@@ -55,6 +55,58 @@ test("HistoryStore persists and aggregates by day", () => {
   store.close();
 });
 
+const DAY = 86_400_000_000; // one UTC day in micros
+
+// A one-span trace starting at the given epoch-micros (its own window avoids horizon eviction).
+function traceAt(traceId: string, startMicros: number) {
+  const w = new TraceWindow({ horizonMicros: Number.MAX_SAFE_INTEGER });
+  w.add([
+    {
+      traceId,
+      spanId: `${traceId}-s`,
+      participant: "gw",
+      operation: "GET /x",
+      kind: "server",
+      startTime: startMicros,
+      duration: 1000,
+      status: "ok",
+      attributes: {},
+    },
+  ]);
+  return w.assemble(traceId)!;
+}
+
+test("prune drops whole days older than the retention window", () => {
+  const store = new HistoryStore(":memory:");
+  store.upsertMany([
+    traceAt("old", 1_000_000), // 1970-01-01
+    traceAt("mid", 4 * DAY + 1_000_000), // 1970-01-05
+    traceAt("new", 9 * DAY + 1_000_000), // 1970-01-10
+  ]);
+  assert.equal(store.days().length, 3);
+
+  // Keep the 7 most recent days including "today" (1970-01-10): cutoff is 1970-01-04.
+  const now = 9 * DAY + 12 * 3_600_000_000;
+  const dropped = store.prune(7, now);
+
+  assert.equal(dropped, 1);
+  assert.deepEqual(
+    store.days().map((d) => d.day),
+    ["1970-01-10", "1970-01-05"],
+  );
+  assert.equal(store.getDetail("old"), null); // detail gone with the day
+  store.close();
+});
+
+test("prune with retention <= 0 is a no-op (retention disabled)", () => {
+  const store = new HistoryStore(":memory:");
+  store.upsertMany([traceAt("old", 1_000_000)]);
+  assert.equal(store.prune(0, 9 * DAY), 0);
+  assert.equal(store.prune(-1, 9 * DAY), 0);
+  assert.equal(store.days().length, 1);
+  store.close();
+});
+
 test("HistoryStore search filters by text, service, error, and latency", () => {
   const window = new TraceWindow();
   window.add(normalizeOtlp(payload));

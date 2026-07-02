@@ -186,6 +186,18 @@ export class HistoryStore {
     }
   }
 
+  // Drop whole day-partitions older than the retention window (the N most recent UTC days,
+  // including today). retentionDays <= 0 disables. Returns rows deleted; VACUUMs when rows
+  // were dropped so the database file actually shrinks (deletes alone only free pages).
+  prune(retentionDays: number, nowMicros = Date.now() * 1000): number {
+    if (retentionDays <= 0) return 0;
+    const cutoff = dayOf(nowMicros - (retentionDays - 1) * 86_400_000_000);
+    const { changes } = this.db.prepare("DELETE FROM traces WHERE day < ?").run(cutoff);
+    const deleted = Number(changes);
+    if (deleted > 0) this.db.exec("VACUUM");
+    return deleted;
+  }
+
   days(): DayInfo[] {
     return this.db
       .prepare("SELECT day, count(*) requests, sum(has_error) errors FROM traces GROUP BY day ORDER BY day DESC")

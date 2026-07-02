@@ -3,6 +3,18 @@
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
 ## [2026-07-02]
+- **History retention + debounced writes (review finding #4).** (1) `HistoryStore.prune`
+  drops whole day-partitions older than the retention window (`RETENTION_DAYS` env /
+  `retentionDays` option; default **14**, `0` disables), runs at startup and hourly, and
+  VACUUMs after deletions so the DB file actually shrinks — verified on a real file
+  (901KB → 462KB, startup log line). Guards the 555MB regrowth with loadgen running.
+  (2) Ingest no longer re-upserts every affected trace per batch: assemblies are *staged*
+  per trace and flushed on a timer (`historyFlushMs`, default 1500ms) or **before any /api
+  read**, so read-your-writes is preserved (the e2e seed contract) while a trace is written
+  once per flush instead of once per ingest batch. Flush also runs on close. TDD: 4 new
+  tests (prune drops days / prune 0 disables / flush-on-read with a 60s timer / startup
+  prune via `retentionDays`) — **30 unit + 15 e2e green**, typecheck clean. README env
+  notes; review finding #4 marked FIXED.
 - **Review finding #3 corrected + NUL byte fixed.** The review's claim that
   `EDGE_SEP = " "` broke service names with spaces was wrong: the separator was a **literal
   NUL byte** that review tooling rendered as a space (names with spaces were never broken).

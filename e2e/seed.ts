@@ -1,9 +1,9 @@
 import { expect, type APIRequestContext } from "@playwright/test";
 
 // Deterministic trace fixtures posted to LiveProbe's native ingest (POST /v1/events).
-// Ingest persists synchronously (window + history store) before returning 200, so
-// after seed() resolves the data is visible to every UI page (live, trace, search,
-// errors, day/history).
+// Ingest updates the live window synchronously; history writes are staged but flushed
+// before any /api read (read-your-writes), so after seed() resolves the data is visible
+// to every UI page (live, trace, search, errors, day/history).
 
 const MS = 1000; // microseconds per millisecond
 

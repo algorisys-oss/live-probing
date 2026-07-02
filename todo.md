@@ -93,8 +93,10 @@ items: **S** = hours, **M** = ~a day, **L** = multi-day.
 - [ ] Anomaly/alert hooks (error-rate or latency spike → banner/webhook) **M–L**
 
 ### C. Data & scale
-- [ ] Retention / pruning (drop days older than N, size cap) **S** — pair with fixing the
-      per-batch trace re-upsert write amplification (`docs/implementation-review.md` #4)
+- [x] Retention / pruning — `RETENTION_DAYS` (default 14, 0 disables) drops day-partitions
+      older than the window at startup + hourly, VACUUMs so the file shrinks; history writes
+      debounced (staged per trace, flushed on timer or before any /api read — read-your-writes
+      kept) fixing the per-batch re-upsert amplification (`docs/implementation-review.md` #4)
 - [ ] Sampling & backpressure on ingest under heavy load **M**
 - [x] Multi-day trends overview chart on /history (requests/day + errors)
 
@@ -135,4 +137,4 @@ items: **S** = hours, **M** = ~a day, **L** = multi-day.
 2. [x] Clickable service nodes → service page (A) — makes the flow graph navigable
 3. [x] Search by span attribute (B) — "all traces for user X" / "all 500s on /checkout"
 4. [~] UI e2e tests (E) — Playwright suite landed (11 specs); component tests still open
-5. [ ] Retention / pruning (C) — small, keeps the DB bounded
+5. [x] Retention / pruning (C) — `RETENTION_DAYS` + debounced history writes landed

@@ -8,6 +8,7 @@ import {
   normalizeOtlp,
   coerceEvents,
   toMermaidFlow,
+  type AssembledTrace,
   type Event,
   type OtlpPayload,
 } from "@liveprobe/core";
@@ -20,6 +21,13 @@ export interface ServerOptions {
   maxTraces?: number;
   horizonMicros?: number;
   topologyIntervalMs?: number;
+  // Keep the N most recent UTC days of history (including today); older day-partitions are
+  // pruned at startup and hourly. 0 disables retention. Default 14.
+  retentionDays?: number;
+  // How often staged history writes are flushed to SQLite. Ingest only *stages* the latest
+  // assembly of each touched trace; any /api read flushes first (read-your-writes), so this
+  // interval bounds crash loss, not visibility. Default 1500ms.
+  historyFlushMs?: number;
 }
 
 const MIME: Record<string, string> = {
@@ -59,6 +67,30 @@ export function createServer(opts: ServerOptions = {}): LiveProbeServer {
       .sort((a, b) => b.startTime - a.startTime)
       .slice(0, limit);
 
+  // History writes are debounced: ingest stages the latest assembly of each touched trace,
+  // and a batch is written on the flush timer or before any /api read (read-your-writes).
+  // A trace that grows across many ingest batches is then written once per flush instead of
+  // once per batch (the old write-amplification, see docs/implementation-review.md #4).
+  const pendingHistory = new Map<string, AssembledTrace>();
+  const flushHistory = () => {
+    if (pendingHistory.size === 0) return;
+    const batch = [...pendingHistory.values()];
+    pendingHistory.clear();
+    store.upsertMany(batch);
+  };
+  const flushTimer = setInterval(flushHistory, opts.historyFlushMs ?? 1500);
+  flushTimer.unref();
+
+  // Retention: drop day-partitions older than the window, at startup and hourly.
+  const retentionDays = opts.retentionDays ?? 14;
+  const prune = () => {
+    const dropped = store.prune(retentionDays);
+    if (dropped > 0) console.log(`[liveprobe] retention: pruned ${dropped} traces older than ${retentionDays} days`);
+  };
+  prune();
+  const pruneTimer = setInterval(prune, 3_600_000);
+  pruneTimer.unref();
+
   // Shared ingest path for both OTLP and native events.
   const ingestEvents = (events: Event[]) => {
     if (events.length === 0) return;
@@ -70,7 +102,7 @@ export function createServer(opts: ServerOptions = {}): LiveProbeServer {
       .filter((t): t is NonNullable<typeof t> => t !== null);
     if (assembled.length > 0) {
       broadcast({ type: "traces", traces: assembled.map(summarize) });
-      store.upsertMany(assembled); // persist for the daily/history view
+      for (const t of assembled) pendingHistory.set(t.traceId, t); // staged for the daily/history view
     }
     topologyDirty = true;
   };
@@ -138,6 +170,9 @@ export function createServer(opts: ServerOptions = {}): LiveProbeServer {
 
     const url = new URL(req.url ?? "/", "http://localhost");
     const path = url.pathname;
+
+    // Read-your-writes: API reads hit the history store, so land staged writes first.
+    if (req.method === "GET" && path.startsWith("/api/")) flushHistory();
 
     try {
       if (req.method === "POST" && (path === "/v1/traces" || path === "/v1/events")) {
@@ -236,8 +271,11 @@ export function createServer(opts: ServerOptions = {}): LiveProbeServer {
     close: () =>
       new Promise((resolvePromise) => {
         clearInterval(timer);
+        clearInterval(flushTimer);
+        clearInterval(pruneTimer);
         for (const ws of clients) ws.close();
         wss.close(() => httpServer.close(() => {
+          flushHistory();
           store.close();
           resolvePromise();
         }));

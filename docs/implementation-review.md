@@ -66,7 +66,13 @@ git and grep treat `trace-window.ts` as **binary** — no textual diffs, no grep
 writing the same value as the escape sequence `"\u0000"`; behavior unchanged, file is text
 again.
 
-### 4. History write amplification
+### 4. History write amplification — **FIXED 2026-07-02**
+
+> Fixed as recommended: ingest now *stages* the latest assembly per trace and flushes on a
+> timer (default 1500ms) or before any `/api` read (read-your-writes preserved), so a trace
+> is written once per flush instead of once per batch. Retention landed with it:
+> `RETENTION_DAYS` (default 14, 0 disables) prunes whole day-partitions at startup and
+> hourly, with VACUUM so the file shrinks. Verified on a real DB (901KB → 462KB).
 
 `ingestEvents` in `server.ts` re-upserts every affected trace on every incoming batch, so
 a 40-span trace arriving across 10 batches is written to SQLite ~10 times. Combined with

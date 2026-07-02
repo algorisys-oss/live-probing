@@ -15,9 +15,12 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const publicDir = join(here, "..", "public");
   const dataDir = join(here, "..", "data");
   mkdirSync(dataDir, { recursive: true });
+  // RETENTION_DAYS: keep the N most recent UTC days of history (default 14; 0 disables).
+  const retentionEnv = Number(process.env.RETENTION_DAYS);
   const server = createServer({
     publicDir: existsSync(publicDir) ? publicDir : undefined,
     dbPath: process.env.DB_PATH ?? join(dataDir, "liveprobe.db"),
+    retentionDays: Number.isFinite(retentionEnv) ? retentionEnv : undefined,
   });
 
   const shutdown = () => void server.close().then(() => process.exit(0));
