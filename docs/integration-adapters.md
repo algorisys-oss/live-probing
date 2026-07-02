@@ -59,9 +59,10 @@ sources:
 Source notes:
 - **rabbitmq** — asserts a durable queue and consumes it, `prefetch(64)`, acking each message
   once the adapter has run and the event is buffered for send (see delivery semantics under the
-  runbook below — it is **best-effort, not durable**). The current source does **not** bind the
-  queue to an exchange; for a fanout tap of an existing stream you bind the queue out-of-band (or
-  extend the source — see the runbook). Implementation: `packages/collector/src/sources/rabbitmq.ts`.
+  runbook below — it is **best-effort, not durable**). Set `EXCHANGE` to bind the queue to an
+  existing exchange for a **non-intrusive fanout tap** (`EXCHANGE_TYPE` to declare it, else it is
+  verified passively; `ROUTING_KEY` for the binding key(s), default `#`). Implementation:
+  `packages/collector/src/sources/rabbitmq.ts`.
 - **stdout** — newline-delimited JSON from stdin or a tailed file. In container/k8s land, apps
   write JSON lines to stdout and a log shipper (fluentbit/vector) can POST them to the
   collector's `http` source; or the collector tails the file directly. Same adapter either way.
@@ -131,8 +132,13 @@ New client after this = **a new adapter file + one config block**; the transport
 cat events.ndjson | SOURCE=stdin ADAPTER=adapter-id-1 LIVEPROBE_URL=http://localhost:4319 \
   npx tsx packages/collector/src/index.ts
 
-# consume a RabbitMQ queue (one collector per client; run as a sidecar)
+# consume a RabbitMQ queue directly (one collector per client; run as a sidecar)
 SOURCE=rabbitmq ADAPTER=adapter-id-1 RABBITMQ_URL=amqp://… QUEUE=instrumentation.events \
+  LIVEPROBE_URL=http://localhost:4319 npx tsx packages/collector/src/index.ts
+
+# non-intrusive fanout tap: bind a dedicated queue to an existing exchange (see the runbook)
+SOURCE=rabbitmq ADAPTER=adapter-id-1 RABBITMQ_URL=amqp://… \
+  EXCHANGE=instrumentation ROUTING_KEY="#" QUEUE=liveprobe.tap \
   LIVEPROBE_URL=http://localhost:4319 npx tsx packages/collector/src/index.ts
 ```
 
@@ -179,10 +185,11 @@ collector's `rabbitmq` source at `liveprobe.tap`.
 > queue are *competing* consumers — LiveProbe would *steal* half the messages from the client's
 > pipeline. A tap must be its own queue bound to the exchange, so each side gets its own copy.
 
-> Note: the built-in `rabbitmq` source asserts and consumes a queue but does not bind it to an
-> exchange. Today that binding is a one-time RabbitMQ admin step (declare `liveprobe.tap`, bind
-> it to the exchange with the right routing key). Making the source take `EXCHANGE` /
-> `ROUTING_KEY` env and bind on startup is a small enhancement that turns this into pure config.
+> The binding is built in: set `EXCHANGE` (plus optional `ROUTING_KEY`, default `#`) and the
+> source declares/verifies the exchange, asserts your `QUEUE`, and binds it on startup — no
+> manual RabbitMQ admin step. Use `EXCHANGE_TYPE` (e.g. `topic`, `fanout`) to *declare* the
+> exchange; omit it to bind to one someone else already owns (verified passively, never
+> redeclared). For a `direct` exchange, set `ROUTING_KEY` to the exact key(s); fanout ignores it.
 
 **Option B — stdout tee (zero RabbitMQ changes).** The client already writes the stream to
 stdout. `tee` that stream (or point a log shipper at the same file) into the collector's `stdin`
@@ -201,12 +208,15 @@ PORT=4319 node packages/server/src/index.ts     # or the docker / npx equivalent
 ### Step 3 — run the collector (one instance)
 
 ```bash
-# Option A — RabbitMQ tap
+# Option A — RabbitMQ fanout tap: binds a dedicated queue to the client's exchange
 SOURCE=rabbitmq ADAPTER=adapter-id-1 \
   RABBITMQ_URL=amqp://<shared-rabbit-host> \
+  EXCHANGE=<their-exchange> ROUTING_KEY="#" \
   QUEUE=liveprobe.tap \
   LIVEPROBE_URL=http://<liveprobe-host>:4319 \
   node packages/collector/src/index.ts
+#   add EXCHANGE_TYPE=topic (or fanout) to declare the exchange if it doesn't exist yet;
+#   omit EXCHANGE to consume a queue directly instead of tapping an exchange.
 
 # Option B — stdout tap
 SOURCE=stdin ADAPTER=adapter-id-1 LIVEPROBE_URL=http://<liveprobe-host>:4319 \

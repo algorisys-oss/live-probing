@@ -3,6 +3,15 @@
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
 ## [2026-07-02]
+- **Collector: built-in RabbitMQ exchange tap.** `rabbitmqSource` now takes `EXCHANGE` /
+  `EXCHANGE_TYPE` / `ROUTING_KEY` (env in `packages/collector/src/index.ts`): it declares the
+  exchange (when a type is given) or verifies it passively (when not), asserts the queue, and
+  binds it — making the non-intrusive fanout tap pure config instead of a manual RabbitMQ admin
+  step. The source is now injectable (`opts.connect`) for testing. Added 4 unit tests (plain
+  consume, passive-tap binding, declare-tap default key `#`, poison-message nack) via a fake
+  connection — **17 tests** total. Verified end to end against the live testbed RabbitMQ (declared
+  a topic exchange, bound a dedicated queue, received a published event). Updated the runbook +
+  Source notes in `docs/integration-adapters.md` to reflect the built-in binding.
 - **Docs: non-intrusive adapter rollout runbook.** Added a step-by-step runbook to
   `docs/integration-adapters.md` for onboarding an existing production estate (N polyglot apps
   across VPS/GCP that already emit `adapter-id-1` to a shared RabbitMQ): tap-don't-divert

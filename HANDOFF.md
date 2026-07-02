@@ -5,7 +5,14 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-Docs: added a **non-intrusive rollout runbook** to `docs/integration-adapters.md` for onboarding
+Collector: made the RabbitMQ **fanout tap turnkey**. `rabbitmqSource` now supports `EXCHANGE` /
+`EXCHANGE_TYPE` / `ROUTING_KEY` env — declares (with a type) or passively verifies the exchange,
+asserts the queue, and binds it on startup, so tapping an existing stream is pure config (no
+manual RabbitMQ admin). Source is injectable (`opts.connect`) for tests; added 4 unit tests via a
+fake connection (17 total, typecheck green) and verified end-to-end against the live testbed
+RabbitMQ. Updated `docs/integration-adapters.md` (runbook + Source notes + examples).
+
+Prior task: Docs: added a **non-intrusive rollout runbook** to `docs/integration-adapters.md` for onboarding
 an existing production estate — N polyglot apps (React+Node+Postgres, Elixir/Phoenix+Ecto, …)
 across mixed hosting (VPS/GCP) that already emit `adapter-id-1` to a shared RabbitMQ. Covers:
 tap-don't-divert, RabbitMQ fanout-copy vs stdout-tee (with competing-consumer warning), one

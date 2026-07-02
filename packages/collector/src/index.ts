@@ -9,6 +9,10 @@ import { rabbitmqSource } from "./sources/rabbitmq.js";
 //   SOURCE=stdin    ADAPTER=adapter-id-1                      < events.ndjson
 //   SOURCE=rabbitmq ADAPTER=adapter-id-1 RABBITMQ_URL=... QUEUE=instrumentation.events
 //
+// To tap an existing exchange non-intrusively (bind our own queue for a copy of the stream):
+//   SOURCE=rabbitmq ADAPTER=adapter-id-1 RABBITMQ_URL=... QUEUE=liveprobe.tap \
+//     EXCHANGE=instrumentation ROUTING_KEY="#"   [EXCHANGE_TYPE=topic to declare it]
+//
 // LIVEPROBE_URL defaults to http://localhost:4319.
 
 async function main(): Promise<void> {
@@ -36,7 +40,22 @@ async function main(): Promise<void> {
   if (source === "rabbitmq") {
     const url = process.env.RABBITMQ_URL ?? "amqp://localhost:5672";
     const queue = process.env.QUEUE ?? "instrumentation.events";
-    const stop = await rabbitmqSource(url, queue, onEvent);
+    const exchange = process.env.EXCHANGE || undefined;
+    const exchangeType = process.env.EXCHANGE_TYPE || undefined;
+    const routingKeys = (process.env.ROUTING_KEY ?? "#")
+      .split(",")
+      .map((k) => k.trim())
+      .filter((k) => k.length > 0);
+    if (exchange) {
+      console.error(
+        `[collector] tapping exchange="${exchange}"${exchangeType ? ` (declare ${exchangeType})` : " (verify)"} keys=[${routingKeys.join(", ")}] -> queue="${queue}"`,
+      );
+    }
+    const stop = await rabbitmqSource(url, queue, onEvent, {
+      exchange,
+      exchangeType,
+      routingKeys,
+    });
     const shutdown = () => void Promise.resolve(stop()).then(() => sink.close()).then(() => process.exit(0));
     process.on("SIGINT", shutdown);
     process.on("SIGTERM", shutdown);
