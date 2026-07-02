@@ -1,7 +1,7 @@
 # Dev overlay: bind-mount the source and run each service under `tsx watch` so code
 # changes reload inside the containers. Use with the base file:
 #   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
-# (dev.sh --watch does this for you.)
+# (dev-start.sh --watch does this for you.)
 #
 # The bind mount overlays /app with the host workspace, including host node_modules — safe
 # here because host and container are the same platform (Linux x64).

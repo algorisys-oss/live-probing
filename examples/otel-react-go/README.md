@@ -39,7 +39,7 @@ structure, so they can't feed the diagrams. OpenTelemetry's *tracing* signal is 
 
 ## Run order (local dev)
 
-1. **LiveProbe**: `./dev.sh` (UI at http://localhost:5173, ingest/ws at :4319).
+1. **LiveProbe**: `./dev-start.sh` (UI at http://localhost:5173, ingest/ws at :4319).
 2. **Collector**: `otelcol --config examples/otel-react-go/otel-collector.yaml`
    (listens OTLP/HTTP on :4318, exports JSON to LiveProbe :4319).
 3. **Go backend**: point `OTEL_COLLECTOR=localhost:4318`, run it (serves on :8080).

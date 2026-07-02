@@ -173,6 +173,6 @@ the testbed in Docker, connected only by that one OTLP export line.
 
 ## Running it
 
-`./dev.sh` builds the UI, brings up the testbed + traffic, and runs the LiveProbe server
-serving the UI at http://localhost:4319. `./stop.sh` tears it all down. See the top-level
+`./dev-start.sh` builds the UI, brings up the testbed + traffic, and runs the LiveProbe server
+serving the UI at http://localhost:4319. `./dev-stop.sh` tears it all down. See the top-level
 [README](../README.md) for details and ports.

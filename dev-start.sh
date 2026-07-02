@@ -3,18 +3,18 @@
 # LiveProbe end-to-end dev runner.
 #
 # Modes:
-#   ./dev.sh            Hot-reload dev loop (DEFAULT):
+#   ./dev-start.sh            Hot-reload dev loop (DEFAULT):
 #                         - LiveProbe UI runs under Vite with HMR at http://localhost:5173
 #                         - LiveProbe server runs under `tsx watch` (restarts on change)
 #                         - testbed services run under `tsx watch` (via docker-compose.dev.yml)
 #                       Edit any source and it reloads. Open http://localhost:5173.
-#   ./dev.sh --static   Build the UI and serve it statically from the server at :4319.
+#   ./dev-start.sh --static   Build the UI and serve it statically from the server at :4319.
 #                       No hot reload (good for a demo / just using it).
-#   ./dev.sh --no-load  Don't start the traffic generator.
-#   ./dev.sh --no-build (static mode only) Reuse the existing UI build.
+#   ./dev-start.sh --no-load  Don't start the traffic generator.
+#   ./dev-start.sh --no-build (static mode only) Reuse the existing UI build.
 #
 # The foreground process is the LiveProbe server; Ctrl-C stops it (and, in watch mode, the
-# UI dev server). The Docker stack keeps running — stop it all with ./stop.sh.
+# UI dev server). The Docker stack keeps running — stop it all with ./dev-stop.sh.
 
 set -euo pipefail
 
@@ -64,7 +64,7 @@ if [[ "$WATCH" == "1" ]]; then
   Jaeger (compare)     http://localhost:16687
 ------------------------------------------------------------
   Edit any source and it reloads. Ctrl-C stops the server + UI dev.
-  Stop everything:  ./stop.sh
+  Stop everything:  ./dev-stop.sh
 ------------------------------------------------------------
 
 EOF
@@ -101,7 +101,7 @@ cat <<EOF
   Storefront SPA    http://localhost:8088   (cd testbed && docker compose --profile ui up -d frontend)
 ------------------------------------------------------------
   Ctrl-C stops the LiveProbe server. The Docker stack stays up.
-  Stop everything:  ./stop.sh
+  Stop everything:  ./dev-stop.sh
 ------------------------------------------------------------
 
 EOF

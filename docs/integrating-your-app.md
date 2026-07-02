@@ -132,7 +132,7 @@ service:
 `endpoint: http://host.docker.internal:4319` is correct because the OTLP/HTTP exporter appends
 `/v1/traces` itself. Add `jaeger`/`debug` exporters alongside if you want a second sink.
 
-Start LiveProbe on the host (`./dev.sh`), bring the stack up, drive traffic → the diagram
+Start LiveProbe on the host (`./dev-start.sh`), bring the stack up, drive traffic → the diagram
 redraws live.
 
 ## Recipe B — Non-dockerized app (bare process, VM, systemd, k8s pod)

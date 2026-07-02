@@ -4,8 +4,8 @@
 # (all services, including the loadgen and frontend profiles).
 #
 # Usage:
-#   ./stop.sh           # stop the server + tear down the stack, keep data
-#   ./stop.sh --wipe    # also remove Docker volumes (wipes the Postgres data)
+#   ./dev-stop.sh           # stop the server + tear down the stack, keep data
+#   ./dev-stop.sh --wipe    # also remove Docker volumes (wipes the Postgres data)
 
 set -euo pipefail
 

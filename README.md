@@ -140,7 +140,7 @@ One command brings up the whole thing — testbed, traffic, and LiveProbe — wi
 by default**:
 
 ```bash
-./dev.sh
+./dev-start.sh
 # then open http://localhost:5173
 ```
 
@@ -153,15 +153,15 @@ reloads. The API/ws stays on :4319.
 For a demo / non-dev run, build the UI once and serve it statically from the server:
 
 ```bash
-./dev.sh --static   # then open http://localhost:4319
+./dev-start.sh --static   # then open http://localhost:4319
 ```
 
 `--no-load` skips the traffic generator; `--no-build` (static mode) reuses the last UI build.
 Stop everything with one script:
 
 ```bash
-./stop.sh           # stop the LiveProbe server + tear down the Docker stack
-./stop.sh --wipe    # also drop the Postgres data
+./dev-stop.sh           # stop the LiveProbe server + tear down the Docker stack
+./dev-stop.sh --wipe    # also drop the Postgres data
 ```
 
 Or do it manually:
