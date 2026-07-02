@@ -5,7 +5,16 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-Docs tidy: moved the planning specs `plan.md` + `plan-testbed.md` into `docs/` (they're
+Docs: added a **non-intrusive rollout runbook** to `docs/integration-adapters.md` for onboarding
+an existing production estate — N polyglot apps (React+Node+Postgres, Elixir/Phoenix+Ecto, …)
+across mixed hosting (VPS/GCP) that already emit `adapter-id-1` to a shared RabbitMQ. Covers:
+tap-don't-divert, RabbitMQ fanout-copy vs stdout-tee (with competing-consumer warning), one
+collector per client (not per app), where to run it, what renders vs. what's limited for the
+event-centric format (no latency/kind), and best-effort delivery caveats. Corrected the "Source
+notes" to match the code (no exchange bind; not durable). Cross-linked from Recipe D in
+`docs/integrating-your-app.md`. Docs only — no code, no tests.
+
+Prior task: Docs tidy: moved the planning specs `plan.md` + `plan-testbed.md` into `docs/` (they're
 read-mostly design/contract specs, sitting alongside `architecture.md` etc.) and re-linked them
 in `README.md`, `CLAUDE.md`, and `docs/README.md`. The rolling-state/audit docs (`HANDOFF.md`,
 `todo.md`, `IMPLEMENT.md`, `CHANGELOG.md`) stay at the repo root — LOOPS rule XXV pins

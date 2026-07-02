@@ -186,7 +186,10 @@ If your app emits a proprietary structured format over RabbitMQ, stdout, or HTTP
 OTLP, use the native path: the repo's **collector** (`packages/collector`) consumes from a
 source, runs a per-format **adapter** (`raw → Event[]`), and POSTs to `/v1/events`. One
 adapter covers all of a client's languages. Design and config in
-[integration-adapters.md](integration-adapters.md).
+[integration-adapters.md](integration-adapters.md) — including a step-by-step
+[non-intrusive runbook](integration-adapters.md#rolling-out-to-an-existing-production-estate-non-intrusive-runbook)
+for adding LiveProbe to an existing production estate that already emits to a shared broker,
+without touching the apps.
 
 ## Recipe E — VPS deploy, no Docker (React + Node / Go / Elixir)
 

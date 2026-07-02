@@ -3,6 +3,15 @@
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
 ## [2026-07-02]
+- **Docs: non-intrusive adapter rollout runbook.** Added a step-by-step runbook to
+  `docs/integration-adapters.md` for onboarding an existing production estate (N polyglot apps
+  across VPS/GCP that already emit `adapter-id-1` to a shared RabbitMQ): tap-don't-divert
+  principle, RabbitMQ fanout-copy vs stdout-tee tap points (with the competing-consumer
+  warning), one-collector-per-client, where to run it, what renders vs. what's limited for this
+  format, and honest production caveats (best-effort delivery, single consumer). Corrected two
+  optimistic claims in the "Source notes" to match the code (the `rabbitmq` source asserts a
+  queue but does not bind an exchange; delivery is best-effort, not durable). Cross-linked from
+  Recipe D in `docs/integrating-your-app.md`. Docs only.
 - **Docs tidy:** moved the planning/contract specs `plan.md` and `plan-testbed.md` into `docs/`
   (alongside `architecture.md`, `event-model.md`, …) and indexed them in `docs/README.md`.
   Updated the links/paths in `README.md` and `CLAUDE.md`. Rolling project-state and audit docs
