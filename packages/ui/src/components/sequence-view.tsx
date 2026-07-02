@@ -79,6 +79,8 @@ export function SequenceView({
 
   const { summary, sequence } = detail;
   const participants = sequence.participants;
+  // Uninstrumented "ghost" peers get a dashed lifeline header.
+  const externals = new Set(sequence.externals ?? []);
   const colX = new Map<string, number>();
   participants.forEach((p, i) => {
     colX.set(p, MARGIN_X + COL_W / 2 + i * COL_W);
@@ -154,6 +156,7 @@ export function SequenceView({
           {participants.map((p) => {
             const x = colX.get(p)!;
             const label = p.length > 18 ? p.slice(0, 17) + "…" : p;
+            const ghost = externals.has(p);
             return (
               <g key={p}>
                 <rect
@@ -162,7 +165,7 @@ export function SequenceView({
                   width={COL_W - 16}
                   height={34}
                   rx={6}
-                  className="seq-participant"
+                  className={ghost ? "seq-participant seq-participant-external" : "seq-participant"}
                 />
                 <text x={x} y={32} className="seq-participant-label">
                   {label}

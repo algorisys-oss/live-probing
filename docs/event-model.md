@@ -102,24 +102,31 @@ its parent and still link correctly once both are present.
 
 ### Topology (`TraceWindow.topology`)
 
-Aggregated across the whole window into `{ nodes, edges }`. Two edge sources:
+Aggregated across the whole window into `{ nodes, edges, externals }`. Two edge sources:
 
 1. **service → service**: for any span whose parent (same trace) has a *different*
    `participant`, add an edge `parent.participant → span.participant`. Because a full Shopwave
    trace is connected across RabbitMQ, this captures async hops too (order → payment-worker).
-2. **service → datastore**: for any span whose `peer` is in `DATASTORE_SYSTEMS`, add an edge
-   `participant → peer`.
+2. **service → peer**: for any span with a `peer` whose callee did **not** report a span of
+   its own (no cross-participant child), add an edge `participant → peer`. This covers
+   datastores (`peer` in `DATASTORE_SYSTEMS`) *and* **uninstrumented services** — the latter
+   are listed in `externals` and render as dashed "ghost" nodes, so a partially-onboarded
+   system still shows every observed call. When the callee did report (a cross-participant
+   child exists), the peer edge is suppressed so the call isn't drawn twice.
 
 Each edge accumulates `calls`, `errors` (spans with `status === "error"`), and an average
-duration.
+duration. `externals` never includes datastores or names that also appear as participants.
 
 ### Sequence (`sequenceFor`)
 
-One assembled trace → `{ participants, messages }`, walking spans in `startTime` order:
+One assembled trace → `{ participants, messages, externals }`, walking spans in
+`startTime` order:
 
 - A span whose parent is a *different* participant emits a message `parent → span` labelled
   with `operation`.
-- A span calling a datastore emits `participant → peer`.
+- A span calling a peer (datastore or uninstrumented service) emits `participant → peer`,
+  unless the callee reported its own span (then the parent/child arrow covers the call).
+  Uninstrumented peers are listed in `externals` and render as dashed ghost lifelines.
 - Same-participant internal work is not drawn.
 - `async: true` when the span is a `consumer` or its parent is a `producer` (the RabbitMQ
   boundary), which the UI renders as a dashed arrow.

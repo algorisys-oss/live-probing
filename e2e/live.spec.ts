@@ -21,6 +21,13 @@ test("flow view renders topology nodes for the seeded services", async ({ page }
   await expect(page.locator(".flow-svg")).toContainText(GATEWAY);
 });
 
+test("an uninstrumented peer renders as a dashed ghost node in the flow view", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator(".flow-svg")).toBeVisible();
+  await expect(page.locator(".flow-node-external")).toHaveCount(1);
+  await expect(page.locator(".flow-svg")).toContainText("legacy-api");
+});
+
 test("the errored checkout trace is flagged in the feed", async ({ page }) => {
   await page.goto("/");
   const row = page.locator(".trace-row", { hasText: OPS.checkout });

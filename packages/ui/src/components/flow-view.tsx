@@ -60,26 +60,24 @@ function contentBox(positions: Record<string, { x: number; y: number }>, nodes: 
   };
 }
 
-function NodeShape({ id, x, y, onClick }: { id: string; x: number; y: number; onClick?: () => void }) {
+function NodeShape({ id, x, y, ghost, onClick }: { id: string; x: number; y: number; ghost?: boolean; onClick?: () => void }) {
   const ds = isDatastore(id);
   const left = x - NODE_W / 2;
   const top = y - NODE_H / 2;
   const label = id.length > 16 ? id.slice(0, 15) + "…" : id;
+  const nodeClass = ds
+    ? "flow-node flow-node-datastore"
+    : ghost
+      ? "flow-node flow-node-external"
+      : "flow-node flow-node-service";
   return (
     <g
       className={onClick ? "flow-node-group clickable" : "flow-node-group"}
       onClick={onClick}
       onMouseDown={onClick ? (e) => e.stopPropagation() : undefined}
     >
-      <rect
-        x={left}
-        y={top}
-        width={NODE_W}
-        height={NODE_H}
-        rx={ds ? NODE_H / 2 : 7}
-        className={ds ? "flow-node flow-node-datastore" : "flow-node flow-node-service"}
-      />
-      <text x={x} y={y + 4} className="flow-node-label">
+      <rect x={left} y={top} width={NODE_W} height={NODE_H} rx={ds ? NODE_H / 2 : 7} className={nodeClass} />
+      <text x={x} y={y + 4} className={ghost ? "flow-node-label flow-node-label-external" : "flow-node-label"}>
         {label}
       </text>
     </g>
@@ -98,8 +96,11 @@ export function FlowView() {
     if (!filterService) return fullTopology;
     const edges = fullTopology.edges.filter((e) => e.from === filterService || e.to === filterService);
     const nodes = [...new Set([filterService, ...edges.flatMap((e) => [e.from, e.to])])];
-    return { nodes, edges };
+    return { nodes, edges, externals: fullTopology.externals };
   }, [fullTopology, filterService]);
+
+  // Uninstrumented "ghost" peers render dashed and aren't clickable (no service page).
+  const externals = useMemo(() => new Set(topology.externals ?? []), [topology.externals]);
 
   // Stable layout: recompute only when the *set* of node ids changes.
   const nodeKey = useMemo(() => [...topology.nodes].sort().join("|"), [topology.nodes]);
@@ -268,7 +269,8 @@ export function FlowView() {
                 id={n}
                 x={p.x}
                 y={p.y}
-                onClick={isDatastore(n) ? undefined : () => navigate(`/service/${encodeURIComponent(n)}`)}
+                ghost={externals.has(n)}
+                onClick={isDatastore(n) || externals.has(n) ? undefined : () => navigate(`/service/${encodeURIComponent(n)}`)}
               />
             );
           })}

@@ -32,5 +32,12 @@ export function toMermaidFlow(topo: Topology): string {
     const label = e.errors > 0 ? `${e.calls} (${e.errors} err)` : `${e.calls}`;
     lines.push(`  ${nodeId(e.from)} -->|${label}| ${nodeId(e.to)}`);
   }
+  // Uninstrumented ("ghost") peers render dashed.
+  if (topo.externals.length > 0) {
+    lines.push("  classDef external stroke-dasharray: 6 4,opacity:0.75");
+    for (const ext of topo.externals) {
+      lines.push(`  class ${nodeId(ext)} external`);
+    }
+  }
   return lines.join("\n");
 }

@@ -42,7 +42,7 @@ interface LiveState {
   ) => void;
 }
 
-const emptyTopology: Topology = { nodes: [], edges: [] };
+const emptyTopology: Topology = { nodes: [], edges: [], externals: [] };
 
 export const useLiveStore = create<LiveState>((set, get) => ({
   traces: [],

@@ -184,6 +184,75 @@ test("mermaid exporters produce valid-looking text", () => {
   assert.match(flowText, /gateway -->\|1\| catalog/);
 });
 
+// A trace where gateway calls an instrumented service (catalog reports its own server
+// span) and an uninstrumented one (legacy-api exists only as the client span's peer).
+function ghostFixture(): Event[] {
+  const base = {
+    traceId: "t-ghost",
+    status: "unset" as const,
+    attributes: {},
+    duration: 10,
+  };
+  return [
+    { ...base, spanId: "r", participant: "gateway", operation: "GET /home", kind: "server", startTime: 1_000 },
+    // instrumented callee: client span + the callee's own server span
+    { ...base, spanId: "c", parentSpanId: "r", participant: "gateway", peer: "catalog", operation: "GET /products", kind: "client", startTime: 1_100 },
+    { ...base, spanId: "s", parentSpanId: "c", participant: "catalog", operation: "GET /products", kind: "server", startTime: 1_200 },
+    // uninstrumented callee: only the client span, peer never reports
+    { ...base, spanId: "g", parentSpanId: "r", participant: "gateway", peer: "legacy-api", operation: "GET /legacy", kind: "client", startTime: 1_300 },
+  ];
+}
+
+test("topology draws ghost edges to uninstrumented peers, once per call", () => {
+  const w = new TraceWindow();
+  w.add(ghostFixture());
+  const topo = w.topology();
+
+  // the uninstrumented peer becomes a node with an edge, flagged external
+  assert.ok(topo.nodes.includes("legacy-api"));
+  const ghost = topo.edges.find((e) => e.from === "gateway" && e.to === "legacy-api");
+  assert.ok(ghost, "gateway -> legacy-api ghost edge");
+  assert.equal(ghost!.calls, 1);
+  assert.deepEqual(topo.externals, ["legacy-api"]);
+
+  // the instrumented callee is NOT double-counted (parent/child edge only)
+  const real = topo.edges.find((e) => e.from === "gateway" && e.to === "catalog");
+  assert.equal(real!.calls, 1);
+});
+
+test("topology externals excludes datastores and instrumented participants", () => {
+  const w = new TraceWindow();
+  w.add(normalizeOtlp(fixture)); // postgresql/redis peers + bridged catalog peer
+  const topo = w.topology();
+  assert.deepEqual(topo.externals, []);
+});
+
+test("sequenceFor draws messages to uninstrumented peers and flags them external", () => {
+  const w = new TraceWindow();
+  w.add(ghostFixture());
+  const seq = sequenceFor(w.assemble("t-ghost")!);
+
+  assert.deepEqual(
+    seq.messages.map((m) => `${m.from}->${m.to}:${m.label}`),
+    ["gateway->catalog:GET /products", "gateway->legacy-api:GET /legacy"],
+  );
+  assert.deepEqual(seq.participants, ["gateway", "catalog", "legacy-api"]);
+  assert.deepEqual(seq.externals, ["legacy-api"]);
+});
+
+test("mermaid flow styles external nodes dashed", () => {
+  const w = new TraceWindow();
+  w.add(ghostFixture());
+  const flowText = toMermaidFlow(w.topology());
+  assert.match(flowText, /classDef external/);
+  assert.match(flowText, /class legacy_api external/);
+
+  // no externals -> no classDef noise
+  const clean = new TraceWindow();
+  clean.add(normalizeOtlp(fixture));
+  assert.doesNotMatch(toMermaidFlow(clean.topology()), /classDef external/);
+});
+
 test("window evicts traces older than the horizon and past the cap", () => {
   const w = new TraceWindow({ horizonMicros: 100 });
   const old: Event = {

@@ -14,11 +14,16 @@ export interface Message {
 export interface Sequence {
   participants: string[];
   messages: Message[];
+  // Participants known only as a peer (nothing instrumented on their side) — "ghost"
+  // lifelines. Datastores and real participants of the trace are not listed.
+  externals: string[];
 }
 
 // Project one assembled trace into a time-ordered sequence. A span whose parent runs in a
-// different participant is a request arrow (parent -> span). A span that calls a datastore
-// is an arrow to that datastore. Same-participant internal work is not drawn.
+// different participant is a request arrow (parent -> span). A span that calls a peer —
+// a datastore or an uninstrumented "ghost" service — is an arrow to that peer, unless the
+// callee reported its own span (then the parent/child arrow already covers the call).
+// Same-participant internal work is not drawn.
 export function sequenceFor(trace: AssembledTrace): Sequence {
   const byId = new Map(trace.events.map((e) => [e.spanId, e]));
   const messages: Message[] = [];
@@ -31,10 +36,20 @@ export function sequenceFor(trace: AssembledTrace): Sequence {
     }
   };
 
+  // Spans whose callee reported its own span (the other side is instrumented).
+  const bridged = new Set<string>();
+  const realParticipants = new Set<string>();
+  for (const e of trace.events) {
+    realParticipants.add(e.participant);
+    const parent = e.parentSpanId ? byId.get(e.parentSpanId) : undefined;
+    if (parent && parent.participant !== e.participant) bridged.add(parent.spanId);
+  }
+
   const ordered = [...trace.events].sort(
     (a, b) => a.startTime - b.startTime || a.spanId.localeCompare(b.spanId),
   );
 
+  const ghosts = new Set<string>();
   for (const e of ordered) {
     const parent = e.parentSpanId ? byId.get(e.parentSpanId) : undefined;
     if (parent && parent.participant !== e.participant) {
@@ -49,9 +64,10 @@ export function sequenceFor(trace: AssembledTrace): Sequence {
         status: e.status,
         async: e.kind === "consumer" || parent.kind === "producer",
       });
-    } else if (e.peer && DATASTORE_SYSTEMS.has(e.peer) && e.peer !== e.participant) {
+    } else if (e.peer && e.peer !== e.participant && !bridged.has(e.spanId)) {
       see(e.participant);
       see(e.peer);
+      if (!DATASTORE_SYSTEMS.has(e.peer) && !realParticipants.has(e.peer)) ghosts.add(e.peer);
       messages.push({
         from: e.participant,
         to: e.peer,
@@ -64,5 +80,5 @@ export function sequenceFor(trace: AssembledTrace): Sequence {
     }
   }
 
-  return { participants, messages };
+  return { participants, messages, externals: [...ghosts] };
 }

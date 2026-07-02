@@ -19,6 +19,8 @@ export interface Edge {
 export interface Topology {
   nodes: string[];
   edges: Edge[];
+  /** Uninstrumented "ghost" peers (optional: absent in pre-upgrade stored payloads). */
+  externals?: string[];
 }
 
 export interface Message {
@@ -34,6 +36,8 @@ export interface Message {
 export interface Sequence {
   participants: string[];
   messages: Message[];
+  /** Uninstrumented "ghost" lifelines (optional: absent in pre-upgrade stored payloads). */
+  externals?: string[];
 }
 
 export interface SpanRow {

@@ -32,6 +32,7 @@ export const TRACE_IDS = {
   checkout: "e2e-checkout",
   cart: "e2e-cart",
   catalog: "e2e-catalog",
+  ghost: "e2e-ghost",
 } as const;
 
 export const GATEWAY = "web-gateway";
@@ -113,6 +114,32 @@ export function buildSeedEvents(now: number): SeedEvent[] {
       downstreamOp: "list",
       start: now - 1_000_000,
     }),
+    // A call to an uninstrumented peer: the client span's peer never reports a span
+    // of its own, so it must render as a dashed "ghost" node in the flow view.
+    {
+      traceId: TRACE_IDS.ghost,
+      spanId: `${TRACE_IDS.ghost}-a`,
+      participant: GATEWAY,
+      operation: "GET /legacy",
+      kind: "server",
+      startTime: now - 500_000,
+      duration: 30 * MS,
+      status: "ok",
+      attributes: { "http.route": "GET /legacy" },
+    },
+    {
+      traceId: TRACE_IDS.ghost,
+      spanId: `${TRACE_IDS.ghost}-b`,
+      parentSpanId: `${TRACE_IDS.ghost}-a`,
+      participant: GATEWAY,
+      peer: "legacy-api",
+      operation: "GET /legacy",
+      kind: "client",
+      startTime: now - 498_000,
+      duration: 25 * MS,
+      status: "ok",
+      attributes: {},
+    },
   ];
 }
 

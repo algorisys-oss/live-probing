@@ -455,6 +455,12 @@ body {
   fill: var(--datastore-soft);
   stroke: var(--datastore);
 }
+/* Uninstrumented "ghost" peer: known only from the caller's side. */
+.flow-node-external {
+  fill: var(--bg-panel);
+  stroke: var(--text-dim);
+  stroke-dasharray: 6 4;
+}
 
 .flow-node-label {
   fill: var(--text);
@@ -462,6 +468,9 @@ body {
   font-weight: 600;
   text-anchor: middle;
   pointer-events: none;
+}
+.flow-node-label-external {
+  fill: var(--text-dim);
 }
 
 .flow-edge {
@@ -567,6 +576,12 @@ body {
   fill: var(--bg-elevated);
   stroke: var(--border-strong);
   stroke-width: 1;
+}
+/* Uninstrumented "ghost" lifeline: known only from the caller's side. */
+.seq-participant-external {
+  fill: var(--bg-panel);
+  stroke: var(--text-dim);
+  stroke-dasharray: 5 4;
 }
 .seq-participant-label {
   fill: var(--text);
