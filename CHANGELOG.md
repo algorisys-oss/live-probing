@@ -3,6 +3,25 @@
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
 ## [2026-07-02]
+- **Ghost nodes for uninstrumented peers.** Topology and sequence now draw the edge to a
+  non-datastore `peer` when the callee never reported a span of its own (suppressed when a
+  cross-participant child exists, so instrumented calls aren't double-drawn), and expose those
+  peers as `externals` on `Topology`/`Sequence`. The UI renders them as dashed grey "ghost"
+  nodes (flow) and lifelines (sequence, not clickable); the Mermaid flow export styles them
+  dashed via `classDef external`. Fixes review finding #1 (the partial-rollout blind spot): an
+  instrumented app calling a not-yet-instrumented one is now visible. TDD: 4 new core tests +
+  1 new e2e (ghost node renders); `docs/event-model.md` updated. Verified in a live browser
+  (flow + sequence screenshots) against seeded ghost traces.
+- **Collector: RabbitMQ auto-reconnect.** The `rabbitmq` source now attaches `error`/`close`
+  handlers (an unhandled `error` event previously crashed the process on a broker restart) and
+  reconnects with exponential backoff (1s → 30s), re-running the full
+  exchange/queue/bind/consume setup per attempt; the initial connect still fails fast. New
+  `reconnectDelayMs` option; `ConnLike` gained `on()`. Fixes review finding #2. TDD: 3 new
+  collector tests (reconnect + re-consume, failed-retry loop, stop() cancels). Runbook caveat
+  updated in `docs/integration-adapters.md`. **26 unit tests, 15 e2e**, typecheck clean.
+- **e2e flake fix:** the history→day spec asserted `.rollup-card` count with a non-retrying
+  snapshot immediately after navigation and intermittently raced the day-summary fetch
+  (reproduced on a clean checkout); now an auto-retrying `toBeVisible()`. 3× consecutive green.
 - **Renamed the dev scripts**: `dev.sh` → `dev-start.sh`, `stop.sh` → `dev-stop.sh` (git mv,
   history preserved). Updated every current-state reference (`README.md`, `CLAUDE.md`,
   `HANDOFF.md`, `todo.md`, `docs/architecture.md`, `docs/integrating-your-app.md`,

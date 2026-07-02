@@ -5,9 +5,22 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-**Renamed dev scripts**: `dev.sh` → `dev-start.sh`, `stop.sh` → `dev-stop.sh` (git mv). All
-current-state docs and self-references updated; historical logs (`CHANGELOG.md`, `IMPLEMENT.md`)
-left as written. No behavior change.
+**Fixed review findings #1 and #2** (from `docs/implementation-review.md`), TDD both:
+- **Ghost nodes for uninstrumented peers**: topology + sequence now draw `participant → peer`
+  edges when the callee never reported a span (suppressed when it did — no double edges), new
+  `externals` field on `Topology`/`Sequence`, dashed grey nodes/lifelines in the UI, dashed
+  `classDef external` in the Mermaid flow export. Partial rollouts now show every observed call.
+- **Collector RabbitMQ auto-reconnect**: `error`/`close` handled (previously an unhandled
+  `error` crashed the process), exponential-backoff reconnect (1s→30s) re-runs the full setup;
+  initial connect still fails fast. Runbook still recommends a supervisor.
+Also fixed a **pre-existing e2e flake** (history→day rollup assertion raced the fetch; now
+auto-retrying). **26 unit + 15 e2e green (e2e 3× consecutively), typecheck clean**; verified
+live in a browser (dashed ghost node + lifeline screenshots against seeded traces on an
+isolated `:4390` server, then torn down). Docs: `event-model.md`, `integration-adapters.md`,
+review doc marked FIXED, `todo.md` items checked.
+
+Prior task: **Renamed dev scripts**: `dev.sh` → `dev-start.sh`, `stop.sh` → `dev-stop.sh` (git mv). All
+current-state docs and self-references updated; historical logs left as written. No behavior change.
 
 Prior task: **Implementation review + dev fix.** Wrote `docs/implementation-review.md` — a review of the
 whole ingest path and the zero-instrumentation story (React / Node / Elixir). Top findings:
@@ -81,8 +94,8 @@ Prior task: `examples/otel-react-go/` — OTel integration reference for a React
 `encoding:json`→LiveProbe; React→LiveProbe direct). Synced (`d998250`).
 
 ## Current state
-LiveProbe is a mature working app, verified end to end against the live testbed. **13 tests pass**,
-typecheck clean, UI verified in a headless browser. Nothing known broken.
+LiveProbe is a mature working app, verified end to end against the live testbed. **26 unit tests
++ 15 e2e pass**, typecheck clean, UI verified in a headless browser. Nothing known broken.
 
 - **Ingest**: OTLP (`POST /v1/traces`, gzip-aware) **and** native (`POST /v1/events`) → one
   in-memory `TraceWindow` + SQLite history (`node:sqlite`, partitioned by day).
@@ -106,8 +119,8 @@ typecheck clean, UI verified in a headless browser. Nothing known broken.
 ```bash
 ./dev-start.sh              # hot reload; open http://localhost:5173  (API/ws on :4319)
 ./dev-start.sh --static     # build + serve the UI from the server at http://localhost:4319
-npm test              # core + server + collector tests (13)
-npm run test:e2e      # Playwright UI e2e (11); first run: npx playwright install chromium
+npm test              # core + server + collector tests (26)
+npm run test:e2e      # Playwright UI e2e (15); first run: npx playwright install chromium
 ./dev-stop.sh             # tear down (--wipe drops data)
 # feed a non-OTLP client: cat events.ndjson | SOURCE=stdin ADAPTER=adapter-id-1 \
 #   LIVEPROBE_URL=http://localhost:4319 npx tsx packages/collector/src/index.ts

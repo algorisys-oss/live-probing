@@ -23,7 +23,9 @@ test("history page renders and links to a day", async ({ page }) => {
   // Following the day link renders the day rollup dashboard.
   await dayLink.click();
   await expect(page).toHaveURL(/\/day\/\d{4}-\d{2}-\d{2}/);
-  expect(await page.locator(".rollup-card").count()).toBeGreaterThan(0);
+  // Auto-retrying: the rollups render after the day-summary fetch, which can lose a
+  // race against a bare count() snapshot.
+  await expect(page.locator(".rollup-card").first()).toBeVisible();
 });
 
 test("history chart labels are legible (not black-on-dark)", async ({ page }) => {

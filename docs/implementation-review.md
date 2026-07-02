@@ -17,7 +17,11 @@ adapter gaps). Keep that honesty.
 
 ## Findings (most significant first)
 
-### 1. Uninstrumented *services* are invisible in both views
+### 1. Uninstrumented *services* are invisible in both views — **FIXED 2026-07-02**
+
+> Fixed as recommended: topology and sequence now draw edges to non-datastore peers when the
+> callee never reported a span, expose them as `externals`, and the UI renders them as dashed
+> ghost nodes/lifelines (Mermaid flow export styles them dashed too). See `CHANGELOG.md`.
 
 Both `trace-window.ts` (`topology()`) and `sequence.ts` (`sequenceFor()`) only draw a
 peer edge when `peer` is in `DATASTORE_SYSTEMS` (postgres, redis, kafka, …). But
@@ -35,7 +39,10 @@ docs target.
 distinct, e.g. dashed outline). Partial onboarding then becomes self-documenting — the
 ghosts *are* the list of what to instrument next.
 
-### 2. RabbitMQ source has no connection-error handling
+### 2. RabbitMQ source has no connection-error handling — **FIXED 2026-07-02**
+
+> Fixed: the source now handles `error`/`close` and reconnects with exponential backoff
+> (initial connect still fails fast); the runbook additionally recommends a supervisor.
 
 `packages/collector/src/sources/rabbitmq.ts` never attaches `conn.on("error")`. A broker
 restart or heartbeat timeout emits an unhandled `error` event on the amqplib connection

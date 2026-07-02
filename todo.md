@@ -75,9 +75,10 @@ items: **S** = hours, **M** = ~a day, **L** = multi-day.
 ## Backlog (enhancements)
 
 ### A. Visualization & interaction
-- [ ] **Ghost/external peer nodes** — render non-datastore peers (`peer.service`,
-      `server.address`) as dashed "uninstrumented" nodes in flow + sequence; today calls to
-      not-yet-instrumented services are invisible (`docs/implementation-review.md` #1) **S–M**
+- [x] **Ghost/external peer nodes** — non-datastore peers render as dashed "uninstrumented"
+      nodes in flow + sequence (suppressed when the callee reports its own span, so no double
+      edges); `externals` on Topology/Sequence; Mermaid flow styles them dashed; e2e covered
+      (`docs/implementation-review.md` #1)
 - [x] Clickable service nodes → a service page (deps, error rate, spans, top operations)
 - [x] Tighter flow layout (barycenter ordering to reduce crossings + tighter spacing)
 - [x] Span waterfall on the trace page + click-to-expand span attributes (Waterfall tab: Gantt bars nested by depth, colored per service, click a span → attributes panel)
@@ -103,9 +104,9 @@ items: **S** = hours, **M** = ~a day, **L** = multi-day.
       reference mapping. Verified end to end. (http source, more adapters = later)
 - [x] **OTel integration reference** (`examples/otel-react-go/`): React + Go via OpenTelemetry —
       Go→collector(`encoding:json`)→LiveProbe, React→LiveProbe direct. Docs/snippets.
-- [ ] Collector: RabbitMQ connection-error handling / reconnect (today an unhandled `error`
-      event crashes the tap; at minimum document systemd `Restart=always` in the runbook)
-      (`docs/implementation-review.md` #2) **S**
+- [x] Collector: RabbitMQ connection-error handling / reconnect — `error`/`close` handled,
+      exponential-backoff reconnect re-runs the full setup; initial connect still fails fast;
+      runbook recommends a supervisor (`docs/implementation-review.md` #2)
 - [ ] Docs: pure-ESM Node apps need `--import` (not `--require`) for auto-instrumentation —
       add to recipes A/B/E (`docs/implementation-review.md` gap 1) **S**
 - [ ] Native SDK (`packages/sdk-js`) — drop-in tracer, use LiveProbe without OpenTelemetry **L**
