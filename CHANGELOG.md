@@ -3,6 +3,15 @@
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
 ## [2026-07-02]
+- **UI: light/dark theme + history-chart legibility fix.** (1) Fixed black-on-dark labels on
+  the History trends chart: `.axis`/`.axis-label` were only styled scoped under `.latency-chart`,
+  so the trends chart's reused class names fell back to the SVG default black fill — promoted
+  both to global rules (`packages/ui/src/styles.css`). (2) Added a **light/dark theme toggle** in
+  the header: a `data-theme` attribute on `<html>` drives a second, contrast-checked (WCAG AA)
+  palette; choice persisted to localStorage and applied pre-paint via an inline script in
+  `index.html` to avoid a flash (`lib/theme.ts`, `components/header.tsx`). Diagram SVG/PNG export
+  now takes its background from the active theme's `--bg` (`lib/export-diagram.ts`). Added 2 e2e
+  (chart-label legibility + toggle/persist) → **14 e2e** + 13 unit + typecheck green.
 - New doc `docs/integrating-your-app.md`: the general "wire your own system into LiveProbe"
   guide — the OTLP/JSON-only ingest fact, when a collector is needed, and recipes for a
   dockerized app (the Shopwave pattern), a non-dockerized process/VM/systemd, a browser SPA

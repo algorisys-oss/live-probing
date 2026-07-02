@@ -25,3 +25,30 @@ test("history page renders and links to a day", async ({ page }) => {
   await expect(page).toHaveURL(/\/day\/\d{4}-\d{2}-\d{2}/);
   expect(await page.locator(".rollup-card").count()).toBeGreaterThan(0);
 });
+
+test("history chart labels are legible (not black-on-dark)", async ({ page }) => {
+  await page.goto("/history");
+  const label = page.locator(".trends-chart .axis-label").first();
+  await expect(label).toBeVisible();
+  // Regression: the axis labels once fell back to the SVG default black fill
+  // because .axis-label was only styled scoped under .latency-chart.
+  const fill = await label.evaluate((el) => getComputedStyle(el).fill);
+  expect(fill).not.toBe("rgb(0, 0, 0)");
+});
+
+test("theme toggle switches light/dark and persists", async ({ page }) => {
+  await page.goto("/history");
+  const html = page.locator("html");
+  await expect(html).toHaveAttribute("data-theme", "dark");
+
+  await page.locator(".theme-toggle").click();
+  await expect(html).toHaveAttribute("data-theme", "light");
+  await expect(page.locator("body")).toHaveCSS(
+    "background-color",
+    "rgb(255, 255, 255)",
+  );
+
+  // Choice survives a reload (persisted to localStorage, applied pre-paint).
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+});

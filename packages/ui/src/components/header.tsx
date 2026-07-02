@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useLiveStore } from "../store/use-live-store";
+import { getStoredTheme, setTheme, type Theme } from "../lib/theme";
 
 export function Header() {
   const connected = useLiveStore((s) => s.connected);
@@ -9,6 +10,13 @@ export function Header() {
   const location = useLocation();
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
+  const [theme, setThemeState] = useState<Theme>(getStoredTheme);
+
+  const toggleTheme = () => {
+    const next: Theme = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    setThemeState(next);
+  };
 
   const serviceCount = useMemo(() => topology.nodes.length, [topology.nodes]);
 
@@ -85,6 +93,17 @@ export function Header() {
         <span className="version" title="LiveProbe version">
           v{__APP_VERSION__}
         </span>
+        <button
+          type="button"
+          className="theme-toggle"
+          onClick={toggleTheme}
+          title={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+          aria-label={
+            theme === "dark" ? "Switch to light theme" : "Switch to dark theme"
+          }
+        >
+          {theme === "dark" ? "☀" : "☾"}
+        </button>
       </div>
     </header>
   );

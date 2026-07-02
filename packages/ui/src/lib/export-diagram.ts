@@ -37,7 +37,14 @@ function viewBoxDims(svg: SVGSVGElement): { w: number; h: number } {
   return { w: Math.max(1, r.width), h: Math.max(1, r.height) };
 }
 
-function standaloneSvg(svg: SVGSVGElement, bg = "#0d1117"): string {
+function currentBg(): string {
+  const v = getComputedStyle(document.documentElement)
+    .getPropertyValue("--bg")
+    .trim();
+  return v || "#0d1117";
+}
+
+function standaloneSvg(svg: SVGSVGElement, bg = currentBg()): string {
   const clone = svg.cloneNode(true) as SVGSVGElement;
   inlineStyles(svg, clone);
   clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");

@@ -15,6 +15,29 @@
   --datastore: #a855f7;
   --datastore-soft: #2c1d3d;
   --new: #eab308;
+  color-scheme: dark;
+}
+
+/* Light theme: same variable names, contrast-checked values (WCAG AA on their
+   backgrounds). Toggled via data-theme on <html> (see lib/theme.ts). */
+:root[data-theme="light"] {
+  --bg: #ffffff;
+  --bg-panel: #f6f8fa;
+  --bg-elevated: #eaeef2;
+  --border: #d0d7de;
+  --border-strong: #afb8c1;
+  --text: #1f2328;
+  --text-dim: #59636e;
+  --text-faint: #6e7781;
+  --accent: #0969da;
+  --accent-soft: #ddf4ff;
+  --live: #1a7f37;
+  --error: #cf222e;
+  --error-soft: #ffebe9;
+  --datastore: #8250df;
+  --datastore-soft: #f0e6ff;
+  --new: #9a6700;
+  color-scheme: light;
 }
 
 * {
@@ -92,6 +115,28 @@ body {
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
   opacity: 0.75;
+}
+
+.theme-toggle {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  color: var(--text-dim);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+.theme-toggle:hover {
+  color: var(--text);
+  border-color: var(--accent);
 }
 
 .status {
@@ -1135,11 +1180,13 @@ body {
   width: 100%;
   height: auto;
 }
-.latency-chart .axis {
+/* Shared SVG-chart axis styling (latency + trends charts). Global so any chart
+   reusing these class names gets a visible fill instead of the SVG default black. */
+.axis {
   stroke: var(--border-strong);
   stroke-width: 1;
 }
-.latency-chart .axis-label {
+.axis-label {
   fill: var(--text-faint);
   font-size: 10px;
 }

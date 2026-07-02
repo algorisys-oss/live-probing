@@ -5,12 +5,18 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-Wrote `docs/integrating-your-app.md` — the general integration guide (how any app, dockerized
-or not, emits into LiveProbe): the OTLP/**JSON-only** ingest fact, when a collector is needed,
-and recipes A–E (dockerized / bare process / browser / custom-format / **VPS-no-Docker for
-React + Node/Go/Elixir**), plus a field-mapping table and a curl smoke test. Recipe E routes the
-browser through a systemd collector so LiveProbe stays private, and includes Elixir/Phoenix OTel
-setup. Linked from `docs/README.md`. Docs only — no code, no tests affected.
+UI: added a **light/dark theme toggle** (header ☀/☾ button; `data-theme` on `<html>` drives a
+second contrast-checked palette in `styles.css`; persisted to localStorage, applied pre-paint via
+an inline script in `index.html`; `lib/theme.ts`) and **fixed the History trends-chart labels**
+that rendered black-on-dark (`.axis`/`.axis-label` were scoped to `.latency-chart` only → promoted
+to global). Diagram export bg now follows the active theme (`lib/export-diagram.ts`). Verified in
+a headless browser against the running dev server; **14 e2e** (added 2) + 13 unit + typecheck green.
+
+Prior task: wrote `docs/integrating-your-app.md` — the general integration guide (how any app,
+dockerized or not, emits into LiveProbe): the OTLP/**JSON-only** ingest fact, when a collector is
+needed, and recipes A–E (dockerized / bare process / browser / custom-format / **VPS-no-Docker for
+React + Node/Go/Elixir**), plus a field-mapping table and a curl smoke test. Linked from
+`docs/README.md`.
 
 Prior task: added a **Playwright e2e suite** (`e2e/`, 11 specs) covering the live dashboard (feed + flow +
 error flag + pause), the trace page (waterfall + sequence tab + back link), search (endpoint +
