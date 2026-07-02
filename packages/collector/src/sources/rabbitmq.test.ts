@@ -105,6 +105,34 @@ test("exchange tap: declares the exchange when a type is given, defaults key to 
   assert.deepEqual(f.calls.bindQueue, [["tap", "events", "#"]]);
 });
 
+test("bounded queue: max length sets x-max-length + drop-head, ttl sets x-message-ttl", async () => {
+  const f = makeFake();
+  await rabbitmqSource("amqp://x", "liveprobe.tap", () => {}, {
+    connect: f.connect,
+    exchange: "instrumentation",
+    queueMaxLength: 100_000,
+    queueMessageTtlMs: 60_000,
+  });
+
+  assert.deepEqual(f.calls.assertQueue[0], [
+    "liveprobe.tap",
+    {
+      durable: true,
+      arguments: {
+        "x-max-length": 100_000,
+        "x-overflow": "drop-head",
+        "x-message-ttl": 60_000,
+      },
+    },
+  ]);
+});
+
+test("no bounds set: queue is asserted without an arguments object", async () => {
+  const f = makeFake();
+  await rabbitmqSource("amqp://x", "q", () => {}, { connect: f.connect });
+  assert.deepEqual(f.calls.assertQueue[0], ["q", { durable: true }]);
+});
+
 test("a poison (non-JSON) message is nacked without requeue and does not stop the stream", async () => {
   const f = makeFake();
   const seen: unknown[] = [];

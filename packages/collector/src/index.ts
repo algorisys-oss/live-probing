@@ -13,6 +13,9 @@ import { rabbitmqSource } from "./sources/rabbitmq.js";
 //   SOURCE=rabbitmq ADAPTER=adapter-id-1 RABBITMQ_URL=... QUEUE=liveprobe.tap \
 //     EXCHANGE=instrumentation ROUTING_KEY="#"   [EXCHANGE_TYPE=topic to declare it]
 //
+// Optionally bound the tap queue so it can't grow unbounded while the collector is down:
+//   QUEUE_MAX_LENGTH=100000   (drops oldest past the cap)   QUEUE_MESSAGE_TTL_MS=60000
+//
 // LIVEPROBE_URL defaults to http://localhost:4319.
 
 async function main(): Promise<void> {
@@ -46,6 +49,12 @@ async function main(): Promise<void> {
       .split(",")
       .map((k) => k.trim())
       .filter((k) => k.length > 0);
+    const posInt = (v: string | undefined): number | undefined => {
+      const n = Number(v);
+      return v && Number.isInteger(n) && n > 0 ? n : undefined;
+    };
+    const queueMaxLength = posInt(process.env.QUEUE_MAX_LENGTH);
+    const queueMessageTtlMs = posInt(process.env.QUEUE_MESSAGE_TTL_MS);
     if (exchange) {
       console.error(
         `[collector] tapping exchange="${exchange}"${exchangeType ? ` (declare ${exchangeType})` : " (verify)"} keys=[${routingKeys.join(", ")}] -> queue="${queue}"`,
@@ -55,6 +64,8 @@ async function main(): Promise<void> {
       exchange,
       exchangeType,
       routingKeys,
+      queueMaxLength,
+      queueMessageTtlMs,
     });
     const shutdown = () => void Promise.resolve(stop()).then(() => sink.close()).then(() => process.exit(0));
     process.on("SIGINT", shutdown);

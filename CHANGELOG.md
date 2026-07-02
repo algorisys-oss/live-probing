@@ -3,6 +3,12 @@
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
 ## [2026-07-02]
+- **Collector: bounded tap queue (opt-in).** `rabbitmqSource` now takes `QUEUE_MAX_LENGTH`
+  (→ `x-max-length` with `x-overflow: drop-head`, keeping newest) and `QUEUE_MESSAGE_TTL_MS`
+  (→ `x-message-ttl`) so a live tap can't back up unboundedly while the collector is down. Added
+  2 unit tests (args set / no-bounds asserts without an `arguments` object) — **19 tests**. Verified
+  on the live testbed RabbitMQ (a conflicting re-declare returned PRECONDITION_FAILED, proving the
+  args reached the broker). Documented in `docs/integration-adapters.md`.
 - **Collector: built-in RabbitMQ exchange tap.** `rabbitmqSource` now takes `EXCHANGE` /
   `EXCHANGE_TYPE` / `ROUTING_KEY` (env in `packages/collector/src/index.ts`): it declares the
   exchange (when a type is given) or verifies it passively (when not), asserts the queue, and

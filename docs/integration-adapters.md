@@ -61,7 +61,9 @@ Source notes:
   once the adapter has run and the event is buffered for send (see delivery semantics under the
   runbook below — it is **best-effort, not durable**). Set `EXCHANGE` to bind the queue to an
   existing exchange for a **non-intrusive fanout tap** (`EXCHANGE_TYPE` to declare it, else it is
-  verified passively; `ROUTING_KEY` for the binding key(s), default `#`). Implementation:
+  verified passively; `ROUTING_KEY` for the binding key(s), default `#`). Optionally bound the
+  queue with `QUEUE_MAX_LENGTH` (drops oldest past the cap) and/or `QUEUE_MESSAGE_TTL_MS` so a
+  live tap can't back up unboundedly while the collector is down. Implementation:
   `packages/collector/src/sources/rabbitmq.ts`.
 - **stdout** — newline-delimited JSON from stdin or a tailed file. In container/k8s land, apps
   write JSON lines to stdout and a log shipper (fluentbit/vector) can POST them to the
@@ -258,6 +260,10 @@ part of the minimal rollout. Full field mapping and gaps: see the two sections a
   (`packages/collector/src/sink.ts`). LiveProbe is a **live-diagnostics view, not a system of
   record** — a dropped batch means a momentary gap in the live diagram, never data loss for the
   client (their own aggregators still receive everything). Don't position it as durable storage.
+- **Bound the tap queue.** Because it's a live view, set `QUEUE_MAX_LENGTH` (and/or
+  `QUEUE_MESSAGE_TTL_MS`) so the tap queue can't accumulate a huge backlog while the collector is
+  down — overflow drops the *oldest* (drop-head), keeping the newest events. Applies to queues the
+  collector owns (the tap queue); don't set them on a pre-existing queue with different arguments.
 - **Exactly one consumer per stream.** LiveProbe assembles by trace/span id, so a second
   collector reading the *same* messages would double-count spans. Scale by giving each collector
   its *own* tap, never two collectors on one queue.

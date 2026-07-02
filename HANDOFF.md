@@ -5,7 +5,13 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-Collector: made the RabbitMQ **fanout tap turnkey**. `rabbitmqSource` now supports `EXCHANGE` /
+Collector: added an **opt-in bounded tap queue** — `QUEUE_MAX_LENGTH` (x-max-length, drop-head
+= keep newest) and `QUEUE_MESSAGE_TTL_MS` (x-message-ttl) so a live tap can't back up unboundedly
+while the collector is down. 2 new unit tests (19 total, typecheck green); verified on the live
+testbed RabbitMQ (conflicting re-declare → PRECONDITION_FAILED proves the args reached the broker).
+Documented in `docs/integration-adapters.md`.
+
+Prior task: Collector: made the RabbitMQ **fanout tap turnkey**. `rabbitmqSource` now supports `EXCHANGE` /
 `EXCHANGE_TYPE` / `ROUTING_KEY` env — declares (with a type) or passively verifies the exchange,
 asserts the queue, and binds it on startup, so tapping an existing stream is pure config (no
 manual RabbitMQ admin). Source is injectable (`opts.connect`) for tests; added 4 unit tests via a

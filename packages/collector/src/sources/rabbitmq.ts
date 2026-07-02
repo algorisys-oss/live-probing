@@ -36,6 +36,11 @@ export interface RabbitmqOptions {
   routingKeys?: string[];
   // Queue durability (default true).
   queueDurable?: boolean;
+  // Bound the queue so a live tap can't grow unbounded while the collector is down.
+  // Applies to queues the collector owns (e.g. the tap queue) — setting these on a pre-existing
+  // queue with different arguments will fail with a queue-arg mismatch.
+  queueMaxLength?: number; // x-max-length; overflow drops the oldest (drop-head), keeping newest
+  queueMessageTtlMs?: number; // x-message-ttl: discard messages older than this
   // Injectable connector, for tests. Defaults to amqplib's connect.
   connect?: (url: string) => Promise<ConnLike>;
 }
@@ -55,19 +60,30 @@ export async function rabbitmqSource(
   const conn = await connect(url);
   const channel = await conn.createChannel();
 
+  const queueArgs: Record<string, number | string> = {};
+  if (opts.queueMaxLength != null) {
+    queueArgs["x-max-length"] = opts.queueMaxLength;
+    queueArgs["x-overflow"] = "drop-head"; // keep the newest events for a live view
+  }
+  if (opts.queueMessageTtlMs != null) queueArgs["x-message-ttl"] = opts.queueMessageTtlMs;
+  const queueOpts = {
+    durable: opts.queueDurable ?? true,
+    ...(Object.keys(queueArgs).length > 0 ? { arguments: queueArgs } : {}),
+  };
+
   if (opts.exchange) {
     if (opts.exchangeType) {
       await channel.assertExchange(opts.exchange, opts.exchangeType, { durable: true });
     } else {
       await channel.checkExchange(opts.exchange);
     }
-    await channel.assertQueue(queue, { durable: opts.queueDurable ?? true });
+    await channel.assertQueue(queue, queueOpts);
     const keys = opts.routingKeys && opts.routingKeys.length > 0 ? opts.routingKeys : ["#"];
     for (const key of keys) {
       await channel.bindQueue(queue, opts.exchange, key);
     }
   } else {
-    await channel.assertQueue(queue, { durable: opts.queueDurable ?? true });
+    await channel.assertQueue(queue, queueOpts);
   }
 
   await channel.prefetch(64);
