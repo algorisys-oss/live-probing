@@ -5,7 +5,13 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-Added a **Playwright e2e suite** (`e2e/`, 11 specs) covering the live dashboard (feed + flow +
+Wrote `docs/integrating-your-app.md` — the general integration guide (how any app, dockerized
+or not, emits into LiveProbe): the OTLP/**JSON-only** ingest fact, when a collector is needed,
+and recipes for dockerized (Shopwave pattern) / bare process / browser / custom-format apps,
+plus a field-mapping table and a curl smoke test. Linked from `docs/README.md`. Docs only — no
+code, no tests affected. (Uncommitted on `dev`.)
+
+Prior task: added a **Playwright e2e suite** (`e2e/`, 11 specs) covering the live dashboard (feed + flow +
 error flag + pause), the trace page (waterfall + sequence tab + back link), search (endpoint +
 span attribute), errors, and history→day. Deterministic fixtures seeded via `POST /v1/events`
 (`e2e/seed.ts`); `playwright.config.ts` webServer builds the UI and serves it from the server on an

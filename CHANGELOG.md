@@ -2,6 +2,13 @@
 
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
+## [2026-07-02]
+- New doc `docs/integrating-your-app.md`: the general "wire your own system into LiveProbe"
+  guide — the OTLP/JSON-only ingest fact, when a collector is needed, and recipes for a
+  dockerized app (the Shopwave pattern), a non-dockerized process/VM/systemd, a browser SPA
+  (direct), and an app emitting a custom format (native `/v1/events`). Plus a field-mapping
+  table and a curl smoke test. Linked from `docs/README.md`. Docs only, no code change.
+
 ## [2026-07-01 20:55]
 - Version surfaced in the UI: root `package.json` is the single product-version source (bumped
   0.0.0 → **0.1.0**); `packages/ui/vite.config.ts` reads it and injects `__APP_VERSION__` at build

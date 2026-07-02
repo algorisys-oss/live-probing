@@ -9,6 +9,9 @@ Detailed docs for the two halves of this repo.
 - [shopwave-events.md](shopwave-events.md) — the e-commerce testbed: every HTTP action, the
   RabbitMQ messages published on each action, their exact payload structure, and the trace
   each user action produces.
+- [integrating-your-app.md](integrating-your-app.md) — **start here to wire your own system in.**
+  How any app (dockerized or not, Node or polyglot, greenfield or already-instrumented) emits
+  into LiveProbe: the OTLP/JSON fact, when you need a collector, and copy-paste recipes.
 - [integration-adapters.md](integration-adapters.md) — how to feed client apps into LiveProbe:
   the adapter layer (client format → `Event[]`) and the collector (rabbitmq / stdout sources).
   **Design, not built yet.**
