@@ -7,9 +7,10 @@ latest commit unless a "Last task" note says otherwise.
 ## Last task
 Wrote `docs/integrating-your-app.md` — the general integration guide (how any app, dockerized
 or not, emits into LiveProbe): the OTLP/**JSON-only** ingest fact, when a collector is needed,
-and recipes for dockerized (Shopwave pattern) / bare process / browser / custom-format apps,
-plus a field-mapping table and a curl smoke test. Linked from `docs/README.md`. Docs only — no
-code, no tests affected. (Uncommitted on `dev`.)
+and recipes A–E (dockerized / bare process / browser / custom-format / **VPS-no-Docker for
+React + Node/Go/Elixir**), plus a field-mapping table and a curl smoke test. Recipe E routes the
+browser through a systemd collector so LiveProbe stays private, and includes Elixir/Phoenix OTel
+setup. Linked from `docs/README.md`. Docs only — no code, no tests affected.
 
 Prior task: added a **Playwright e2e suite** (`e2e/`, 11 specs) covering the live dashboard (feed + flow +
 error flag + pause), the trace page (waterfall + sequence tab + back link), search (endpoint +

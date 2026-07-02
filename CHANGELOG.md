@@ -8,6 +8,10 @@ Timestamped functional changes (LOOPS rule XXIV). Newest first.
   dockerized app (the Shopwave pattern), a non-dockerized process/VM/systemd, a browser SPA
   (direct), and an app emitting a custom format (native `/v1/events`). Plus a field-mapping
   table and a curl smoke test. Linked from `docs/README.md`. Docs only, no code change.
+- Added **Recipe E — VPS deploy, no Docker (React + Node / Go / Elixir)** to the same doc:
+  one systemd collector per box, browser routed through the collector (so LiveProbe stays
+  private), and per-stack config incl. Elixir/Phoenix OTel setup. Reflects the user's typical
+  DigitalOcean deployment.
 
 ## [2026-07-01 20:55]
 - Version surfaced in the UI: root `package.json` is the single product-version source (bumped

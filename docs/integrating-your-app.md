@@ -60,6 +60,7 @@ Emitter that speaks OTLP/protobuf ─► OTel Collector (encoding: json) ─► 
 | Same, **not** dockerized (bare process / VM / systemd) | **Recipe B** — same env, run one collector next to it |
 | Browser / SPA frontend | **Recipe C** — OTel-web, post direct to `:4319` |
 | App already emitting a **custom** (non-OTLP) format | **Recipe D** — native `/v1/events` via a collector adapter |
+| **VPS deploy, no Docker** — React + Node / Go / Elixir | **Recipe E** — one collector per box (systemd), browser through it |
 
 Whatever the language, once spans reach the wire the language is irrelevant — LiveProbe only
 sees OTLP/JSON. Polyglot systems do **not** need one integration per language.
@@ -186,6 +187,131 @@ OTLP, use the native path: the repo's **collector** (`packages/collector`) consu
 source, runs a per-format **adapter** (`raw → Event[]`), and POSTs to `/v1/events`. One
 adapter covers all of a client's languages. Design and config in
 [integration-adapters.md](integration-adapters.md).
+
+## Recipe E — VPS deploy, no Docker (React + Node / Go / Elixir)
+
+The common "app on a DigitalOcean droplet, no Docker, no k8s" case. It's Recipe B applied to a
+polyglot stack, with one addition: **route the browser through the collector too**, so LiveProbe
+never has to be exposed to the internet.
+
+### The shape
+
+Run **one OpenTelemetry Collector per VPS as a systemd service**. Every backend on the box
+exports to it locally; the React frontend posts to it over the network; the collector
+translates protobuf→JSON and forwards to LiveProbe. LiveProbe stays private.
+
+```
+React (browser, OTel-web, JSON) ─────────────────┐
+                                                  ▼
+Node / Go / Elixir  ──OTLP/protobuf──►  otel Collector (systemd, :4318, TLS+CORS)
+  (localhost:4318)                                │  encoding: json
+                                                  ▼
+                                            LiveProbe :4319   (private / localhost)
+```
+
+Why through the collector and not straight at LiveProbe (Recipe C)? On a VPS the browser needs a
+**public** endpoint, and **LiveProbe's ingest has no auth** — exposing it means open ingest. The
+collector's OTLP/HTTP receiver also accepts JSON, so pointing React at it gives you a single
+internet-facing door you can put TLS + a CORS allow-list on, while LiveProbe stays bound to
+localhost. It also means **Go and Elixir have no choice**: their OTLP exporters speak only gRPC
+or HTTP/**protobuf**, never JSON, so a translating collector is mandatory for them regardless.
+
+### Backends
+
+Each backend exports to the local collector at `http://localhost:4318`.
+
+**Node.js** — zero-code auto-instrumentation; put the env in the systemd unit's `[Service]`:
+
+```ini
+Environment=OTEL_SERVICE_NAME=orders-api
+Environment=OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
+Environment=OTEL_TRACES_EXPORTER=otlp
+Environment=OTEL_METRICS_EXPORTER=none
+Environment=OTEL_LOGS_EXPORTER=none
+Environment=NODE_OPTIONS=--require @opentelemetry/auto-instrumentations-node/register
+```
+
+**Go** — OTel Go SDK with `otelhttp` (server) + `otelpgx` (DB), exporter to `localhost:4318`.
+Lift [../examples/otel-react-go/go-backend/telemetry.go](../examples/otel-react-go/go-backend/telemetry.go)
+and `main.go` — that reference *is* this case.
+
+**Elixir / Phoenix** — add the OTel libs and turn on the auto-instrumentation:
+
+```elixir
+# mix.exs deps
+{:opentelemetry, "~> 1.5"}, {:opentelemetry_api, "~> 1.4"},
+{:opentelemetry_exporter, "~> 1.8"},
+{:opentelemetry_phoenix, "~> 2.0"}, {:opentelemetry_ecto, "~> 1.2"},
+{:opentelemetry_bandit, "~> 0.2"}   # or {:opentelemetry_cowboy, "~> 1.0"} if not on Bandit
+
+# application.ex — in start/2, before the supervisor children
+OpentelemetryPhoenix.setup(adapter: :bandit)
+OpentelemetryEcto.setup([:my_app, :repo])
+OpentelemetryBandit.setup()
+
+# config/runtime.exs
+config :opentelemetry, :resource, service: %{name: "my-phoenix-app"}
+config :opentelemetry, traces_exporter: :otlp
+config :opentelemetry_exporter,
+  otlp_protocol: :http_protobuf,
+  otlp_endpoint: "http://localhost:4318"
+```
+
+Elixir defaults to the W3C `tracecontext` propagator, so it stitches to the React `traceparent`
+automatically — no extra config.
+
+### React (same for all three stacks)
+
+OTel-web, but point the exporter at the **collector's public URL** (not LiveProbe) and propagate
+`traceparent` to your API origin so the frontend + backend become one trace:
+
+```ts
+// OTLPTraceExporter url: https://<vps-collector-host>/v1/traces   (JSON; collector receives it)
+// FetchInstrumentation propagateTraceHeaderCorsUrls: [/https:\/\/api\.myapp\.com/]
+```
+
+Full snippet: [../examples/otel-react-go/react-frontend/tracing.ts](../examples/otel-react-go/react-frontend/tracing.ts).
+
+### The collector (systemd, no Docker)
+
+Install the `otelcol` binary, drop a config, run it as a unit:
+
+```yaml
+# /etc/otelcol/config.yaml
+receivers:
+  otlp:
+    protocols:
+      grpc: { endpoint: 0.0.0.0:4317 }
+      http:
+        endpoint: 0.0.0.0:4318
+        cors: { allowed_origins: ["https://myapp.com"] }   # so the browser can post
+processors:
+  batch: { timeout: 1s }
+exporters:
+  otlphttp/liveprobe:
+    endpoint: http://<liveprobe-host>:4319   # localhost if LiveProbe is on the same box
+    encoding: json
+    tls: { insecure: true }
+service:
+  pipelines:
+    traces: { receivers: [otlp], processors: [batch], exporters: [otlphttp/liveprobe] }
+```
+
+```ini
+# /etc/systemd/system/otelcol.service
+[Service]
+ExecStart=/usr/bin/otelcol --config /etc/otelcol/config.yaml
+Restart=always
+```
+
+### Two decisions to make up front
+
+- **Public exposure.** Put the collector's `:4318` behind TLS (Caddy/nginx reverse proxy) and
+  keep the CORS allow-list tight — it's your one internet-facing telemetry port. Keep
+  LiveProbe's `:4319` on localhost / a private network, never public.
+- **One collector or many.** For a handful of droplets, one collector per box (above) is the
+  clean default — a bad box can't affect the others. A single central collector all boxes ship
+  to also works; each box's exporter just points at its address instead of `localhost`.
 
 ---
 
