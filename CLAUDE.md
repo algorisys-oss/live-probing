@@ -99,9 +99,9 @@ system prompt, not a suggestion. The load-bearing rules for this codebase:
 - **Scope lock (IV).** Only touch what the task requires. It is the #1 rule.
 - **TDD (V, XII).** Tests first, failing then green. The normalized event model and the
   exporters are pure functions, so there is no excuse to skip them.
-- **Contract first (XXIX).** `plan.md` holds the testable "done" checklist. Grade against
+- **Contract first (XXIX).** `docs/plan.md` holds the testable "done" checklist. Grade against
   it, do not rubber-stamp.
-- **Disk, not context (XXX).** State lives in `plan.md`, `IMPLEMENT.md`, `CHANGELOG.md`.
+- **Disk, not context (XXX).** State lives in `docs/plan.md`, `IMPLEMENT.md`, `CHANGELOG.md`.
 - **Reference oracle (XXXVII).** OTel span semantics decide arrow direction.
 - **Continuous input is correctness (XXXIX).** The renderer batches to rAF.
 - **Naming.** Lowercase-hyphenated files and folders, everywhere.
@@ -127,11 +127,10 @@ convention Claude follows each session, not an automated hook — ask for a Stop
 
 - `HANDOFF.md` — current state and how to resume. **Start here.**
 - `todo.md` — what is done (`[x]`) and the enhancement backlog.
-- `plan.md` — phased plan and the MVP contract (the testable success criteria).
-- `plan-testbed.md` — the Shopwave testbed plan and contract.
 - `IMPLEMENT.md` — decision-to-code audit trail.
 - `CHANGELOG.md` — timestamped functional changes.
-- `docs/` — architecture, event model, and Shopwave per-action events.
+- `docs/` — architecture, event model, Shopwave per-action events, and the phased plans
+  (`docs/plan.md` — MVP contract; `docs/plan-testbed.md` — Shopwave testbed contract).
 - `LOOPS.md` — engineering principles and agent-loop doctrine.
 
 ## Commands

@@ -3,6 +3,12 @@
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
 ## [2026-07-02]
+- **Docs tidy:** moved the planning/contract specs `plan.md` and `plan-testbed.md` into `docs/`
+  (alongside `architecture.md`, `event-model.md`, …) and indexed them in `docs/README.md`.
+  Updated the links/paths in `README.md` and `CLAUDE.md`. Rolling project-state and audit docs
+  (`HANDOFF.md`, `todo.md`, `IMPLEMENT.md`, `CHANGELOG.md`) stay at the repo root, where the LOOPS
+  doctrine (rule XXV: IMPLEMENT.md at project root) and CLAUDE.md (HANDOFF at repo root) pin them.
+  No code touched.
 - **UI: light/dark theme + history-chart legibility fix.** (1) Fixed black-on-dark labels on
   the History trends chart: `.axis`/`.axis-label` were only styled scoped under `.latency-chart`,
   so the trends chart's reused class names fell back to the SVG default black fill — promoted

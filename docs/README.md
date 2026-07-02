@@ -16,4 +16,11 @@ Detailed docs for the two halves of this repo.
   the adapter layer (client format → `Event[]`) and the collector (rabbitmq / stdout sources).
   **Design, not built yet.**
 
+Planning / contract specs (the testable "done" checklists):
+
+- [plan.md](plan.md) — LiveProbe phased plan and the MVP/Phase-1 contract.
+- [plan-testbed.md](plan-testbed.md) — the Shopwave testbed plan and its contract.
+
 Top-level [CLAUDE.md](../CLAUDE.md) is the short architectural overview; these go deeper.
+The rolling project-state and audit docs stay at the repo root: `HANDOFF.md`, `todo.md`,
+`IMPLEMENT.md`, `CHANGELOG.md`.

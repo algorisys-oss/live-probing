@@ -5,7 +5,13 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-UI: added a **light/dark theme toggle** (header ☀/☾ button; `data-theme` on `<html>` drives a
+Docs tidy: moved the planning specs `plan.md` + `plan-testbed.md` into `docs/` (they're
+read-mostly design/contract specs, sitting alongside `architecture.md` etc.) and re-linked them
+in `README.md`, `CLAUDE.md`, and `docs/README.md`. The rolling-state/audit docs (`HANDOFF.md`,
+`todo.md`, `IMPLEMENT.md`, `CHANGELOG.md`) stay at the repo root — LOOPS rule XXV pins
+IMPLEMENT.md there and CLAUDE.md pins HANDOFF there. No code, no tests affected.
+
+Prior task: UI: added a **light/dark theme toggle** (header ☀/☾ button; `data-theme` on `<html>` drives a
 second contrast-checked palette in `styles.css`; persisted to localStorage, applied pre-paint via
 an inline script in `index.html`; `lib/theme.ts`) and **fixed the History trends-chart labels**
 that rendered black-on-dark (`.axis`/`.axis-label` were scoped to `.latency-chart` only → promoted

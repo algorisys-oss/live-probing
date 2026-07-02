@@ -9,10 +9,10 @@ This repo has two parts:
 
 - **LiveProbe** — the tool. Consumes OTLP traces, assembles them into a rolling window,
   and serves live sequence (per trace) and flow/topology (aggregate) diagrams over a
-  websocket, plus Mermaid export. Lives in [packages/](packages/). See [plan.md](plan.md).
+  websocket, plus Mermaid export. Lives in [packages/](packages/). See [docs/plan.md](docs/plan.md).
 - **Shopwave testbed** — a real full-stack e-commerce system with Postgres, Redis,
   RabbitMQ, and OpenTelemetry, used as an honest trace source. Lives in [testbed/](testbed/).
-  See [plan-testbed.md](plan-testbed.md).
+  See [docs/plan-testbed.md](docs/plan-testbed.md).
 
 ## Status
 
@@ -221,8 +221,8 @@ via `createRequire` so their spans actually appear. See
   [event model](docs/event-model.md), and [Shopwave events](docs/shopwave-events.md)
   (per-action message payloads and traces).
 - [CLAUDE.md](CLAUDE.md) — short architecture overview and how we work here.
-- [plan.md](plan.md) — LiveProbe plan and its Phase 1 contract.
-- [plan-testbed.md](plan-testbed.md) — Shopwave testbed plan and contract.
+- [docs/plan.md](docs/plan.md) — LiveProbe plan and its Phase 1 contract.
+- [docs/plan-testbed.md](docs/plan-testbed.md) — Shopwave testbed plan and contract.
 - [IMPLEMENT.md](IMPLEMENT.md) — decision-to-code audit trail.
 - [CHANGELOG.md](CHANGELOG.md) — timestamped functional changes.
 - [LOOPS.md](LOOPS.md) — engineering principles this project runs under.
