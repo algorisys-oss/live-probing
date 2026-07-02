@@ -61,9 +61,9 @@ items: **S** = hours, **M** = ~a day, **L** = multi-day.
 - [x] Search page + header search box + service autocomplete
 
 ### Dev tooling & ops
-- [x] `dev.sh` — hot reload by default (Vite HMR + `tsx watch`), `--static` for build-and-serve
+- [x] `dev-start.sh` — hot reload by default (Vite HMR + `tsx watch`), `--static` for build-and-serve
 - [x] `testbed/docker-compose.dev.yml` — services under `tsx watch` with source bind-mounted
-- [x] `stop.sh` — one-command teardown (`--wipe` drops data)
+- [x] `dev-stop.sh` — one-command teardown (`--wipe` drops data)
 
 ### Verification
 - [x] 10 unit/integration tests (core + server), typecheck clean
@@ -75,6 +75,9 @@ items: **S** = hours, **M** = ~a day, **L** = multi-day.
 ## Backlog (enhancements)
 
 ### A. Visualization & interaction
+- [ ] **Ghost/external peer nodes** — render non-datastore peers (`peer.service`,
+      `server.address`) as dashed "uninstrumented" nodes in flow + sequence; today calls to
+      not-yet-instrumented services are invisible (`docs/implementation-review.md` #1) **S–M**
 - [x] Clickable service nodes → a service page (deps, error rate, spans, top operations)
 - [x] Tighter flow layout (barycenter ordering to reduce crossings + tighter spacing)
 - [x] Span waterfall on the trace page + click-to-expand span attributes (Waterfall tab: Gantt bars nested by depth, colored per service, click a span → attributes panel)
@@ -89,7 +92,8 @@ items: **S** = hours, **M** = ~a day, **L** = multi-day.
 - [ ] Anomaly/alert hooks (error-rate or latency spike → banner/webhook) **M–L**
 
 ### C. Data & scale
-- [ ] Retention / pruning (drop days older than N, size cap) **S**
+- [ ] Retention / pruning (drop days older than N, size cap) **S** — pair with fixing the
+      per-batch trace re-upsert write amplification (`docs/implementation-review.md` #4)
 - [ ] Sampling & backpressure on ingest under heavy load **M**
 - [x] Multi-day trends overview chart on /history (requests/day + errors)
 
@@ -99,6 +103,11 @@ items: **S** = hours, **M** = ~a day, **L** = multi-day.
       reference mapping. Verified end to end. (http source, more adapters = later)
 - [x] **OTel integration reference** (`examples/otel-react-go/`): React + Go via OpenTelemetry —
       Go→collector(`encoding:json`)→LiveProbe, React→LiveProbe direct. Docs/snippets.
+- [ ] Collector: RabbitMQ connection-error handling / reconnect (today an unhandled `error`
+      event crashes the tap; at minimum document systemd `Restart=always` in the runbook)
+      (`docs/implementation-review.md` #2) **S**
+- [ ] Docs: pure-ESM Node apps need `--import` (not `--require`) for auto-instrumentation —
+      add to recipes A/B/E (`docs/implementation-review.md` gap 1) **S**
 - [ ] Native SDK (`packages/sdk-js`) — drop-in tracer, use LiveProbe without OpenTelemetry **L**
 - [ ] Config/env surface for ports, retention, window horizon, OTLP path **S**
 - [ ] Package & publish core/server with a CLI (`npx liveprobe`) **M**
@@ -108,6 +117,10 @@ items: **S** = hours, **M** = ~a day, **L** = multi-day.
       seeded via `/v1/events`, isolated port+DB, no docker). Component tests still open. **M**
 - [ ] Raise coverage to the LOOPS bar (malformed OTLP, ws reconnect, ingest edges) **M**
 - [ ] Security pass (optional API auth, tighten CORS before shared deployment) **M**
+- [ ] Fix topology edge-key separator (`EDGE_SEP = " "` breaks service names containing
+      spaces) (`docs/implementation-review.md` #3) **S**
+- [ ] Ingest hardening: request body-size cap on `readBody`; sanitize attribute values in
+      `coerceEvents` (`docs/implementation-review.md` #5) **S**
 
 ### F. Testbed realism
 - [ ] A Python (or Go) service — prove polyglot-via-OTLP renders identically **M**

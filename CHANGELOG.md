@@ -3,6 +3,27 @@
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
 ## [2026-07-02]
+- **Renamed the dev scripts**: `dev.sh` → `dev-start.sh`, `stop.sh` → `dev-stop.sh` (git mv,
+  history preserved). Updated every current-state reference (`README.md`, `CLAUDE.md`,
+  `HANDOFF.md`, `todo.md`, `docs/architecture.md`, `docs/integrating-your-app.md`,
+  `examples/otel-react-go/README.md`, `testbed/docker-compose.dev.yml`, and the scripts'
+  self-references). Historical entries in `CHANGELOG.md` / `IMPLEMENT.md` intentionally
+  untouched. No behavior change.
+- **Docs: implementation review** (`docs/implementation-review.md`) — reviewed the full ingest
+  path (core normalizers, trace window, sequence projection, server, collector) and the
+  zero-instrumentation story for React / Node / Elixir. Key findings: uninstrumented service
+  peers render nowhere (only `DATASTORE_SYSTEMS` peers draw edges — the partial-rollout blind
+  spot), RabbitMQ source has no connection-error handling, `EDGE_SEP=" "` breaks service names
+  with spaces, per-batch trace re-upsert amplifies history writes, plus smaller ingest-hardening
+  items. Actionable items mirrored into `todo.md` (A/C/D/E). Also un-staled the
+  `integration-adapters.md` line in `docs/README.md` ("Design, not built yet" → MVP built).
+  Docs only — no code.
+- **Dev fix: stale-network containers.** `dev.sh` failed with "network 83b5089a… not found":
+  the stopped profile containers (`loadgen`, `frontend`) still referenced a deleted
+  `shopwave_default` network id after the network was recreated, and compose *starts* (not
+  recreates) existing stopped containers. Recreated `loadgen` (`docker compose --profile load
+  up -d --force-recreate loadgen`; verified generating traffic). `frontend` still holds the
+  stale reference — recreate it the same way before next use. Gotcha added to `HANDOFF.md`.
 - **Docs: database tracing subsection** in Recipe E of `docs/integrating-your-app.md` — why DB
   spans must be born in the app process (Postgres renders as a datastore *peer*, nothing installed
   on the DB), the three intrusion tiers (Node `--require` preload = no source change; Elixir Ecto

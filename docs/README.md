@@ -14,7 +14,10 @@ Detailed docs for the two halves of this repo.
   into LiveProbe: the OTLP/JSON fact, when you need a collector, and copy-paste recipes.
 - [integration-adapters.md](integration-adapters.md) — how to feed client apps into LiveProbe:
   the adapter layer (client format → `Event[]`) and the collector (rabbitmq / stdout sources).
-  **Design, not built yet.**
+  **MVP built and verified** (see the status note at the top of that doc).
+- [implementation-review.md](implementation-review.md) — 2026-07-02 review of the ingest path
+  and the zero-instrumentation story (React / Node / Elixir): findings, per-stack intrusion
+  floors, and the partial-rollout blind spot. Actionable items mirrored in `todo.md`.
 
 Planning / contract specs (the testable "done" checklists):
 

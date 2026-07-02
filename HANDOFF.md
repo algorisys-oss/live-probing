@@ -5,7 +5,21 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-Docs: folded a **"Database tracing (and its intrusion floor)"** subsection into Recipe E of
+**Renamed dev scripts**: `dev.sh` → `dev-start.sh`, `stop.sh` → `dev-stop.sh` (git mv). All
+current-state docs and self-references updated; historical logs (`CHANGELOG.md`, `IMPLEMENT.md`)
+left as written. No behavior change.
+
+Prior task: **Implementation review + dev fix.** Wrote `docs/implementation-review.md` — a review of the
+whole ingest path and the zero-instrumentation story (React / Node / Elixir). Top findings:
+(1) non-datastore peers never render, so calls to not-yet-instrumented services are invisible
+(the partial-rollout blind spot); (2) the RabbitMQ source crashes on connection errors (no
+handler/reconnect); (3) `EDGE_SEP=" "` breaks service names with spaces; (4) per-batch trace
+re-upsert amplifies SQLite writes (likely the old 555MB). Backlog items added to `todo.md`
+(A/C/D/E); `docs/README.md` index updated (and its stale "not built yet" adapter line fixed).
+Also fixed `dev-start.sh` failing with "network … not found": recreated the stale `loadgen`
+container (see Gotchas) — **loadgen is now RUNNING** (traffic flowing). Docs only, no code.
+
+Prior task: Docs: folded a **"Database tracing (and its intrusion floor)"** subsection into Recipe E of
 `docs/integrating-your-app.md` — DB spans must originate in the app process (Postgres renders as a
 datastore peer, nothing on the DB); three intrusion tiers (Node `--require` preload = no source
 change; Elixir Ecto = two-line setup, no BEAM preload; eBPF/Beyla = zero app change); what doesn't
@@ -84,16 +98,17 @@ typecheck clean, UI verified in a headless browser. Nothing known broken.
     time**, slowest), `/compare?a=&b=` (operation timing diff). Route-keyed `ErrorBoundary`.
 - **Client integration**: `packages/collector` (stdin/rabbitmq → adapter → `/v1/events`).
 - **Testbed** (`testbed/`): 8-service e-commerce + workers over Postgres/Redis/RabbitMQ,
-  OTel-instrumented; collector fans OTLP to Jaeger + LiveProbe. Loadgen currently **stopped**;
-  history DB is **clean** (was reset from 555MB).
+  OTel-instrumented; collector fans OTLP to Jaeger + LiveProbe. Loadgen currently **running**
+  (recreated 2026-07-02 after the stale-network fix); history DB was reset from 555MB — watch
+  its size while loadgen runs (retention still unimplemented).
 
 ## How to run / verify
 ```bash
-./dev.sh              # hot reload; open http://localhost:5173  (API/ws on :4319)
-./dev.sh --static     # build + serve the UI from the server at http://localhost:4319
+./dev-start.sh              # hot reload; open http://localhost:5173  (API/ws on :4319)
+./dev-start.sh --static     # build + serve the UI from the server at http://localhost:4319
 npm test              # core + server + collector tests (13)
 npm run test:e2e      # Playwright UI e2e (11); first run: npx playwright install chromium
-./stop.sh             # tear down (--wipe drops data)
+./dev-stop.sh             # tear down (--wipe drops data)
 # feed a non-OTLP client: cat events.ndjson | SOURCE=stdin ADAPTER=adapter-id-1 \
 #   LIVEPROBE_URL=http://localhost:4319 npx tsx packages/collector/src/index.ts
 ```
@@ -108,10 +123,17 @@ Details/ports: `README.md`. Jaeger at http://localhost:16687. Sample login `alic
 - **Smaller**: D2 export; side-by-side waterfalls in `/compare`.
 
 ## Gotchas
+- **Stale-network containers after the compose network is recreated**: if `dev-start.sh` dies with
+  `network <id> not found` on `loadgen`/`frontend`, those *stopped* profile containers still
+  reference a deleted `shopwave_default` network id (compose starts, not recreates, existing
+  stopped containers). Fix: `cd testbed && docker compose -f docker-compose.yml -f
+  docker-compose.dev.yml --profile load up -d --force-recreate loadgen` (same idea with
+  `--profile ui … frontend`). As of 2026-07-02 `frontend` still holds a stale reference —
+  force-recreate it before next use.
 - **Git flow**: work on `dev`; the word **"sync"** = commit → push dev → fast-forward `main` →
   push main → back to dev. Don't commit/push between syncs. Check the branch before pushing.
 - **Stray servers on :4319**: only run ONE LiveProbe server against `packages/server/data`. A
-  `dev.sh --watch` server may not always reload on a server-code change — restart `./dev.sh`, and
+  `dev-start.sh --watch` server may not always reload on a server-code change — restart `./dev-start.sh`, and
   don't leave background `tsx packages/server/src/index.ts` instances around (use `DB_PATH` +
   a spare `PORT` to verify in isolation).
 - **ioredis / amqplib** are loaded via `createRequire` (OTel only hooks CommonJS require, not ESM).
