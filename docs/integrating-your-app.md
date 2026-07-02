@@ -263,6 +263,50 @@ config :opentelemetry_exporter,
 Elixir defaults to the W3C `tracecontext` propagator, so it stitches to the React `traceparent`
 automatically — no extra config.
 
+### Database tracing (and its intrusion floor)
+
+A DB span — one per query, nested under the request, with timing and which service ran it —
+needs the **active trace context** (`traceId`/`spanId`/`parentSpanId`), and that context only
+exists **inside the process making the query**. Postgres emits no OpenTelemetry spans and has no
+idea what trace a query belongs to. So "tracing the DB" always means instrumenting the DB
+*client* (`pg`, Ecto) in the app; **Postgres then renders in LiveProbe as a datastore *peer*
+node** (derived from the `db.system` attribute on the client span), not as an instrumented
+participant — nothing is installed on the database and no `traceparent` travels into it.
+
+That puts a floor on "without any intrusion": something in or around the app process must
+capture the query. How much it touches the app varies by tier (least-intrusive first):
+
+| Tier | Node (pg + ORM) | Elixir/Phoenix (Ecto) | Touches |
+|---|---|---|---|
+| **1. Preload agent** | ✅ `NODE_OPTIONS=--require @opentelemetry/auto-instrumentations-node/register` | ❌ no BEAM equivalent | start command only |
+| **2. In-process SDK** | (same as tier 1) | ✅ dep + `OpentelemetryEcto.setup(...)` | a few lines at boot |
+| **3. eBPF agent** | ✅ | ✅ | host only, zero app change |
+
+- **Node — effectively non-intrusive today.** The `--require` preload (already set above)
+  monkey-patches `pg` at load time, giving a span per query nested under the request with no
+  source changes — you only change *how the process starts*. Because it instruments the
+  underlying `pg` driver, most ORMs (Prisma, Sequelize, TypeORM, Knex) come along for free.
+- **Elixir — minimal but nonzero.** The BEAM has no preload/agent injection, so DB tracing here
+  cannot be truly zero-code: add `{:opentelemetry_ecto, …}` and the one `OpentelemetryEcto.setup([:my_app, :repo])`
+  call from the Elixir backend block above. Mitigating fact: Ecto already emits `:telemetry`
+  events, so this just *attaches a handler* to events that already fire — a tiny footprint.
+- **eBPF — genuinely zero app change, both stacks.** An eBPF agent on the host (Grafana Beyla or
+  the OpenTelemetry eBPF profiler) captures DB client calls at the syscall level, no code and no
+  preload, exporting OTLP → the collector → LiveProbe. Trade-offs: needs a recent kernel +
+  root/`CAP_BPF`, and its span quality / cross-service context propagation is lower fidelity than
+  in-process SDK instrumentation. Reach for it when you truly cannot touch the app or its launch.
+
+**What does *not* work for LiveProbe:** Postgres-side visibility (`log_statement`,
+`pg_stat_statements`, `auto_explain`, a `pgbouncer`/wire proxy) yields queries and durations but
+**no trace/span ids**, so they can't be nested into a trace or drawn in the sequence/flow views.
+Bridging that needs SQL-comment context injection (à la *sqlcommenter*) — itself an app change.
+
+> On the **adapter path** (a custom format over a broker, Recipe D) the same floor applies from
+> the other side: Postgres appears only if the app's own instrumentation already emits a DB event
+> carrying a `db.system`/`peer` field. Note `adapter-id-1` currently drops `peer` and `duration`,
+> so DB nodes and query latency don't render there yet — see
+> [integration-adapters.md](integration-adapters.md).
+
 ### React (same for all three stacks)
 
 OTel-web, but point the exporter at the **collector's public URL** (not LiveProbe) and propagate

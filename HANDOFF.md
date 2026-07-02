@@ -5,7 +5,13 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-Collector: added an **opt-in bounded tap queue** — `QUEUE_MAX_LENGTH` (x-max-length, drop-head
+Docs: folded a **"Database tracing (and its intrusion floor)"** subsection into Recipe E of
+`docs/integrating-your-app.md` — DB spans must originate in the app process (Postgres renders as a
+datastore peer, nothing on the DB); three intrusion tiers (Node `--require` preload = no source
+change; Elixir Ecto = two-line setup, no BEAM preload; eBPF/Beyla = zero app change); what doesn't
+work (query logs/proxies lack trace ids); adapter-path caveat. Docs only — no code, no tests.
+
+Prior task: Collector: added an **opt-in bounded tap queue** — `QUEUE_MAX_LENGTH` (x-max-length, drop-head
 = keep newest) and `QUEUE_MESSAGE_TTL_MS` (x-message-ttl) so a live tap can't back up unboundedly
 while the collector is down. 2 new unit tests (19 total, typecheck green); verified on the live
 testbed RabbitMQ (conflicting re-declare → PRECONDITION_FAILED proves the args reached the broker).

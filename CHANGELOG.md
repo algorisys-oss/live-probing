@@ -3,6 +3,12 @@
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
 ## [2026-07-02]
+- **Docs: database tracing subsection** in Recipe E of `docs/integrating-your-app.md` — why DB
+  spans must be born in the app process (Postgres renders as a datastore *peer*, nothing installed
+  on the DB), the three intrusion tiers (Node `--require` preload = no source change; Elixir Ecto
+  = a two-line setup, no BEAM preload exists; eBPF/Beyla = zero app change, host-level), what
+  doesn't work for LiveProbe (query logs / proxies have no trace ids), and the adapter-path
+  caveat (`adapter-id-1` drops `peer`/`duration`). Docs only.
 - **Collector: bounded tap queue (opt-in).** `rabbitmqSource` now takes `QUEUE_MAX_LENGTH`
   (→ `x-max-length` with `x-overflow: drop-head`, keeping newest) and `QUEUE_MESSAGE_TTL_MS`
   (→ `x-message-ttl`) so a live tap can't back up unboundedly while the collector is down. Added
