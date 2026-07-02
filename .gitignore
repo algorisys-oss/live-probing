@@ -48,3 +48,6 @@ packages/server/data/
 
 # Private/client adapter material (not for the repo)
 adapters-hidden/
+
+# teachme learning workspace (personal notes, not for the repo)
+.teachme/
