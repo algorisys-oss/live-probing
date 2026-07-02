@@ -118,8 +118,9 @@ items: **S** = hours, **M** = ~a day, **L** = multi-day.
       seeded via `/v1/events`, isolated port+DB, no docker). Component tests still open. **M**
 - [ ] Raise coverage to the LOOPS bar (malformed OTLP, ws reconnect, ingest edges) **M**
 - [ ] Security pass (optional API auth, tighten CORS before shared deployment) **M**
-- [ ] Fix topology edge-key separator (`EDGE_SEP = " "` breaks service names containing
-      spaces) (`docs/implementation-review.md` #3) **S**
+- [x] Topology edge-key separator — original finding corrected (it was already a NUL, not a
+      space; names with spaces were never broken); the literal NUL byte made the file binary
+      to git/grep, now written as the `"\u0000"` escape (`docs/implementation-review.md` #3)
 - [ ] Ingest hardening: request body-size cap on `readBody`; sanitize attribute values in
       `coerceEvents` (`docs/implementation-review.md` #5) **S**
 

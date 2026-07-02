@@ -54,13 +54,17 @@ notices.
 as a requirement (consistent with the best-effort posture); better, add an error handler
 with a reconnect loop.
 
-### 3. Topology edge-key separator breaks on service names with spaces
+### 3. Topology edge-key separator — **CORRECTED, then FIXED 2026-07-02**
 
-`trace-window.ts` builds edge keys with `EDGE_SEP = " "` and later destructures
-`key.split(EDGE_SEP)` — a participant named `orders api` produces an edge
-`orders → api`. `OTEL_SERVICE_NAME` values with spaces are legal.
+*The original finding here was wrong.* It claimed `EDGE_SEP = " "` (a space) broke service
+names containing spaces — but the separator was actually a **literal NUL byte** (`"\0"`),
+which review tooling rendered as a space. Service names with spaces were never broken; NUL
+cannot appear in a service name.
 
-**Recommendation:** use `"\u0000"` as the separator, or keep `{from, to}` in the map value.
+The real (smaller) defect the misread exposed: a raw NUL byte in a `.ts` source file makes
+git and grep treat `trace-window.ts` as **binary** — no textual diffs, no grep. Fixed by
+writing the same value as the escape sequence `"\u0000"`; behavior unchanged, file is text
+again.
 
 ### 4. History write amplification
 

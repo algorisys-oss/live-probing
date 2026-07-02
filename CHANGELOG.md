@@ -3,6 +3,12 @@
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
 ## [2026-07-02]
+- **Review finding #3 corrected + NUL byte fixed.** The review's claim that
+  `EDGE_SEP = " "` broke service names with spaces was wrong: the separator was a **literal
+  NUL byte** that review tooling rendered as a space (names with spaces were never broken).
+  The actual defect: the raw NUL made git/grep treat `trace-window.ts` as **binary** (no
+  diffs). Now written as the `"\u0000"` escape — same runtime value, file is text again.
+  Review doc + todo corrected; 26 tests + typecheck green.
 - **Ghost nodes for uninstrumented peers.** Topology and sequence now draw the edge to a
   non-datastore `peer` when the callee never reported a span of its own (suppressed when a
   cross-participant child exists, so instrumented calls aren't double-drawn), and expose those

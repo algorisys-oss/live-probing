@@ -13,6 +13,10 @@ latest commit unless a "Last task" note says otherwise.
 - **Collector RabbitMQ auto-reconnect**: `error`/`close` handled (previously an unhandled
   `error` crashed the process), exponential-backoff reconnect (1s→30s) re-runs the full setup;
   initial connect still fails fast. Runbook still recommends a supervisor.
+Post-sync correction in the same session: **review finding #3 was wrong** — `EDGE_SEP` was a
+literal NUL byte (rendered as a space by review tooling), so names with spaces were never
+broken; the real defect was that the raw NUL made git/grep treat `trace-window.ts` as binary.
+Now written as the `"\u0000"` escape (behavior unchanged, file is text). Review doc corrected.
 Also fixed a **pre-existing e2e flake** (history→day rollup assertion raced the fetch; now
 auto-retrying). **26 unit + 15 e2e green (e2e 3× consecutively), typecheck clean**; verified
 live in a browser (dashed ghost node + lifeline screenshots against seeded traces on an
