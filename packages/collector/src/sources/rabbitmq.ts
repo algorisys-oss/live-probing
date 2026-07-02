@@ -23,6 +23,8 @@ export interface ChannelLike {
 export interface ConnLike {
   createChannel(): Promise<ChannelLike>;
   close(): Promise<void>;
+  // amqplib connections are EventEmitters; we need 'error' and 'close'.
+  on(event: string, listener: (arg?: unknown) => void): unknown;
 }
 
 export interface RabbitmqOptions {
@@ -41,6 +43,9 @@ export interface RabbitmqOptions {
   // queue with different arguments will fail with a queue-arg mismatch.
   queueMaxLength?: number; // x-max-length; overflow drops the oldest (drop-head), keeping newest
   queueMessageTtlMs?: number; // x-message-ttl: discard messages older than this
+  // Base delay before a reconnect attempt after the connection drops; doubles per failed
+  // attempt up to 30s and resets on success. Default 1000ms.
+  reconnectDelayMs?: number;
   // Injectable connector, for tests. Defaults to amqplib's connect.
   connect?: (url: string) => Promise<ConnLike>;
 }
@@ -50,6 +55,10 @@ export interface RabbitmqOptions {
 //
 // With `opts.exchange`, a dedicated queue is bound to that exchange (a fanout-style tap) so the
 // client's existing consumers are untouched — see docs/integration-adapters.md.
+//
+// A lost connection (broker restart, heartbeat timeout) reconnects automatically with
+// exponential backoff and re-runs the full setup (exchange/queue/bind/consume). Only the
+// *initial* connect throws to the caller — fail fast on misconfiguration.
 export async function rabbitmqSource(
   url: string,
   queue: string,
@@ -57,47 +66,81 @@ export async function rabbitmqSource(
   opts: RabbitmqOptions = {},
 ): Promise<() => Promise<void>> {
   const connect = opts.connect ?? amqp.connect;
-  const conn = await connect(url);
-  const channel = await conn.createChannel();
+  const baseDelay = opts.reconnectDelayMs ?? 1000;
 
-  const queueArgs: Record<string, number | string> = {};
-  if (opts.queueMaxLength != null) {
-    queueArgs["x-max-length"] = opts.queueMaxLength;
-    queueArgs["x-overflow"] = "drop-head"; // keep the newest events for a live view
-  }
-  if (opts.queueMessageTtlMs != null) queueArgs["x-message-ttl"] = opts.queueMessageTtlMs;
-  const queueOpts = {
-    durable: opts.queueDurable ?? true,
-    ...(Object.keys(queueArgs).length > 0 ? { arguments: queueArgs } : {}),
+  let stopped = false;
+  let live: { conn: ConnLike; channel: ChannelLike } | null = null;
+  let retryTimer: ReturnType<typeof setTimeout> | undefined;
+
+  const scheduleReconnect = (delayMs: number): void => {
+    if (stopped) return;
+    console.error(`[collector] rabbitmq connection lost; reconnecting in ${delayMs}ms`);
+    retryTimer = setTimeout(() => {
+      setup().catch(() => scheduleReconnect(Math.min(delayMs * 2, 30_000)));
+    }, delayMs);
+    retryTimer.unref?.();
   };
 
-  if (opts.exchange) {
-    if (opts.exchangeType) {
-      await channel.assertExchange(opts.exchange, opts.exchangeType, { durable: true });
-    } else {
-      await channel.checkExchange(opts.exchange);
-    }
-    await channel.assertQueue(queue, queueOpts);
-    const keys = opts.routingKeys && opts.routingKeys.length > 0 ? opts.routingKeys : ["#"];
-    for (const key of keys) {
-      await channel.bindQueue(queue, opts.exchange, key);
-    }
-  } else {
-    await channel.assertQueue(queue, queueOpts);
-  }
+  const setup = async (): Promise<void> => {
+    const conn = await connect(url);
+    const channel = await conn.createChannel();
+    live = { conn, channel };
+    // An unhandled 'error' event would crash the process; 'close' always follows a lost
+    // connection, so reconnection hangs off 'close' alone.
+    conn.on("error", () => {});
+    conn.on("close", () => {
+      live = null;
+      scheduleReconnect(baseDelay);
+    });
 
-  await channel.prefetch(64);
-  await channel.consume(queue, (msg) => {
-    if (!msg) return;
-    try {
-      onEvent(JSON.parse(Buffer.from(msg.content).toString()));
-      channel.ack(msg);
-    } catch {
-      channel.nack(msg, false, false);
+    const queueArgs: Record<string, number | string> = {};
+    if (opts.queueMaxLength != null) {
+      queueArgs["x-max-length"] = opts.queueMaxLength;
+      queueArgs["x-overflow"] = "drop-head"; // keep the newest events for a live view
     }
-  });
+    if (opts.queueMessageTtlMs != null) queueArgs["x-message-ttl"] = opts.queueMessageTtlMs;
+    const queueOpts = {
+      durable: opts.queueDurable ?? true,
+      ...(Object.keys(queueArgs).length > 0 ? { arguments: queueArgs } : {}),
+    };
+
+    if (opts.exchange) {
+      if (opts.exchangeType) {
+        await channel.assertExchange(opts.exchange, opts.exchangeType, { durable: true });
+      } else {
+        await channel.checkExchange(opts.exchange);
+      }
+      await channel.assertQueue(queue, queueOpts);
+      const keys = opts.routingKeys && opts.routingKeys.length > 0 ? opts.routingKeys : ["#"];
+      for (const key of keys) {
+        await channel.bindQueue(queue, opts.exchange, key);
+      }
+    } else {
+      await channel.assertQueue(queue, queueOpts);
+    }
+
+    await channel.prefetch(64);
+    await channel.consume(queue, (msg) => {
+      if (!msg) return;
+      try {
+        onEvent(JSON.parse(Buffer.from(msg.content).toString()));
+        channel.ack(msg);
+      } catch {
+        channel.nack(msg, false, false);
+      }
+    });
+  };
+
+  await setup();
+
   return async () => {
-    await channel.close();
-    await conn.close();
+    stopped = true;
+    if (retryTimer) clearTimeout(retryTimer);
+    if (live) {
+      const { conn, channel } = live;
+      live = null;
+      await channel.close();
+      await conn.close();
+    }
   };
 }

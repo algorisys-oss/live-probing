@@ -260,6 +260,12 @@ part of the minimal rollout. Full field mapping and gaps: see the two sections a
   (`packages/collector/src/sink.ts`). LiveProbe is a **live-diagnostics view, not a system of
   record** — a dropped batch means a momentary gap in the live diagram, never data loss for the
   client (their own aggregators still receive everything). Don't position it as durable storage.
+- **Lost broker connections reconnect automatically.** The `rabbitmq` source handles the
+  connection's `error`/`close` events and reconnects with exponential backoff (1s base,
+  doubling to 30s; `reconnectDelayMs` in code), re-running the full exchange/queue/bind/consume
+  setup each attempt. Only the *initial* connect fails fast (misconfiguration should be loud).
+  Still run the collector under a supervisor (systemd `Restart=always`, docker `restart:
+  unless-stopped`) to cover process-level crashes.
 - **Bound the tap queue.** Because it's a live view, set `QUEUE_MAX_LENGTH` (and/or
   `QUEUE_MESSAGE_TTL_MS`) so the tap queue can't accumulate a huge backlog while the collector is
   down — overflow drops the *oldest* (drop-head), keeping the newest events. Applies to queues the
