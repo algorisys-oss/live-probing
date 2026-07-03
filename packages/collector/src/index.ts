@@ -2,12 +2,14 @@ import { getAdapter } from "./adapters/index.js";
 import { createSink } from "./sink.js";
 import { stdinSource } from "./sources/stdin.js";
 import { rabbitmqSource } from "./sources/rabbitmq.js";
+import { httpSource } from "./sources/http.js";
 
 // A collector instance = one source (transport) + one adapter (format) -> LiveProbe.
 // Configure per client with env vars; run one per client (sidecar) or several instances.
 //
 //   SOURCE=stdin    ADAPTER=adapter-id-1                      < events.ndjson
 //   SOURCE=rabbitmq ADAPTER=adapter-id-1 RABBITMQ_URL=... QUEUE=instrumentation.events
+//   SOURCE=http     ADAPTER=adapter-id-2 HTTP_PORT=4320       (accepts POSTed JSON events)
 //
 // To tap an existing exchange non-intrusively (bind our own queue for a copy of the stream):
 //   SOURCE=rabbitmq ADAPTER=adapter-id-1 RABBITMQ_URL=... QUEUE=liveprobe.tap \
@@ -37,6 +39,16 @@ async function main(): Promise<void> {
 
   if (source === "stdin") {
     stdinSource(onEvent, () => void sink.close().then(() => process.exit(0)));
+    return;
+  }
+
+  if (source === "http") {
+    const port = Number(process.env.HTTP_PORT ?? 4320);
+    const handle = await httpSource(port, onEvent);
+    console.error(`[collector] http source listening on :${handle.port} (POST JSON events, any path)`);
+    const shutdown = () => void handle.close().then(() => sink.close()).then(() => process.exit(0));
+    process.on("SIGINT", shutdown);
+    process.on("SIGTERM", shutdown);
     return;
   }
 
@@ -73,7 +85,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  console.error(`[collector] unknown SOURCE "${source}" (use stdin or rabbitmq)`);
+  console.error(`[collector] unknown SOURCE "${source}" (use stdin, rabbitmq, or http)`);
   process.exit(1);
 }
 

@@ -2,7 +2,23 @@
 
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
-## [2026-07-05]
+## [2026-07-03]
+- **Collector: `http` source + `adapter-id-2`** (internal instrumentation-service format).
+  New `SOURCE=http` (`HTTP_PORT`, default 4320): a path-agnostic JSON receiver (single event
+  or array per POST, 5MB cap, `GET /healthz`) so emitters that push to
+  `POST /v1/event/instrumentation|log|audit` can be repointed at the collector unchanged.
+  New `adapter-id-2` maps the three event types (instrumentation / log / audit) to spans:
+  `traceId = request.requestId`, participant = `application.name.module` (**app + module are
+  the sequence lifelines**), a deterministic synthetic `client` root span anchors each request
+  (the format has no span/parent ids — the window dedupes re-emissions by spanId),
+  instrumentation → `server` span with `durationMs` + statusCode/success → status, log →
+  ERROR/FATAL/CRITICAL as errors, audit → `audit ACTION entity id` with `before.*`/`after.*`
+  flattened into searchable attributes. TDD: 10 new tests (**40 unit green**, typecheck clean);
+  verified end to end on an isolated server (sequence + topology + Mermaid + attribute search).
+  Docs: mapping section in `docs/integration-adapters.md`; private spec in
+  `adapters-hidden/adapter-id-2.md` (gitignored).
+
+## [2026-07-02] <!-- was mis-dated 2026-07-05; serve.sh landed in 2d3a360 on 07-02 -->
 - **`./serve.sh` — standalone server entry point.** Runs just the LiveProbe server (UI +
   OTLP/native ingest + ws on `:4319`, env: `PORT`/`DB_PATH`/`RETENTION_DAYS`), building the
   UI on first run — no testbed, no watch. This is the command for client machines where a

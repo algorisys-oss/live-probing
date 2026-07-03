@@ -2,6 +2,41 @@
 
 Decision-to-code audit trail (LOOPS rule XXV). Newest first.
 
+## [2026-07-03] adapter-id-2 + collector http source
+
+**Asked:** adapter for the user's internal instrumentation service — three JSON event types
+(`instrumentation` / `log` / `audit`, POSTed to `/v1/event/<type>`) carrying
+`application { name, module, environment }` + `request { requestId }`; application and module
+must show up in the sequence diagram.
+
+**Decided:**
+- The format has **no span/parent ids**, so the adapter synthesizes structure: `traceId =
+  requestId`; a deterministic synthetic `client` root span (`spanId = requestId`) that every
+  event re-emits (the `TraceWindow` dedupes by spanId, so arrival order doesn't matter); each
+  event = a child span with `spanId = eventId`.
+- **Lifelines carry app + module**: `participant = application.name + "." + module`
+  (dot, not `/` — a slash would break the `/service/:name` route). Environment/eventType/
+  payload fields become searchable attributes.
+- Kinds per the OTel oracle (rule XXXVII): instrumentation → `server`, log/audit →
+  `internal`, synthetic root → `client`. Labels prefixed `log …` / `audit …` so the
+  synthetic client arrows read as events, not calls.
+- Built the backlogged **`http` source** alongside (the service's transport is HTTP POST):
+  path-agnostic JSON receiver so the `/v1/event/*` emitters can be repointed unchanged.
+  Named `adapter-id-2` per the client-anonymous convention; spec kept in `adapters-hidden/`.
+
+**Implemented:** `packages/collector/src/adapters/adapter-id-2.ts` (+ registry entry),
+`packages/collector/src/sources/http.ts` (+ `SOURCE=http` / `HTTP_PORT` wiring in
+`index.ts`). TDD: tests first (red), then green — 6 adapter + 4 http tests.
+
+**Verified:** 40 unit tests + typecheck green. End to end on an isolated pair
+(server :4391, collector :4392): POSTed the three sample events sharing a requestId →
+sequence rendered `client → propeak.invoice: POST /api/payroll/process (135ms, ok)`,
+`log ERROR` red on `hrms.employee`, `audit UPDATE employee EMP100`; topology edges +
+Mermaid correct; `attr` search hits on `module=invoice` / `application=hrms`.
+
+**Known limitation (documented):** no causality in the format → all arrows fan out from the
+synthetic `client`; real service→service nesting needs the emitter to add span/parent ids.
+
 ## [2026-07-01] UX polish + daily/history mode
 
 **Discussed (from using the live UI):** trace titles showed bare GET/POST; the live sidebar

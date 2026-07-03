@@ -5,12 +5,28 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-**Added `./serve.sh`** — standalone server entry point (UI + ingest on :4319, builds UI on
+**Added `adapter-id-2` + collector `http` source** (TDD) for the internal instrumentation-service
+format: three JSON event types (`instrumentation`/`log`/`audit`) POSTed to `/v1/event/<type>`,
+carrying `application { name, module, environment }` + `request { requestId }` but **no span ids**.
+The adapter synthesizes structure — `traceId = requestId`, a deterministic synthetic `client`
+root span (re-emitted by every event; the window dedupes by spanId), each event a child span on
+an **`app.module` lifeline** (application + module show on the sequence diagram, as asked).
+Instrumentation → `server` span with real duration/status; ERROR logs render red; audits carry
+flattened `before.*`/`after.*` attributes. The new `SOURCE=http` (`HTTP_PORT`, default 4320) is a
+path-agnostic JSON receiver so the `/v1/event/*` emitters can be repointed at it unchanged.
+10 new tests (**40 unit green** + typecheck); verified end to end on an isolated server :4391 +
+collector :4392 (sequence/topology/Mermaid/attribute-search correct, then torn down). Docs:
+mapping in `docs/integration-adapters.md`, private spec in `adapters-hidden/adapter-id-2.md`
+(gitignored). Known format limitation: no causality → arrows fan out from the synthetic `client`
+lifeline (real nesting needs the emitter to add span/parent ids). Also corrected a mis-dated
+CHANGELOG heading (serve.sh entry was labeled 07-05; it landed 07-02).
+
+Prior task: **Added `./serve.sh`** — standalone server entry point (UI + ingest on :4319, builds UI on
 first run, no testbed) for client machines pointing real apps at LiveProbe; referenced from
 README/CLAUDE.md/integration guide. Context: the SkillzEngine client integration landed on
 their `feat/live-probing` branch (optional `TRACING=1` OTel auto-instrumentation; see
 `adapters-hidden/skillzengine-adapter.md` for status + verified findings, incl. Mongo v7
-instrumentation working). Uncommitted here until next sync.
+instrumentation working). Synced this session.
 
 Prior task: **Fixed review finding #4: history retention + debounced writes** (TDD). `HistoryStore.prune`
 drops day-partitions older than `RETENTION_DAYS` (env / `retentionDays` option; default **14**,
@@ -114,7 +130,7 @@ Prior task: `examples/otel-react-go/` — OTel integration reference for a React
 `encoding:json`→LiveProbe; React→LiveProbe direct). Synced (`d998250`).
 
 ## Current state
-LiveProbe is a mature working app, verified end to end against the live testbed. **30 unit tests
+LiveProbe is a mature working app, verified end to end against the live testbed. **40 unit tests
 + 15 e2e pass**, typecheck clean, UI verified in a headless browser. Nothing known broken.
 
 - **Ingest**: OTLP (`POST /v1/traces`, gzip-aware) **and** native (`POST /v1/events`) → one
@@ -129,7 +145,8 @@ LiveProbe is a mature working app, verified end to end against the live testbed.
   - `/service/:name`, `/errors`, `/search` (endpoint / service / **span attribute** / latency /
     sort), `/history` (**multi-day trends**) + `/day/:date` (rollups, throughput, **latency-over-
     time**, slowest), `/compare?a=&b=` (operation timing diff). Route-keyed `ErrorBoundary`.
-- **Client integration**: `packages/collector` (stdin/rabbitmq → adapter → `/v1/events`).
+- **Client integration**: `packages/collector` (stdin/rabbitmq/http → adapter → `/v1/events`);
+  adapters: `adapter-id-1`, `adapter-id-2` (instrumentation-service format), `liveprobe-native`.
 - **Testbed** (`testbed/`): 8-service e-commerce + workers over Postgres/Redis/RabbitMQ,
   OTel-instrumented; collector fans OTLP to Jaeger + LiveProbe. Loadgen currently **stopped**
   (2026-07-05; services still up — `docker compose start loadgen` to resume traffic); history
@@ -139,11 +156,13 @@ LiveProbe is a mature working app, verified end to end against the live testbed.
 ```bash
 ./dev-start.sh              # hot reload; open http://localhost:5173  (API/ws on :4319)
 ./dev-start.sh --static     # build + serve the UI from the server at http://localhost:4319
-npm test              # core + server + collector tests (30)
+npm test              # core + server + collector tests (40)
 npm run test:e2e      # Playwright UI e2e (15); first run: npx playwright install chromium
 ./dev-stop.sh             # tear down (--wipe drops data)
 # feed a non-OTLP client: cat events.ndjson | SOURCE=stdin ADAPTER=adapter-id-1 \
 #   LIVEPROBE_URL=http://localhost:4319 npx tsx packages/collector/src/index.ts
+# HTTP-pushing client (instrumentation-service format): SOURCE=http ADAPTER=adapter-id-2 \
+#   HTTP_PORT=4320 LIVEPROBE_URL=http://localhost:4319 npx tsx packages/collector/src/index.ts
 ```
 Details/ports: `README.md`. Jaeger at http://localhost:16687. Sample login `alice@shopwave.test` /
 `password123`. Traffic: `cd testbed && docker compose start loadgen`.
@@ -151,7 +170,7 @@ Details/ports: `README.md`. Jaeger at http://localhost:16687. Sample login `alic
 ## Next (backlog — see `todo.md`)
 - **UI tests** (M) — the UI has many pages and no automated tests yet.
 - **Python testbed service** (M) — prove polyglot-via-OTLP renders identically.
-- **Collector follow-ups** — an `http` source, wire a real client's RabbitMQ queue, more adapters.
+- **Collector follow-ups** — wire a real client's RabbitMQ queue, more adapters (`http` source: done).
 - **Smaller**: D2 export; side-by-side waterfalls in `/compare`.
 
 ## Gotchas

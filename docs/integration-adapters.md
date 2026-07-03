@@ -68,7 +68,11 @@ Source notes:
 - **stdout** — newline-delimited JSON from stdin or a tailed file. In container/k8s land, apps
   write JSON lines to stdout and a log shipper (fluentbit/vector) can POST them to the
   collector's `http` source; or the collector tails the file directly. Same adapter either way.
-- **http** — a plain receiver for log shippers / direct pushers.
+- **http** — a plain receiver for log shippers / direct pushers. Accepts POSTed JSON (one
+  raw event or an array) on **any path**, so emitters that push to per-type endpoints (e.g.
+  `POST /v1/event/instrumentation` / `/v1/event/log` / `/v1/event/audit`) can be repointed at
+  it unchanged — the event type must live in the payload, not the URL. `HTTP_PORT` (default
+  4320), `GET /healthz`, 5MB body cap. Implementation: `packages/collector/src/sources/http.ts`.
 
 ## Deployment modes
 
@@ -113,12 +117,41 @@ transitions — it does not need OTel span kinds), history, and search.
 - **Span kind** — default `internal`; could be inferred from their context parser
   (http / rabbitmq / socket) if we want producer/consumer arrows.
 
+## adapter-id-2 field mapping (instrumentation-service format → `Event`)
+
+For an internal instrumentation service whose apps POST three JSON event types —
+`instrumentation`, `log`, `audit` — to `POST /v1/event/<type>`. Each event carries
+`application { name, module, environment }` and `request { requestId }` but **no span ids**,
+so the adapter synthesizes trace structure (spec + samples: `adapters-hidden/adapter-id-2.md`):
+
+| LiveProbe `Event` | ← adapter-id-2 field |
+|---|---|
+| `traceId` | `request.requestId` (fallback: `eventId`) — all three event types of one request share a trace |
+| `spanId` | `eventId` |
+| `parentSpanId` | `request.requestId` → a **synthetic `client` root span** (spanId = requestId; every event re-emits it, the window dedupes) |
+| `participant` | `application.name`.`application.module` (e.g. `hrms.employee`) — **app + module are the lifeline** |
+| `operation` | instrumentation: `METHOD endpoint` · log: `log LEVEL: message` · audit: `audit ACTION entityType entityId` |
+| `kind` | instrumentation → `server`; log/audit → `internal`; the synthetic root → `client` |
+| `startTime` | `timestamp` (ISO-8601 → micros) |
+| `duration` | instrumentation: `payload.durationMs` → micros; others 0 |
+| `status` | instrumentation: `success === false` or `statusCode >= 400` → `error`; log: level ERROR/FATAL/CRITICAL → `error` |
+| `attributes` | `application`, `module`, `environment`, `eventType` + per-type payload fields (audit `before`/`after` flattened to `before.x`/`after.x`, `changedFields` joined) |
+
+**Works immediately**: sequence diagrams with `app.module` lifelines (endpoint calls with
+latency + status, error logs in red, audits as labeled arrows), flow topology, history,
+attribute search (`module=invoice`, `application=hrms`, `environment=prod`).
+
+**Limitation (inherent to the format):** there is no causality between events (no parent span
+ids), so every arrow originates at the synthetic `client` lifeline — service→service call
+nesting (`propeak → hrms`) cannot be reconstructed. Closing that requires the emitting library
+to propagate a parent/span id. Retries within one request stay distinct (`spanId = eventId`).
+
 ## What was built (MVP)
 
 - [x] **`POST /v1/events`** — native ingest on the server, accepting `{ events: Event[] }` (the
   target all adapters produce). Shares the OTLP ingest path via `coerceEvents` in `@liveprobe/core`.
-- [x] **A collector** (`packages/collector`) — sources `stdin` (ndjson) and `rabbitmq`, an adapter
-  registry, and a batching sink that POSTs to `/v1/events`.
+- [x] **A collector** (`packages/collector`) — sources `stdin` (ndjson), `rabbitmq`, and `http`
+  (path-agnostic JSON receiver), an adapter registry, and a batching sink that POSTs to `/v1/events`.
 - [x] **`adapter-id-1`** — a reference `(raw) => Event[]` mapping for the structured-event format
   (field mapping below). One client event → one span.
 - [x] **Verified end to end** — piped sample client events (stdin) through the adapter into
@@ -142,10 +175,14 @@ SOURCE=rabbitmq ADAPTER=adapter-id-1 RABBITMQ_URL=amqp://… QUEUE=instrumentati
 SOURCE=rabbitmq ADAPTER=adapter-id-1 RABBITMQ_URL=amqp://… \
   EXCHANGE=instrumentation ROUTING_KEY="#" QUEUE=liveprobe.tap \
   LIVEPROBE_URL=http://localhost:4319 npx tsx packages/collector/src/index.ts
+
+# http receiver: point emitters that POST JSON events (e.g. /v1/event/instrumentation) here
+SOURCE=http ADAPTER=adapter-id-2 HTTP_PORT=4320 \
+  LIVEPROBE_URL=http://localhost:4319 npx tsx packages/collector/src/index.ts
 ```
 
-Adapters live in `packages/collector/src/adapters/` (`adapter-id-1`, plus `liveprobe-native`
-passthrough). The client's private format spec stays in `adapters-hidden/`.
+Adapters live in `packages/collector/src/adapters/` (`adapter-id-1`, `adapter-id-2`, plus
+`liveprobe-native` passthrough). The client's private format spec stays in `adapters-hidden/`.
 
 ## Rolling out to an existing production estate (non-intrusive runbook)
 
