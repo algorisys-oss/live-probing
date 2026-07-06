@@ -125,6 +125,40 @@ test("normalizeOtlp rebuilds a real endpoint name from bare-method HTTP spans", 
   assert.equal(e!.operation, "POST /api/cart/items"); // method + path, query stripped
 });
 
+test("normalizeOtlp falls back to the real path when http.route is a wildcard", () => {
+  // Catch-all frameworks (Remix/SPA) report http.route="*", which would hide every URL
+  // behind "GET *". Prefer the concrete request path (http.target/url.path) in that case.
+  const payload: OtlpPayload = {
+    resourceSpans: [
+      {
+        resource: { attributes: [attr("service.name", "hrms")] },
+        scopeSpans: [
+          {
+            spans: [
+              {
+                traceId: "t",
+                spanId: "s",
+                name: "GET *",
+                kind: 2,
+                startTimeUnixNano: String(NS),
+                endTimeUnixNano: String(NS + 1),
+                attributes: [
+                  attr("http.method", "GET"),
+                  attr("http.route", "*"),
+                  attr("http.target", "/permissions/4"),
+                ],
+                status: { code: 0 },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+  const [e] = normalizeOtlp(payload);
+  assert.equal(e!.operation, "GET /permissions/4"); // wildcard route ignored in favor of the path
+});
+
 test("TraceWindow assembles the tree even when spans arrive out of order", () => {
   const events = normalizeOtlp(fixture);
   const w = new TraceWindow();

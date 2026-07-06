@@ -32,7 +32,8 @@ items: **S** = hours, **M** = ~a day, **L** = multi-day.
 ### LiveProbe core (`packages/core`)
 - [x] Normalized `Event` model (single source of truth)
 - [x] OTLP/HTTP JSON normalizer (kind, status, peer, BigInt-nanos → micros)
-- [x] HTTP name enrichment (`"POST /api/checkout"` from bare-method spans)
+- [x] HTTP name enrichment (`"POST /api/checkout"` from bare-method spans; wildcard `http.route="*"`
+      falls back to the real path so catch-all/Remix apps don't collapse to `GET *`)
 - [x] `TraceWindow` — out-of-order assembly, horizon + cap eviction, topology aggregation
 - [x] Sequence projection (ordered messages + participants, async flag)
 - [x] Mermaid sequence + flow export

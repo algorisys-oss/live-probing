@@ -5,7 +5,42 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-**Renamed `adapter-id-2` → `algo-instrumentation` and fixed it for the live HRMS format** (TDD).
+**Live HRMS wiring: `serve.sh --collector` + wildcard-URL fix.** Two changes, committed together.
+
+**(a) `serve.sh --collector`.** `serve.sh` only starts the OTLP/native server (:4319); the
+algo-instrumentation stream (`/v1/event/*` → app/module + function granularity) needs the
+**collector** (:4320), which `serve.sh` never launched — so with `serve.sh` alone you get only the
+OTel view. `--collector` now runs the collector alongside the server (env `COLLECTOR_PORT`, default
+4320), reaped on exit via a trap; flags combine with `--build`, unknown flags error. Point the app's
+`/v1/event/*` emitter at :4320. Verified e2e (test ports): POST an algo event to the collector →
+`…LOCAL.<module>` lifeline lands in the server; collector reaped on serve.sh exit.
+
+**IMPORTANT — the two streams don't merge.** A live HRMS request appears as **two separate traces**:
+the OTel copy (`service.name=hrms`, `hrms → redis`, hex trace id) and the algo copy
+(`hrms.<module>` / `…LOCAL.<module>`, UUID trace id). OTel can't carry module/function; only the
+algo stream does. Opening the OTel copy shows the module-less `hrms → redis` — the module view is
+the *other* trace (service chip `hrms.<module>`). NOTE: current live HRMS algo events for
+`/permissions` arrive **without** `payload.spans[]`, so that trace shows the module lifeline but no
+function/db children yet (the `/dashboard` sample did include them). Open decision unchanged: to get
+one clean module-rich view per request, quiet the raw OTel `hrms` stream (disable HRMS OTel
+auto-instrumentation, or filter `service.name=hrms` at ingest).
+
+**(b) OTLP: stop hiding real URLs behind `GET *` for catch-all routes** (TDD). A live HRMS (Remix)
+diagnosis showed two streams landing in LiveProbe: (1) OTel auto-instrumentation — `service.name=hrms`,
+every request titled `GET *` because the app's Express `http.route` is the wildcard `*`, topology
+`hrms → localhost → redis` (the `localhost` node is HRMS's own outbound telemetry POSTs to
+:4000/:4320/:3001); and (2) the `algo-instrumentation` custom emitter — `HRMS WEB APPLICATION
+(LOCAL).<module>` lifelines with real endpoint + `payload.spans[]` functions (`GET /dashboard` →
+`authenticate`/`fetchPermissions`/…), the stream that actually carries URL + module + functions.
+Fix is scoped to stream (1): `httpName()` in `packages/core/src/otlp.ts` now skips a `"*"` route
+and falls back to `url.path`/`http.target`, so `GET *` → `GET /permissions/4`. It does **not** add
+module/function granularity — OTel auto-instrumentation can't; that's what the algo emitter is for.
+1 new test (**46 unit green**, typecheck clean); verified end to end on an isolated server
+(:4399) by POSTing a wildcard-route OTLP span and reading back `rootOperation = GET /permissions/4`,
+and confirmed live (`GET /permissions/8`). Note: a plain-`tsx` server (no watch) must be **restarted**
+to pick up core changes.
+
+Prior task: **Renamed `adapter-id-2` → `algo-instrumentation` and fixed it for the live HRMS format** (TDD).
 The HRMS web app POSTs a **`{ events: [...] }` batch envelope** with `status_code` (snake_case)
 and extra fields — the old adapter dropped the whole envelope (no top-level `eventId`) so nothing
 rendered. The adapter now: unwraps `{ events: [...] }` (each element mapped independently); reads

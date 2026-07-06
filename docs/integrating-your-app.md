@@ -191,6 +191,12 @@ adapter covers all of a client's languages. Design and config in
 for adding LiveProbe to an existing production estate that already emits to a shared broker,
 without touching the apps.
 
+For the HTTP-source case (apps POST the format straight to the collector), `./serve.sh --collector`
+runs the server and the `algo-instrumentation` collector together — the collector listens on
+`:4320` (env `COLLECTOR_PORT`) and forwards to the server; point your `/v1/event/*` emitter at it.
+Note the OTLP and native/collector streams don't merge (different trace-id spaces), so a request
+instrumented both ways shows as two traces — pick one instrumentation path per request to avoid dupes.
+
 ## Recipe E — VPS deploy, no Docker (React + Node / Go / Elixir)
 
 The common "app on a DigitalOcean droplet, no Docker, no k8s" case. It's Recipe B applied to a

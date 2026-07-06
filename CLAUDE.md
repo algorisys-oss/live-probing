@@ -137,5 +137,7 @@ convention Claude follows each session, not an automated hook — ask for a Stop
 
 - `./dev-start.sh` — run everything with hot reload (UI at :5173). `--static` builds + serves at :4319.
 - `./serve.sh` — **just the server** (UI + ingest on :4319), no testbed — for pointing a real app at LiveProbe.
+  `--collector` also runs the algo-instrumentation collector on :4320 (the module/function stream; point the
+  app's `/v1/event/*` emitter at it). Without it, only the OTLP/native stream is ingested.
 - `./dev-stop.sh` — tear it all down (`--wipe` also drops data).
 - `npm test` — LiveProbe core + server tests. `npm run typecheck` — typecheck.

@@ -161,8 +161,14 @@ real app is the trace source:
 
 ```bash
 ./serve.sh                # builds the UI if missing; serves on :4319
-# env: PORT, DB_PATH, RETENTION_DAYS (default 14)
+./serve.sh --collector    # also run the algo-instrumentation collector on :4320
+# env: PORT, DB_PATH, RETENTION_DAYS (default 14), COLLECTOR_PORT (--collector only, default 4320)
 ```
+
+`serve.sh` alone speaks OTLP + already-normalized native events. Apps that emit the internal
+instrumentation-service format (`/v1/event/*`, module/function granularity) POST to the
+**collector**, which maps them to Events — add `--collector` and point that emitter at `:4320`,
+otherwise that richer stream is silently dropped.
 
 `--no-load` skips the traffic generator; `--no-build` (static mode) reuses the last UI build.
 Stop everything with one script:

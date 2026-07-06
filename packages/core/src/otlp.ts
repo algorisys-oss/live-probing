@@ -97,9 +97,14 @@ function toMicros(nano: string | number | undefined): number {
 
 // HTTP instrumentation often names spans by bare method ("GET"), which makes a useless
 // trace title. Rebuild "METHOD /path" from attributes so the UI shows the real endpoint.
+// Prefer http.route (the low-cardinality template) but skip it when it's a catch-all
+// wildcard — Remix/SPA apps report http.route="*", which would collapse every URL to
+// "GET *"; the concrete request path (url.path/http.target) is the useful title there.
 function httpName(attrs: Attrs): string | undefined {
   const method = attrs["http.request.method"] ?? attrs["http.method"];
-  const path = attrs["http.route"] ?? attrs["url.path"] ?? attrs["http.target"];
+  const route = attrs["http.route"];
+  const path =
+    typeof route === "string" && route !== "*" ? route : attrs["url.path"] ?? attrs["http.target"];
   if (typeof method === "string" && typeof path === "string") {
     return `${method} ${String(path).split("?")[0]}`;
   }

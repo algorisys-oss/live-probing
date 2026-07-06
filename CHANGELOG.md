@@ -3,6 +3,24 @@
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
 ## [2026-07-06]
+- **`serve.sh --collector`.** `serve.sh` starts only the OTLP/native server (:4319), so the
+  algo-instrumentation stream (the internal `/v1/event/*` format that carries app/module +
+  function granularity) was silently dropped unless you launched the collector by hand. The new
+  `--collector` flag runs the collector alongside the server (`SOURCE=http ADAPTER=algo-instrumentation
+  HTTP_PORT=${COLLECTOR_PORT:-4320}`, forwarding to the server), reaping it on exit via a trap.
+  Flags are order-independent and combine with `--build`; unknown flags error. Point the app's
+  `/v1/event/*` emitter at :4320. Verified end to end: `serve.sh --collector` on test ports, POST
+  an algo instrumentation event to the collector → module lifeline `…LOCAL.<module>` lands in the
+  server; collector reaped when serve.sh exits. Docs: README, CLAUDE.md, integrating-your-app.md.
+- **OTLP: wildcard `http.route` no longer hides the URL.** Catch-all frameworks (Remix/SPA)
+  report `http.route:"*"`, and `httpName()` preferred the route, so every request collapsed to
+  `GET *` in the trace feed and flow view while the real path sat unused in `http.target`. It
+  now skips a `"*"` route and falls back to `url.path` / `http.target`, so a live HRMS request
+  renders `GET /permissions/4`. 1 test (**46 unit green**, typecheck clean); verified end to end
+  through the HTTP OTLP ingest path (`GET *` span → `GET /permissions/4`). Note: this only
+  affects the raw OTel auto-instrumentation stream (`service.name=hrms`) — module/function
+  granularity still comes from the `algo-instrumentation` custom emitter (`…LOCAL.<module>` with
+  `payload.spans[]`), which OTel auto-instrumentation cannot provide.
 - **`algo-instrumentation`: consume HRMS's real trace structure.** HRMS now emits
   `request.traceId` / `request.spanId` and a `payload.spans[]` array of child operations
   (db / function / http …). The adapter prefers those real IDs (`traceId = request.traceId ??
