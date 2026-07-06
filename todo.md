@@ -104,10 +104,12 @@ items: **S** = hours, **M** = ~a day, **L** = multi-day.
 - [x] **Client integration via adapters** (MVP): native `POST /v1/events` + collector
       (`packages/collector`) with stdin/rabbitmq sources + adapter registry + `adapter-id-1`
       reference mapping. Verified end to end. (more adapters = later)
-- [x] **Collector `http` source + `adapter-id-2`** (internal instrumentation-service format):
-      path-agnostic JSON receiver (drop-in for `POST /v1/event/instrumentation|log|audit`) +
-      adapter mapping instrumentation/log/audit events to spans on `app.module` lifelines with
-      a synthesized per-request root (format has no span ids). Verified end to end.
+- [x] **Collector `http` source + `algo-instrumentation`** (internal instrumentation-service
+      format, formerly `adapter-id-2`): path-agnostic JSON receiver (drop-in for
+      `POST /v1/event/instrumentation|log|audit`) + adapter mapping instrumentation/log/audit
+      events to spans on `app.module` lifelines with a synthesized per-request root (format has
+      no span ids). Verified end to end. Refreshed 2026-07-06 for the live HRMS format:
+      `{ events: [...] }` batch envelope, `status_code` snake_case, extra fields captured.
 - [x] **OTel integration reference** (`examples/otel-react-go/`): React + Go via OpenTelemetry —
       Go→collector(`encoding:json`)→LiveProbe, React→LiveProbe direct. Docs/snippets.
 - [x] Collector: RabbitMQ connection-error handling / reconnect — `error`/`close` handled,

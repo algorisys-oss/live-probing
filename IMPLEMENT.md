@@ -2,7 +2,35 @@
 
 Decision-to-code audit trail (LOOPS rule XXV). Newest first.
 
-## [2026-07-03] adapter-id-2 + collector http source
+## [2026-07-06] adapter-id-2 → algo-instrumentation + live-HRMS format fixes
+
+**Asked:** the HRMS web app emits events (with `application.name` + `module`); do they render,
+does the UI need changes, does HRMS need changes — then rename `adapter-id-2` to
+`algo-instrumentation` (files + spec) and update the spec.
+
+**Found (by running the adapter on the real payload):** the module already renders (it's folded
+into the `app.module` lifeline — no UI change), but the real HRMS payload rendered *nothing*: it
+arrives as a **`{ events: [...] }` batch envelope** the adapter didn't unwrap (no top-level
+`eventId` → dropped), and its status code is **`status_code`** (snake_case), not the spec's
+`statusCode`.
+
+**Decided:**
+- **No HRMS change, no UI change** — the adapter is the seam that absorbs format differences.
+- Unwrap `{ events: [...] }` in the adapter (a single event never has an `events` array, so it's
+  unambiguous); flatten each element through the same mapping.
+- Read `status_code` alongside `statusCode` so a 5xx with no explicit `success:false` is still
+  an error. Capture the new fields as searchable attributes: `application.service`/`.version`,
+  top-level `severity`/`message`, `tags.*`, `payload.memory_usage_mb`.
+- **Rename** `adapter-id-2` → `algo-instrumentation` across files, the `algoInstrumentation`
+  export, the registry key / `ADAPTER=` value, docs, and the spec (dropping the anonymous id
+  for the real client format name).
+
+**Implemented:** `packages/collector/src/adapters/algo-instrumentation.{ts,test.ts}` (renamed +
+logic), registry key in `adapters/index.ts`, comment in `index.ts`. TDD: 3 tests first (red) →
+green (**43 unit**, typecheck clean). Verified e2e by POSTing a real HRMS batch through the
+`http` source. Docs: `docs/integration-adapters.md` + spec `adapters-hidden/algo-instrumentation.md`.
+
+## [2026-07-03] adapter-id-2 + collector http source *(adapter later renamed `algo-instrumentation`, 2026-07-06)*
 
 **Asked:** adapter for the user's internal instrumentation service — three JSON event types
 (`instrumentation` / `log` / `audit`, POSTed to `/v1/event/<type>`) carrying

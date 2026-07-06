@@ -25,7 +25,7 @@ changes. Many input formats → one `Event` model → many views (an hourglass).
 ## Two orthogonal concerns
 
 - **Transport (source)** — *where* events arrive: RabbitMQ, stdout, HTTP.
-- **Format (adapter)** — *how* to map them: `adapter-id-1`, `adapter-id-2`, …
+- **Format (adapter)** — *how* to map them: `adapter-id-1`, `algo-instrumentation`, …
 
 Any source pairs with any adapter. **Polyglot does not multiply adapters**: a client's five
 languages all emit the *same* structured format, so one adapter covers all of them. The
@@ -38,7 +38,7 @@ language is irrelevant once events reach the transport.
  ──────────────────                  ────────────────────────────          ────
  rabbitmq  ─ consume queue ─┐
  stdout    ─ ndjson lines  ─┼─ raw event ─► adapter(raw) => Event[] ─► POST /v1/events ─► LiveProbe
- http      ─ receive POSTs ─┘             (adapter-id-1, id-2, …)          └► window/SQLite/UI
+ http      ─ receive POSTs ─┘         (adapter-id-1, algo-instrumentation…)  └► window/SQLite/UI
 ```
 
 Config wires each client:
@@ -53,7 +53,7 @@ sources:
 
   - id: client-2            # emits to stdout
     type: stdout            # newline-delimited JSON on stdin / a tailed file / a log-shipper POST
-    adapter: adapter-id-2
+    adapter: algo-instrumentation
 ```
 
 Source notes:
@@ -117,15 +117,18 @@ transitions — it does not need OTel span kinds), history, and search.
 - **Span kind** — default `internal`; could be inferred from their context parser
   (http / rabbitmq / socket) if we want producer/consumer arrows.
 
-## adapter-id-2 field mapping (instrumentation-service format → `Event`)
+## algo-instrumentation field mapping (instrumentation-service format → `Event`)
 
 For an internal instrumentation service whose apps POST three JSON event types —
-`instrumentation`, `log`, `audit` — to `POST /v1/event/<type>`. Each event carries
-`application { name, module, environment }` and `request { requestId }` but **no span ids**,
-so the adapter synthesizes trace structure (spec + samples: `adapters-hidden/adapter-id-2.md`):
+`instrumentation`, `log`, `audit` — either singly or wrapped in a `{ events: [...] }` batch
+envelope (to `POST /v1/event/<type>`, though the http source is path-agnostic). Each event
+carries `application { name, module, environment }` and `request { requestId }` but **no span
+ids**, so the adapter synthesizes trace structure (spec + samples:
+`adapters-hidden/algo-instrumentation.md`):
 
-| LiveProbe `Event` | ← adapter-id-2 field |
+| LiveProbe `Event` | ← algo-instrumentation field |
 |---|---|
+| — (envelope) | `{ events: [...] }` is unwrapped; each element maps independently |
 | `traceId` | `request.requestId` (fallback: `eventId`) — all three event types of one request share a trace |
 | `spanId` | `eventId` |
 | `parentSpanId` | `request.requestId` → a **synthetic `client` root span** (spanId = requestId; every event re-emits it, the window dedupes) |
@@ -134,8 +137,8 @@ so the adapter synthesizes trace structure (spec + samples: `adapters-hidden/ada
 | `kind` | instrumentation → `server`; log/audit → `internal`; the synthetic root → `client` |
 | `startTime` | `timestamp` (ISO-8601 → micros) |
 | `duration` | instrumentation: `payload.durationMs` → micros; others 0 |
-| `status` | instrumentation: `success === false` or `statusCode >= 400` → `error`; log: level ERROR/FATAL/CRITICAL → `error` |
-| `attributes` | `application`, `module`, `environment`, `eventType` + per-type payload fields (audit `before`/`after` flattened to `before.x`/`after.x`, `changedFields` joined) |
+| `status` | instrumentation: `success === false` or `statusCode`/`status_code` `>= 400` → `error`; log: level ERROR/FATAL/CRITICAL → `error` |
+| `attributes` | `application`, `module`, `service`, `version`, `environment`, `eventType`, top-level `severity`/`message`, `tags.*` + per-type payload fields (instrumentation adds `status_code`, `memory_usage_mb`; audit `before`/`after` flattened to `before.x`/`after.x`, `changedFields` joined) |
 
 **Works immediately**: sequence diagrams with `app.module` lifelines (endpoint calls with
 latency + status, error logs in red, audits as labeled arrows), flow topology, history,
@@ -177,11 +180,11 @@ SOURCE=rabbitmq ADAPTER=adapter-id-1 RABBITMQ_URL=amqp://… \
   LIVEPROBE_URL=http://localhost:4319 npx tsx packages/collector/src/index.ts
 
 # http receiver: point emitters that POST JSON events (e.g. /v1/event/instrumentation) here
-SOURCE=http ADAPTER=adapter-id-2 HTTP_PORT=4320 \
+SOURCE=http ADAPTER=algo-instrumentation HTTP_PORT=4320 \
   LIVEPROBE_URL=http://localhost:4319 npx tsx packages/collector/src/index.ts
 ```
 
-Adapters live in `packages/collector/src/adapters/` (`adapter-id-1`, `adapter-id-2`, plus
+Adapters live in `packages/collector/src/adapters/` (`adapter-id-1`, `algo-instrumentation`, plus
 `liveprobe-native` passthrough). The client's private format spec stays in `adapters-hidden/`.
 
 ## Rolling out to an existing production estate (non-intrusive runbook)

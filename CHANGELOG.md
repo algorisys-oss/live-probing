@@ -2,6 +2,21 @@
 
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
+## [2026-07-06]
+- **Adapter `adapter-id-2` → renamed `algo-instrumentation`**, plus real-format fixes driven
+  by live HRMS traffic. Registry key / `ADAPTER=` value, files
+  (`packages/collector/src/adapters/algo-instrumentation.{ts,test.ts}`, spec
+  `adapters-hidden/algo-instrumentation.md`), and the `algoInstrumentation` export all renamed.
+  Adapter now (1) **unwraps a `{ events: [...] }` batch envelope** — the shape the HRMS web app
+  actually POSTs, previously dropped whole (no top-level `eventId`); (2) reads **`status_code`**
+  (snake_case) as well as `statusCode`, so a 5xx with no explicit `success` flag renders as an
+  error; (3) captures extra fields as searchable attributes — `application.service`/`.version`,
+  top-level `severity`/`message`, `tags.*`, and `payload.memory_usage_mb`. No HRMS-side change
+  (the adapter absorbs the format). TDD: 3 new tests (**43 unit green**, typecheck clean);
+  verified end to end by POSTing a real HRMS batch through the `http` source → `HRMS WEB
+  APPLICATION (LOCAL).<module>` lifelines with duration/status/attrs. Docs: mapping in
+  `docs/integration-adapters.md`; spec refreshed in `adapters-hidden/algo-instrumentation.md`.
+
 ## [2026-07-03]
 - **Collector: `http` source + `adapter-id-2`** (internal instrumentation-service format).
   New `SOURCE=http` (`HTTP_PORT`, default 4320): a path-agnostic JSON receiver (single event

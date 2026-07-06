@@ -1,6 +1,6 @@
 import type { Event, SpanKind, SpanStatus } from "@liveprobe/core";
 
-// Adapter for the internal instrumentation-service format (adapter-id-2): three event
+// Adapter for the internal instrumentation-service format (algo-instrumentation): three event
 // types — instrumentation / log / audit — each a standalone JSON document carrying
 // application { name, module, environment } and request { requestId }, but no span ids.
 //
@@ -13,7 +13,7 @@ import type { Event, SpanKind, SpanStatus } from "@liveprobe/core";
 //   application and module names ARE the sequence-diagram lifelines
 // The format carries no causality between events, so all arrows originate at the
 // synthetic client lifeline; cross-module call nesting is not reconstructable from it.
-// Spec + mapping notes: adapters-hidden/adapter-id-2.md.
+// Spec + mapping notes: adapters-hidden/algo-instrumentation.md.
 
 function str(v: unknown): string {
   return typeof v === "string" ? v : "";
@@ -34,9 +34,14 @@ function toMicros(v: unknown): number {
 
 const ERROR_LEVELS = new Set(["ERROR", "FATAL", "CRITICAL"]);
 
-export function adapterId2(raw: unknown): Event[] {
+export function algoInstrumentation(raw: unknown): Event[] {
   if (!raw || typeof raw !== "object") return [];
   const r = raw as Record<string, unknown>;
+
+  // Batch envelope: emitters POST { events: [ ... ] }. Flatten each through the adapter;
+  // a single event never carries an `events` array, so this is unambiguous.
+  const batch = r["events"];
+  if (Array.isArray(batch)) return batch.flatMap((e) => algoInstrumentation(e));
 
   const eventId = str(r["eventId"]);
   if (!eventId) return []; // need span identity to place it anywhere
@@ -58,8 +63,13 @@ export function adapterId2(raw: unknown): Event[] {
   };
   add("application", application["name"]);
   add("module", application["module"]);
+  add("service", application["service"]);
+  add("version", application["version"]);
   add("environment", application["environment"]);
   add("eventType", eventType);
+  add("severity", r["severity"]);
+  add("message", r["message"]);
+  for (const [k, v] of Object.entries(obj(r["tags"]))) add(`tags.${k}`, v);
 
   let operation = eventType || "event";
   let kind: SpanKind = "internal";
@@ -73,10 +83,12 @@ export function adapterId2(raw: unknown): Event[] {
     operation = [method, endpoint].filter(Boolean).join(" ") || operation;
     const durationMs = Number(payload["durationMs"]);
     if (Number.isFinite(durationMs) && durationMs > 0) duration = Math.round(durationMs * 1000);
-    const statusCode = Number(payload["statusCode"]);
+    // Status code arrives as statusCode (spec) or status_code (real HRMS payload).
+    const statusCode = Number(payload["statusCode"] ?? payload["status_code"]);
     if (payload["success"] === false || (Number.isFinite(statusCode) && statusCode >= 400)) status = "error";
     else if (payload["success"] === true || (Number.isFinite(statusCode) && statusCode > 0)) status = "ok";
-    for (const k of ["endpoint", "method", "statusCode", "durationMs", "success"]) add(k, payload[k]);
+    for (const k of ["endpoint", "method", "statusCode", "status_code", "durationMs", "success", "memory_usage_mb"])
+      add(k, payload[k]);
   } else if (eventType === "log") {
     const level = str(payload["level"]).toUpperCase();
     const message = str(payload["message"]);

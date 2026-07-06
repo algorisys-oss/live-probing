@@ -1,11 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { adapterId2 } from "./adapter-id-2.js";
+import { algoInstrumentation } from "./algo-instrumentation.js";
 
 const TS = "2026-05-28T10:15:00Z";
 const TS_MICROS = Date.parse(TS) * 1000;
 
-test("adapterId2 maps an instrumentation event to a synthetic root + server span", () => {
+test("algoInstrumentation maps an instrumentation event to a synthetic root + server span", () => {
   const raw = {
     eventId: "550e8400-e29b-41d4-a716-446655440000",
     eventType: "instrumentation",
@@ -20,7 +20,7 @@ test("adapterId2 maps an instrumentation event to a synthetic root + server span
       success: true,
     },
   };
-  const events = adapterId2(raw);
+  const events = algoInstrumentation(raw);
   assert.equal(events.length, 2);
 
   const [root, span] = events as [(typeof events)[0], (typeof events)[0]];
@@ -46,7 +46,7 @@ test("adapterId2 maps an instrumentation event to a synthetic root + server span
   assert.equal(span.attributes["statusCode"], 200);
 });
 
-test("adapterId2 marks failed instrumentation events as errors", () => {
+test("algoInstrumentation marks failed instrumentation events as errors", () => {
   const base = {
     eventId: "e1",
     eventType: "instrumentation",
@@ -54,13 +54,13 @@ test("adapterId2 marks failed instrumentation events as errors", () => {
     application: { name: "propeak", module: "invoice" },
     request: { requestId: "req-1" },
   };
-  const failed = adapterId2({ ...base, payload: { endpoint: "/x", method: "GET", statusCode: 500, success: false } });
+  const failed = algoInstrumentation({ ...base, payload: { endpoint: "/x", method: "GET", statusCode: 500, success: false } });
   assert.equal(failed[1]!.status, "error");
-  const clientErr = adapterId2({ ...base, payload: { endpoint: "/x", method: "GET", statusCode: 404 } });
+  const clientErr = algoInstrumentation({ ...base, payload: { endpoint: "/x", method: "GET", statusCode: 404 } });
   assert.equal(clientErr[1]!.status, "error");
 });
 
-test("adapterId2 maps a log event; ERROR level -> error status", () => {
+test("algoInstrumentation maps a log event; ERROR level -> error status", () => {
   const raw = {
     eventId: "log-1",
     eventType: "log",
@@ -69,7 +69,7 @@ test("adapterId2 maps a log event; ERROR level -> error status", () => {
     request: { requestId: "req-456" },
     payload: { level: "ERROR", message: "Failed to process payroll", file: "payroll_service.go", line: 225 },
   };
-  const events = adapterId2(raw);
+  const events = algoInstrumentation(raw);
   assert.equal(events.length, 2);
   const span = events[1]!;
   assert.equal(span.participant, "hrms.employee");
@@ -81,7 +81,7 @@ test("adapterId2 maps a log event; ERROR level -> error status", () => {
   assert.equal(span.attributes["line"], 225);
 });
 
-test("adapterId2 maps an audit event with before/after flattened", () => {
+test("algoInstrumentation maps an audit event with before/after flattened", () => {
   const raw = {
     eventId: "aud-1",
     eventType: "audit",
@@ -101,7 +101,7 @@ test("adapterId2 maps an audit event with before/after flattened", () => {
       timestamp: TS,
     },
   };
-  const events = adapterId2(raw);
+  const events = algoInstrumentation(raw);
   const span = events[1]!;
   assert.equal(span.operation, "audit UPDATE employee EMP100");
   assert.equal(span.kind, "internal");
@@ -113,8 +113,8 @@ test("adapterId2 maps an audit event with before/after flattened", () => {
   assert.equal(span.attributes["reason"], "Annual appraisal");
 });
 
-test("adapterId2 without a requestId emits a single parentless span keyed by eventId", () => {
-  const events = adapterId2({
+test("algoInstrumentation without a requestId emits a single parentless span keyed by eventId", () => {
+  const events = algoInstrumentation({
     eventId: "solo-1",
     eventType: "log",
     timestamp: TS,
@@ -126,8 +126,75 @@ test("adapterId2 without a requestId emits a single parentless span keyed by eve
   assert.equal(events[0]!.parentSpanId, undefined);
 });
 
-test("adapterId2 drops events without an eventId", () => {
-  assert.equal(adapterId2({ eventType: "log" }).length, 0);
-  assert.equal(adapterId2(null).length, 0);
-  assert.equal(adapterId2("nope").length, 0);
+test("algoInstrumentation drops events without an eventId", () => {
+  assert.equal(algoInstrumentation({ eventType: "log" }).length, 0);
+  assert.equal(algoInstrumentation(null).length, 0);
+  assert.equal(algoInstrumentation("nope").length, 0);
+});
+
+test("algoInstrumentation unwraps a { events: [...] } batch envelope", () => {
+  const envelope = {
+    events: [
+      {
+        eventId: "b1",
+        eventType: "instrumentation",
+        timestamp: TS,
+        application: { name: "hrms", module: "roles" },
+        request: { requestId: "rq-1" },
+        payload: { endpoint: "/roles", method: "GET", status_code: 200, durationMs: 58, success: true },
+      },
+      {
+        eventId: "b2",
+        eventType: "instrumentation",
+        timestamp: TS,
+        application: { name: "hrms", module: "company" },
+        request: { requestId: "rq-2" },
+        payload: { endpoint: "/company", method: "GET", status_code: 200, durationMs: 129, success: true },
+      },
+    ],
+  };
+  const events = algoInstrumentation(envelope);
+  // two events -> two synthetic roots + two child spans
+  assert.equal(events.length, 4);
+  assert.deepEqual(
+    events.map((e) => e.participant).sort(),
+    ["client", "client", "hrms.company", "hrms.roles"],
+  );
+});
+
+test("algoInstrumentation reads snake_case status_code for status", () => {
+  const base = {
+    eventId: "s1",
+    eventType: "instrumentation",
+    timestamp: TS,
+    application: { name: "hrms", module: "roles" },
+    request: { requestId: "rq-1" },
+  };
+  const ok = algoInstrumentation({ ...base, payload: { endpoint: "/x", method: "GET", status_code: 200, success: true } });
+  assert.equal(ok[1]!.status, "ok");
+  assert.equal(ok[1]!.attributes["status_code"], 200);
+  // A 5xx with no explicit success flag must still be an error.
+  const err = algoInstrumentation({ ...base, payload: { endpoint: "/x", method: "GET", status_code: 500 } });
+  assert.equal(err[1]!.status, "error");
+});
+
+test("algoInstrumentation captures service, version, severity, message, tags, memory", () => {
+  const raw = {
+    eventId: "x1",
+    eventType: "instrumentation",
+    timestamp: TS,
+    application: { name: "hrms", module: "roles", service: "frontend", environment: "dev", version: "0.0.0" },
+    request: { requestId: "rq-1" },
+    severity: "INFO",
+    message: "Web access",
+    tags: { route_type: "loader" },
+    payload: { endpoint: "/roles", method: "GET", status_code: 200, durationMs: 58, success: true, memory_usage_mb: 407.52 },
+  };
+  const span = algoInstrumentation(raw)[1]!;
+  assert.equal(span.attributes["service"], "frontend");
+  assert.equal(span.attributes["version"], "0.0.0");
+  assert.equal(span.attributes["severity"], "INFO");
+  assert.equal(span.attributes["message"], "Web access");
+  assert.equal(span.attributes["tags.route_type"], "loader");
+  assert.equal(span.attributes["memory_usage_mb"], 407.52);
 });

@@ -5,21 +5,26 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-**Added `adapter-id-2` + collector `http` source** (TDD) for the internal instrumentation-service
-format: three JSON event types (`instrumentation`/`log`/`audit`) POSTed to `/v1/event/<type>`,
-carrying `application { name, module, environment }` + `request { requestId }` but **no span ids**.
-The adapter synthesizes structure — `traceId = requestId`, a deterministic synthetic `client`
-root span (re-emitted by every event; the window dedupes by spanId), each event a child span on
-an **`app.module` lifeline** (application + module show on the sequence diagram, as asked).
-Instrumentation → `server` span with real duration/status; ERROR logs render red; audits carry
-flattened `before.*`/`after.*` attributes. The new `SOURCE=http` (`HTTP_PORT`, default 4320) is a
-path-agnostic JSON receiver so the `/v1/event/*` emitters can be repointed at it unchanged.
-10 new tests (**40 unit green** + typecheck); verified end to end on an isolated server :4391 +
-collector :4392 (sequence/topology/Mermaid/attribute-search correct, then torn down). Docs:
-mapping in `docs/integration-adapters.md`, private spec in `adapters-hidden/adapter-id-2.md`
-(gitignored). Known format limitation: no causality → arrows fan out from the synthetic `client`
-lifeline (real nesting needs the emitter to add span/parent ids). Also corrected a mis-dated
-CHANGELOG heading (serve.sh entry was labeled 07-05; it landed 07-02).
+**Renamed `adapter-id-2` → `algo-instrumentation` and fixed it for the live HRMS format** (TDD).
+The HRMS web app POSTs a **`{ events: [...] }` batch envelope** with `status_code` (snake_case)
+and extra fields — the old adapter dropped the whole envelope (no top-level `eventId`) so nothing
+rendered. The adapter now: unwraps `{ events: [...] }` (each element mapped independently); reads
+`status_code` as well as `statusCode` (a 5xx with no `success` flag is now an error); and captures
+`application.service`/`.version`, top-level `severity`/`message`, `tags.*`, and
+`payload.memory_usage_mb` as searchable attributes. Module still lands on the lifeline as before
+(`HRMS WEB APPLICATION (LOCAL).<module>`) — **no UI change and no HRMS change** (the adapter
+absorbs the format). Renamed files (`packages/collector/src/adapters/algo-instrumentation.{ts,test.ts}`,
+spec `adapters-hidden/algo-instrumentation.md`), the registry key / `ADAPTER=` value, and the
+`algoInstrumentation` export. 3 new tests (**43 unit green** + typecheck clean); verified end to
+end by POSTing a real HRMS batch through the `http` source → two `…LOCAL.<module>` lifelines with
+duration/status/`status_code`/`memory_usage_mb`/`tags.route_type`. Docs: mapping in
+`docs/integration-adapters.md`, spec refreshed in `adapters-hidden/algo-instrumentation.md`.
+Known format limitation unchanged: no causality → arrows fan out from the synthetic `client`
+lifeline (real nesting needs the emitter to add span/parent ids).
+
+Prior task: **Added `adapter-id-2` + collector `http` source** (now the `algo-instrumentation`
+adapter above) — the path-agnostic `SOURCE=http` receiver (`HTTP_PORT`, default 4320) so
+`/v1/event/*` emitters can be repointed at the collector unchanged.
 
 Prior task: **Added `./serve.sh`** — standalone server entry point (UI + ingest on :4319, builds UI on
 first run, no testbed) for client machines pointing real apps at LiveProbe; referenced from
@@ -146,7 +151,7 @@ LiveProbe is a mature working app, verified end to end against the live testbed.
     sort), `/history` (**multi-day trends**) + `/day/:date` (rollups, throughput, **latency-over-
     time**, slowest), `/compare?a=&b=` (operation timing diff). Route-keyed `ErrorBoundary`.
 - **Client integration**: `packages/collector` (stdin/rabbitmq/http → adapter → `/v1/events`);
-  adapters: `adapter-id-1`, `adapter-id-2` (instrumentation-service format), `liveprobe-native`.
+  adapters: `adapter-id-1`, `algo-instrumentation` (instrumentation-service format), `liveprobe-native`.
 - **Testbed** (`testbed/`): 8-service e-commerce + workers over Postgres/Redis/RabbitMQ,
   OTel-instrumented; collector fans OTLP to Jaeger + LiveProbe. Loadgen currently **stopped**
   (2026-07-05; services still up — `docker compose start loadgen` to resume traffic); history
@@ -161,7 +166,7 @@ npm run test:e2e      # Playwright UI e2e (15); first run: npx playwright instal
 ./dev-stop.sh             # tear down (--wipe drops data)
 # feed a non-OTLP client: cat events.ndjson | SOURCE=stdin ADAPTER=adapter-id-1 \
 #   LIVEPROBE_URL=http://localhost:4319 npx tsx packages/collector/src/index.ts
-# HTTP-pushing client (instrumentation-service format): SOURCE=http ADAPTER=adapter-id-2 \
+# HTTP-pushing client (instrumentation-service format): SOURCE=http ADAPTER=algo-instrumentation \
 #   HTTP_PORT=4320 LIVEPROBE_URL=http://localhost:4319 npx tsx packages/collector/src/index.ts
 ```
 Details/ports: `README.md`. Jaeger at http://localhost:16687. Sample login `alice@shopwave.test` /

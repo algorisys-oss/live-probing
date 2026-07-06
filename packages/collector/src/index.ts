@@ -9,7 +9,7 @@ import { httpSource } from "./sources/http.js";
 //
 //   SOURCE=stdin    ADAPTER=adapter-id-1                      < events.ndjson
 //   SOURCE=rabbitmq ADAPTER=adapter-id-1 RABBITMQ_URL=... QUEUE=instrumentation.events
-//   SOURCE=http     ADAPTER=adapter-id-2 HTTP_PORT=4320       (accepts POSTed JSON events)
+//   SOURCE=http     ADAPTER=algo-instrumentation HTTP_PORT=4320       (accepts POSTed JSON events)
 //
 // To tap an existing exchange non-intrusively (bind our own queue for a copy of the stream):
 //   SOURCE=rabbitmq ADAPTER=adapter-id-1 RABBITMQ_URL=... QUEUE=liveprobe.tap \
