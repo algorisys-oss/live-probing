@@ -3,6 +3,11 @@
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
 ## [2026-07-06]
+- **Client adapter specs moved into the repo.** `adapters-hidden/` (gitignored) →
+  `docs/adapters/` (tracked): `adapter-id-1.md`, `algo-instrumentation.md`,
+  `skillzengine-adapter.md`. Removed the `adapters-hidden/` `.gitignore` entry; updated path
+  references in code + docs. Deliberate reversal of the earlier "private/client material, not
+  for the repo" stance — these are now committed and pushed.
 - **Adapter `adapter-id-2` → renamed `algo-instrumentation`**, plus real-format fixes driven
   by live HRMS traffic. Registry key / `ADAPTER=` value, files
   (`packages/collector/src/adapters/algo-instrumentation.{ts,test.ts}`, spec

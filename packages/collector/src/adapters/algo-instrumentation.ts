@@ -13,7 +13,7 @@ import type { Event, SpanKind, SpanStatus } from "@liveprobe/core";
 //   application and module names ARE the sequence-diagram lifelines
 // The format carries no causality between events, so all arrows originate at the
 // synthetic client lifeline; cross-module call nesting is not reconstructable from it.
-// Spec + mapping notes: adapters-hidden/algo-instrumentation.md.
+// Spec + mapping notes: docs/adapters/algo-instrumentation.md.
 
 function str(v: unknown): string {
   return typeof v === "string" ? v : "";

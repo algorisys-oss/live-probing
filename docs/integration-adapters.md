@@ -7,7 +7,7 @@ sources + the `adapter-id-1` reference adapter). See "Running the collector" bel
 
 LiveProbe runs on the client side. Their apps are polyglot (Node, Ruby on Rails,
 Elixir/Phoenix, Go, Python) and emit instrumentation in a **client-specific structured
-format** (not OTLP) — the first client's format spec lives in `adapters-hidden/adapter-id-1.md`
+format** (not OTLP) — the first client's format spec lives in `docs/adapters/adapter-id-1.md`
 (client-proprietary, kept out of the repo via `.gitignore`). Different
 clients use different formats **and** different transports (client-1 emits to **RabbitMQ**,
 another client emits to **stdout**). We need one way to bring all of them into LiveProbe.
@@ -124,7 +124,7 @@ For an internal instrumentation service whose apps POST three JSON event types �
 envelope (to `POST /v1/event/<type>`, though the http source is path-agnostic). Each event
 carries `application { name, module, environment }` and `request { requestId }` but **no span
 ids**, so the adapter synthesizes trace structure (spec + samples:
-`adapters-hidden/algo-instrumentation.md`):
+`docs/adapters/algo-instrumentation.md`):
 
 | LiveProbe `Event` | ← algo-instrumentation field |
 |---|---|
@@ -185,7 +185,7 @@ SOURCE=http ADAPTER=algo-instrumentation HTTP_PORT=4320 \
 ```
 
 Adapters live in `packages/collector/src/adapters/` (`adapter-id-1`, `algo-instrumentation`, plus
-`liveprobe-native` passthrough). The client's private format spec stays in `adapters-hidden/`.
+`liveprobe-native` passthrough). Per-client format specs live in `docs/adapters/`.
 
 ## Rolling out to an existing production estate (non-intrusive runbook)
 

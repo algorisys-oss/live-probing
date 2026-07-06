@@ -14,13 +14,18 @@ rendered. The adapter now: unwraps `{ events: [...] }` (each element mapped inde
 `payload.memory_usage_mb` as searchable attributes. Module still lands on the lifeline as before
 (`HRMS WEB APPLICATION (LOCAL).<module>`) — **no UI change and no HRMS change** (the adapter
 absorbs the format). Renamed files (`packages/collector/src/adapters/algo-instrumentation.{ts,test.ts}`,
-spec `adapters-hidden/algo-instrumentation.md`), the registry key / `ADAPTER=` value, and the
+spec `docs/adapters/algo-instrumentation.md`), the registry key / `ADAPTER=` value, and the
 `algoInstrumentation` export. 3 new tests (**43 unit green** + typecheck clean); verified end to
 end by POSTing a real HRMS batch through the `http` source → two `…LOCAL.<module>` lifelines with
 duration/status/`status_code`/`memory_usage_mb`/`tags.route_type`. Docs: mapping in
-`docs/integration-adapters.md`, spec refreshed in `adapters-hidden/algo-instrumentation.md`.
+`docs/integration-adapters.md`, spec refreshed in `docs/adapters/algo-instrumentation.md`.
 Known format limitation unchanged: no causality → arrows fan out from the synthetic `client`
 lifeline (real nesting needs the emitter to add span/parent ids).
+
+Follow-on: **moved the client adapter specs into the repo** — `adapters-hidden/` (gitignored)
+→ `docs/adapters/` (tracked): `adapter-id-1.md`, `algo-instrumentation.md`,
+`skillzengine-adapter.md`. Removed the `adapters-hidden/` `.gitignore` entry. These are now
+committed and pushed (deliberate — previously kept out of the repo as client-private).
 
 Prior task: **Added `adapter-id-2` + collector `http` source** (now the `algo-instrumentation`
 adapter above) — the path-agnostic `SOURCE=http` receiver (`HTTP_PORT`, default 4320) so
@@ -30,7 +35,7 @@ Prior task: **Added `./serve.sh`** — standalone server entry point (UI + inges
 first run, no testbed) for client machines pointing real apps at LiveProbe; referenced from
 README/CLAUDE.md/integration guide. Context: the SkillzEngine client integration landed on
 their `feat/live-probing` branch (optional `TRACING=1` OTel auto-instrumentation; see
-`adapters-hidden/skillzengine-adapter.md` for status + verified findings, incl. Mongo v7
+`docs/adapters/skillzengine-adapter.md` for status + verified findings, incl. Mongo v7
 instrumentation working). Synced this session.
 
 Prior task: **Fixed review finding #4: history retention + debounced writes** (TDD). `HistoryStore.prune`
@@ -202,7 +207,7 @@ Details/ports: `README.md`. Jaeger at http://localhost:16687. Sample login `alic
 - **e2e**: runs on an isolated `:4399` + `.e2e-data/` (both separate from dev); the browser hits its
   own origin, no build-time URL override needed. First run needs `npx playwright install chromium`.
   Don't prefix test runs with `pkill` in this environment — it can nuke the session.
-- **Client-private material** lives in `adapters-hidden/` (gitignored): the client format spec
-  (`adapter-id-1.md`) and per-client integration notes (`skillzengine-adapter.md` — OTel/ESM
-  `--import` recipe for the Remix app, its caveats, and the granularity Q&A). Only a generic
-  reference adapter lives in the repo.
+- **Per-client adapter specs** live in `docs/adapters/` (tracked in the repo as of 2026-07-06;
+  previously gitignored under `adapters-hidden/`): client format specs (`adapter-id-1.md`,
+  `algo-instrumentation.md`) and per-client integration notes (`skillzengine-adapter.md` — OTel/ESM
+  `--import` recipe for the Remix app, its caveats, and the granularity Q&A).

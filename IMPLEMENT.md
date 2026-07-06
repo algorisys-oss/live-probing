@@ -2,6 +2,19 @@
 
 Decision-to-code audit trail (LOOPS rule XXV). Newest first.
 
+## [2026-07-06] moved client adapter specs into the repo
+
+**Asked:** move the `adapters-hidden/` docs into `docs/`, name the folder `adapters` (they're
+documents), and remove `adapters-hidden/`.
+
+**Decided:** flagged first that `adapters-hidden/` was gitignored specifically as client-private
+material ("not for the repo"), so moving it into a tracked `docs/adapters/` publishes it to the
+remote and into git history — hard to reverse. User confirmed "move and track them." Proceeded:
+relocated the three specs, removed the `.gitignore` entry, deleted the empty folder, updated all
+live path references (code comment + `docs/integration-adapters.md` + `HANDOFF.md`). Historical
+CHANGELOG/IMPLEMENT entries keep their original `adapters-hidden/…` paths (they record the state
+at the time). Committed + pushed.
+
 ## [2026-07-06] adapter-id-2 → algo-instrumentation + live-HRMS format fixes
 
 **Asked:** the HRMS web app emits events (with `application.name` + `module`); do they render,
