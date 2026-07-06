@@ -30,6 +30,9 @@ test("algoInstrumentation maps an instrumentation event to a synthetic root + se
   assert.equal(root.parentSpanId, undefined);
   assert.equal(root.participant, "client");
   assert.equal(root.kind, "client");
+  // Root title = the child operation (the endpoint), so the trace feed reads
+  // "POST /api/payroll/process", not the opaque requestId.
+  assert.equal(root.operation, "POST /api/payroll/process");
 
   assert.equal(span.traceId, "req-123");
   assert.equal(span.spanId, "550e8400-e29b-41d4-a716-446655440000");
@@ -197,4 +200,80 @@ test("algoInstrumentation captures service, version, severity, message, tags, me
   assert.equal(span.attributes["message"], "Web access");
   assert.equal(span.attributes["tags.route_type"], "loader");
   assert.equal(span.attributes["memory_usage_mb"], 407.52);
+});
+
+test("adapterId2 prefers real request.traceId/spanId and unpacks spans[] children", () => {
+  const raw = {
+    eventId: "evt-1",
+    eventType: "instrumentation",
+    timestamp: TS,
+    application: { name: "hrms", module: "dashboard" },
+    request: { requestId: "rq-1", traceId: "trace-abc", spanId: "req-span-1" },
+    payload: { endpoint: "/dashboard", method: "GET", status_code: 200, durationMs: 129, success: true },
+    spans: [
+      {
+        spanId: "s-auth",
+        parentSpanId: "req-span-1",
+        traceId: "trace-abc",
+        kind: "function",
+        name: "authenticate",
+        startTime: TS,
+        endTime: "2026-05-28T10:15:00.002Z",
+        durationMs: 1.93,
+        success: true,
+      },
+      {
+        spanId: "s-perm",
+        parentSpanId: "req-span-1",
+        traceId: "trace-abc",
+        kind: "db",
+        name: "fetchPermissions",
+        startTime: TS,
+        endTime: "2026-05-28T10:15:00.005Z",
+        durationMs: 5.39,
+        success: true,
+      },
+    ],
+  };
+  const events = algoInstrumentation(raw);
+  // synthetic client root + the request span + 2 children
+  assert.equal(events.length, 4);
+  type E = (typeof events)[0];
+  const [root, reqSpan, auth, perm] = events as [E, E, E, E];
+
+  // Real identity wins: trace = request.traceId, event span uses request.spanId.
+  assert.equal(reqSpan.traceId, "trace-abc");
+  assert.equal(reqSpan.spanId, "req-span-1");
+  assert.equal(reqSpan.parentSpanId, "rq-1"); // under the synthetic client root
+  assert.equal(root.spanId, "rq-1");
+
+  // function child → internal, on the module lifeline, parented to the request span.
+  assert.equal(auth.spanId, "s-auth");
+  assert.equal(auth.parentSpanId, "req-span-1");
+  assert.equal(auth.participant, "hrms.dashboard");
+  assert.equal(auth.operation, "authenticate");
+  assert.equal(auth.kind, "internal");
+  assert.equal(auth.peer, undefined);
+  assert.equal(auth.duration, 1930); // 1.93ms -> micros
+
+  // db child → client with a "database" peer (draws the db lifeline + edge).
+  assert.equal(perm.operation, "fetchPermissions");
+  assert.equal(perm.kind, "client");
+  assert.equal(perm.peer, "database");
+  assert.equal(perm.status, "ok");
+  assert.equal(perm.attributes["spanKind"], "db");
+});
+
+test("adapterId2 stays backward-compatible when traceId/spans are absent", () => {
+  const events = algoInstrumentation({
+    eventId: "old-1",
+    eventType: "instrumentation",
+    timestamp: TS,
+    application: { name: "hrms", module: "roles" },
+    request: { requestId: "rq-9" }, // no traceId/spanId, no spans[]
+    payload: { endpoint: "/roles", method: "GET", status_code: 200, success: true },
+  });
+  assert.equal(events.length, 2); // root + span, as before
+  assert.equal(events[1]!.traceId, "rq-9"); // falls back to requestId
+  assert.equal(events[1]!.spanId, "old-1"); // falls back to eventId
 });

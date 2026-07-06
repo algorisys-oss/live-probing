@@ -2,6 +2,18 @@
 
 Decision-to-code audit trail (LOOPS rule XXV). Newest first.
 
+## [2026-07-06] algo-instrumentation trace title = endpoint
+
+**Asked:** the live-trace feed showed the requestId UUID; show the URL/endpoint instead.
+
+**Decided:** promote the child span's `operation` onto the synthetic `client` root (whose
+`operation` was the requestId), since the feed title = `roots[0].event.operation`
+(`packages/server/src/summary.ts`). Reverses the earlier "don't guess an entry endpoint"
+stance — safe here because HRMS gives each event its own requestId (one child per trace), so
+there's nothing to guess; multi-event requests degrade gracefully to last-write-wins on the
+shared root. Adapter-local one-liner (`operation` instead of `requestId`). TDD: 1 assertion
+(red→green, 43 unit). Verified live: `rootOperation` = `GET /roles`.
+
 ## [2026-07-06] moved client adapter specs into the repo
 
 **Asked:** move the `adapters-hidden/` docs into `docs/`, name the folder `adapters` (they're

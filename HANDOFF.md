@@ -22,6 +22,19 @@ duration/status/`status_code`/`memory_usage_mb`/`tags.route_type`. Docs: mapping
 Known format limitation unchanged: no causality → arrows fan out from the synthetic `client`
 lifeline (real nesting needs the emitter to add span/parent ids).
 
+Follow-on: **`algo-instrumentation` now consumes HRMS's real trace structure.** HRMS emits
+`request.traceId`/`request.spanId` + a `payload.spans[]` array (db/function/http children). The
+adapter prefers the real IDs and unpacks `spans[]` into nested child spans — `db` → `client`
+with `peer:"database"`, `function` → `internal` — so a request draws its real fan-out
+(`dashboard → database` per query) instead of a flat 2-span trace. Backward-compatible with
+older (no-traceId/no-spans) events. 2 tests (45 unit green). Verify end-to-end from real HRMS.
+
+Follow-on: **trace-feed title now shows the endpoint, not the requestId** — the synthetic
+`client` root carries the child operation (`GET /roles`), since the feed title is
+`roots[0].event.operation` (`packages/server/src/summary.ts`). One-line adapter change +
+1 test; verified live. *(Restart the running collector to pick this up — the live pipeline
+caches the old code otherwise.)*
+
 Follow-on: **moved the client adapter specs into the repo** — `adapters-hidden/` (gitignored)
 → `docs/adapters/` (tracked): `adapter-id-1.md`, `algo-instrumentation.md`,
 `skillzengine-adapter.md`. Removed the `adapters-hidden/` `.gitignore` entry. These are now

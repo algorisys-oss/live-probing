@@ -133,19 +133,41 @@ Older sample (still accepted — `statusCode`, single event, no envelope):
 }
 ```
 
-## Mapping design (why it looks like this)
+## Real trace structure (2026-07-06 — HRMS now emits it)
 
-The format has **no span ids and no parent ids**, only `request.requestId`. To make sequence
-diagrams render, the adapter synthesizes structure:
+HRMS added genuine identity and a child-span array; the adapter prefers them and falls back
+to the synthesis below when they're absent (older emitters).
+
+- `request.traceId` / `request.spanId` — real IDs. `traceId = request.traceId ?? requestId ??
+  eventId`; the event's own span uses `spanId = request.spanId` so children can attach to it.
+- `payload.spans[]` — real child operations of the request. Each entry:
+  ```json
+  { "spanId","parentSpanId","traceId","kind","name","startTime","endTime","durationMs","success" }
+  ```
+  Every child parents to `request.spanId` (a one-level fan-out). Mapping:
+  | span `kind` | LiveProbe `kind` | `peer` | effect |
+  |---|---|---|---|
+  | `db` | `client` | `database` | draws a **database** lifeline + topology edge per query |
+  | `redis` / `cache` | `client` | `redis` / `cache` | dedicated peer node |
+  | `http` | `client` | — | outbound call |
+  | `function` | `internal` | — | in-process, nests in the waterfall |
+  `name` → operation, `durationMs` (or `endTime − startTime`) → micros, `success` → status.
+  IDs are UUIDs (not OTel hex), so these traces don't merge with the OTel `:4318` path.
+
+## Mapping design — synthesis fallback (when traceId/spans are absent)
+
+The original format had **no span ids and no parent ids**, only `request.requestId`. To make
+sequence diagrams render, the adapter synthesizes structure:
 
 - `traceId = request.requestId` — instrumentation + log + audit events of one request
   assemble into one trace. Fallback `eventId` when there is no requestId.
 - **Synthetic `client` root span**, `spanId = requestId` (deterministic). Every event
   re-emits it; the trace window dedupes by spanId, so arrival order and missing siblings
-  don't matter. All arrows originate from this lifeline.
-- Each event → one child span, `spanId = eventId`, `participant = application.name +
-  "." + application.module` (dots, not slashes — a `/` would break the `/service/:name`
-  UI route). **Application and module are the sequence-diagram lifelines**, as requested.
+  don't matter. All arrows originate from this lifeline. (Still emitted even with real IDs:
+  it anchors the browser→server entry arrow, with the request span as its child.)
+- Each event → one child span, `spanId = request.spanId ?? eventId`, `participant =
+  application.name + "." + application.module` (dots, not slashes — a `/` would break the
+  `/service/:name` UI route). **Application and module are the sequence-diagram lifelines**.
 - `environment` is a span attribute → searchable (`attr=environment=prod`). So are
   `service`, `version`, `severity`, `message`, and any `tags.*`, plus per-type payload
   fields (instrumentation adds `status_code`/`statusCode` and `memory_usage_mb`).
@@ -169,8 +191,11 @@ hits maps to `HRMS WEB APPLICATION (LOCAL).<module>` lifelines. (Adapter renamed
 - **No causality between events** → service→service nesting (`propeak → hrms`) cannot be
   drawn; everything fans out from `client`. Fix requires the emitting library to add a
   span id + parent id (or at least a caller field). Phase-2 conversation.
-- The trace-feed title is the requestId (the synthetic root's operation) — the format has
-  no reliable "entry endpoint" to promote without guessing on arrival order.
+- The trace-feed title is the **child operation** promoted onto the synthetic root — the
+  endpoint (`GET /roles`) for instrumentation, or the `log …` / `audit …` label otherwise —
+  instead of the opaque requestId. HRMS gives each event its own requestId (one child per
+  trace), so this is unambiguous; when several events share a requestId the last-flushed one
+  wins (window dedup is last-write-wins). *(Updated 2026-07-06; was the raw requestId.)*
 - Log/audit arrows from `client` are presentation artifacts (prefixed `log`/`audit` in the
   label to keep them honest) — they mark *when* the event happened on *whose* lifeline.
 - Does one requestId ever span multiple applications? (Assumed yes; harmless if no.)

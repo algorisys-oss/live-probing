@@ -3,6 +3,21 @@
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
 ## [2026-07-06]
+- **`algo-instrumentation`: consume HRMS's real trace structure.** HRMS now emits
+  `request.traceId` / `request.spanId` and a `payload.spans[]` array of child operations
+  (db / function / http …). The adapter prefers those real IDs (`traceId = request.traceId ??
+  requestId ?? eventId`; event span uses `request.spanId`) and unpacks `spans[]` into nested
+  child `Event`s — `kind:"db"` → a `client` span with `peer:"database"` (draws a database
+  lifeline + topology edge), `function` → `internal`, redis/cache/http mapped too. Turns the
+  shallow `client → hrms.<module>` trace into a real fan-out (`dashboard → database` per query).
+  Backward-compatible: events without traceId/spans fall back to the old requestId synthesis.
+  2 new tests (**45 unit green**, typecheck clean); mapping in `docs/adapters/algo-instrumentation.md`.
+- **`algo-instrumentation`: trace-feed title = the endpoint, not the requestId.** The synthetic
+  `client` root now carries the child operation (`GET /roles` for instrumentation, else the
+  `log …`/`audit …` label) instead of the opaque requestId, so the live-trace feed reads the URL.
+  HRMS gives each event its own requestId (one child/trace) so it's unambiguous; multi-event
+  requests fall back to last-write-wins on the shared root. 1 test; verified live (`rootOperation`
+  = `GET /roles`).
 - **Client adapter specs moved into the repo.** `adapters-hidden/` (gitignored) →
   `docs/adapters/` (tracked): `adapter-id-1.md`, `algo-instrumentation.md`,
   `skillzengine-adapter.md`. Removed the `adapters-hidden/` `.gitignore` entry; updated path

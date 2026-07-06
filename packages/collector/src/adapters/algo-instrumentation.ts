@@ -1,18 +1,23 @@
 import type { Event, SpanKind, SpanStatus } from "@liveprobe/core";
 
 // Adapter for the internal instrumentation-service format (algo-instrumentation): three event
-// types — instrumentation / log / audit — each a standalone JSON document carrying
-// application { name, module, environment } and request { requestId }, but no span ids.
+// types — instrumentation / log / audit — each a JSON document carrying
+// application { name, module, environment } and request { requestId }.
 //
-// Structure is synthesized so sequence diagrams render:
-// - traceId = request.requestId (all three event types of one request share a trace)
-// - a synthetic "client" root span with spanId = requestId anchors the request; every
-//   event re-emits it and the trace window dedupes by spanId, so arrival order and
-//   missing siblings don't matter
-// - each event becomes a child span whose participant is `application.module` — the
-//   application and module names ARE the sequence-diagram lifelines
-// The format carries no causality between events, so all arrows originate at the
-// synthetic client lifeline; cross-module call nesting is not reconstructable from it.
+// HRMS now also emits real trace structure (optional, back-compat preserved):
+// - request.traceId / request.spanId — genuine identity; preferred over the old synthesis.
+// - payload-level spans[] — child operations (db / function / http …) parented to
+//   request.spanId, so a request draws its real internal fan-out (e.g. dashboard → database).
+//
+// Mapping:
+// - traceId   = request.traceId ?? request.requestId ?? eventId
+// - the event's own span uses request.spanId (so children attach); a synthetic "client"
+//   root (spanId = requestId) still anchors the entry arrow when a requestId is present.
+// - participant = application.name.module — the app+module ARE the sequence lifelines.
+// - each spans[] child → an Event: kind "db" → client with peer "database" (draws a db
+//   lifeline + topology edge), "function" → internal, others mapped in CHILD_KIND.
+// When traceId/spans are absent (older emitters) the adapter falls back to synthesizing a
+// trace from requestId, exactly as before.
 // Spec + mapping notes: docs/adapters/algo-instrumentation.md.
 
 function str(v: unknown): string {
@@ -34,6 +39,53 @@ function toMicros(v: unknown): number {
 
 const ERROR_LEVELS = new Set(["ERROR", "FATAL", "CRITICAL"]);
 
+// How a child span's `kind` maps to LiveProbe. Client kinds carry a `peer` so they draw
+// as an arrow to a dedicated lifeline (and a topology edge); function/internal stay put.
+const CHILD_KIND: Record<string, { kind: SpanKind; peer?: string }> = {
+  db: { kind: "client", peer: "database" },
+  redis: { kind: "client", peer: "redis" },
+  cache: { kind: "client", peer: "cache" },
+  http: { kind: "client" },
+  function: { kind: "internal" },
+};
+
+// Map one HRMS spans[] entry (a real child operation) to a normalized Event. Returns null
+// if it lacks a spanId. traceId/participant default from the parent event.
+function childSpan(raw: unknown, traceId: string, participant: string): Event | null {
+  const s = obj(raw);
+  const spanId = str(s["spanId"]);
+  if (!spanId) return null;
+  const kindName = str(s["kind"]).toLowerCase();
+  const mapped = CHILD_KIND[kindName] ?? { kind: "internal" as SpanKind };
+  const start = toMicros(s["startTime"]);
+  const durationMs = Number(s["durationMs"]);
+  const duration =
+    Number.isFinite(durationMs) && durationMs > 0
+      ? Math.round(durationMs * 1000)
+      : Math.max(0, toMicros(s["endTime"]) - start);
+  const success = s["success"];
+
+  const attributes: Record<string, string | number | boolean> = {};
+  if (kindName) attributes["spanKind"] = kindName;
+  if (Number.isFinite(durationMs)) attributes["durationMs"] = durationMs;
+  if (typeof success === "boolean") attributes["success"] = success;
+
+  const event: Event = {
+    traceId: str(s["traceId"]) || traceId,
+    spanId,
+    parentSpanId: str(s["parentSpanId"]) || undefined,
+    participant,
+    operation: str(s["name"]) || kindName || "span",
+    kind: mapped.kind,
+    startTime: start,
+    duration,
+    status: success === false ? "error" : success === true ? "ok" : "unset",
+    attributes,
+  };
+  if (mapped.peer) event.peer = mapped.peer;
+  return event;
+}
+
 export function algoInstrumentation(raw: unknown): Event[] {
   if (!raw || typeof raw !== "object") return [];
   const r = raw as Record<string, unknown>;
@@ -48,10 +100,13 @@ export function algoInstrumentation(raw: unknown): Event[] {
 
   const application = obj(r["application"]);
   const payload = obj(r["payload"]);
-  const requestId = str(obj(r["request"])["requestId"]);
+  const request = obj(r["request"]);
+  const requestId = str(request["requestId"]);
+  const reqSpanId = str(request["spanId"]);
   const eventType = str(r["eventType"]);
 
-  const traceId = requestId || eventId;
+  // Prefer the real trace identity HRMS now emits; fall back to the old synthesis.
+  const traceId = str(request["traceId"]) || requestId || eventId;
   const appName = str(application["name"]) || "unknown";
   const module = str(application["module"]);
   const participant = module ? `${appName}.${module}` : appName;
@@ -112,7 +167,9 @@ export function algoInstrumentation(raw: unknown): Event[] {
 
   const span: Event = {
     traceId,
-    spanId: eventId,
+    // Use the real request.spanId when present so HRMS's spans[] children attach to it;
+    // fall back to eventId for older emitters that carry no span identity.
+    spanId: reqSpanId || eventId,
     parentSpanId: requestId || undefined,
     participant,
     operation,
@@ -122,18 +179,30 @@ export function algoInstrumentation(raw: unknown): Event[] {
     status,
     attributes,
   };
-  if (!requestId) return [span];
+
+  // Real child operations (db / function / http …), parented to request.spanId.
+  const children: Event[] = [];
+  if (eventType === "instrumentation" && Array.isArray(r["spans"])) {
+    for (const raw of r["spans"] as unknown[]) {
+      const child = childSpan(raw, traceId, participant);
+      if (child) children.push(child);
+    }
+  }
+
+  if (!requestId) return [span, ...children];
 
   const root: Event = {
     traceId,
     spanId: requestId, // deterministic: every event of the request re-emits it, the window dedupes
     participant: "client",
-    operation: requestId,
+    // Title the trace by the child operation (the endpoint, e.g. "GET /roles") rather than the
+    // opaque requestId — that's what the trace feed shows.
+    operation,
     kind: "client",
     startTime,
     duration: 0,
     status: "unset",
     attributes: {},
   };
-  return [root, span];
+  return [root, span, ...children];
 }
