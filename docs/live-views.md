@@ -77,6 +77,24 @@ Nesting is inferred from time containment (a sync parent is active while its chi
 from parent ids — so it works on any stream that carries per-span start + duration. Clicking a
 bar or arrow selects that span in the shared detail panel (same selection as the waterfall tab).
 
+## The waterfall (trace page)
+
+The other trace-page tab is a Gantt waterfall of the spans. Beyond the bars (positioned by
+start + duration, colored per service) it surfaces three things:
+
+- **Critical path** — spans marked ◆ with an outlined bar are on the *critical path*: the chain
+  that determines the trace's end time. Computed by `criticalPath()`
+  ([`packages/core/src/critical-path.ts`](../packages/core/src/critical-path.ts)) — a backward
+  last-finisher sweep. Work that ran concurrently in another span's shadow is deliberately *not*
+  on the path (shortening it wouldn't shorten the trace).
+- **Self-time shading** — the hatched region of a bar is time covered by its children; the solid
+  remainder is the span's own **self-time**. A leaf span is fully solid.
+- **Collapse / expand** — the chevron on a span with children folds its subtree (with a "+N"
+  hidden count). Useful for deep traces.
+
+Selecting a span (here or in the sequence tab) writes `#<spanId>` to the URL, so a trace link can
+deep-link straight to one span.
+
 ## Caveats
 
 - **Edge latency is a plain average** (`totalDuration / calls`), so a single slow outlier

@@ -96,9 +96,13 @@ items: **S** = hours, **M** = ~a day, **L** = multi-day.
       mirrored in the UI; solid call arrows + dashed reply arrows (dashing = reply vs call,
       arrowhead = sync vs async); async = open head, no return. Nesting from time containment.
       4 core tests + 1 e2e; verified vs the testbed (`POST /api/checkout`, 50 spans).
-- [ ] **Trace-page follow-ups** (remaining from the enhancement menu): critical-path highlight +
-      self-time shading on the waterfall; collapse/expand subtrees; deep-link a span via
-      `#spanId`. **M**
+- [x] **Waterfall follow-ups: critical path + self-time + collapse + deep-link.** Pure core
+      `criticalPath()` (last-finisher backward sweep, excludes shadowed concurrent spans; unit
+      tested) ships in `TraceDetail`; the waterfall marks path spans (◆ + bar outline), shades
+      each bar's child-covered ranges so the solid remainder reads as self-time, lets you
+      collapse/expand a span's subtree (chevron + hidden-count), and syncs the selected span to a
+      `#spanId` URL hash (shareable deep-link). 1 core test + 4 e2e; verified vs a seeded nested
+      trace (redis cache correctly excluded from the critical path).
 
 ### B. Diagnostics & analysis
 - [x] Error explorer (errored traces grouped by endpoint + error label, each links to a trace)
@@ -130,6 +134,13 @@ items: **S** = hours, **M** = ~a day, **L** = multi-day.
 - [x] Collector: RabbitMQ connection-error handling / reconnect — `error`/`close` handled,
       exponential-backoff reconnect re-runs the full setup; initial connect still fails fast;
       runbook recommends a supervisor (`docs/implementation-review.md` #2)
+- [ ] **algo-instrumentation emitter gaps (HRMS-side, not ours)** — the algo stream renders
+      shallow until the emitter improves. **Gap A:** children are parented flat to
+      `request.spanId` (one-level fan-out) instead of their real enclosing span → sequence
+      activation bars can't nest; fix = track the current span (AsyncLocalStorage) and set each
+      sub-span's real `parentSpanId`. **Gap B:** some routes emit no/partial `payload.spans[]`
+      (e.g. `/permissions`) → 1-span traces; fix = instrument every route consistently. Our side
+      (Gap C: accept `payload.spans[]` + orphan-parent fallback) is **done**. **M (emitter)**
 - [ ] Docs: pure-ESM Node apps need `--import` (not `--require`) for auto-instrumentation —
       add to recipes A/B/E (`docs/implementation-review.md` gap 1) **S**
 - [ ] Native SDK (`packages/sdk-js`) — drop-in tracer, use LiveProbe without OpenTelemetry **L**
@@ -150,6 +161,23 @@ items: **S** = hours, **M** = ~a day, **L** = multi-day.
 ### F. Testbed realism
 - [ ] A Python (or Go) service — prove polyglot-via-OTLP renders identically **M**
 - [ ] More failure modes (timeouts, retries, circuit-breaking, slow dependency) **M**
+
+### G. Deployment & Docker
+- [x] **Docker deployment** (merged PR) — multi-stage `Dockerfile`, `docker-compose.yml`
+      (liveprobe + optional `collector`/`otel` profiles), `otel-collector-config.yaml`,
+      interactive `scripts/deploy.js` (build → save → scp → load over one SSH session). Reviewed
+      by build+run; verified boots, `/api/topology` 200, ingest 200, healthcheck healthy.
+- [x] **Docker hardening** — runs as non-root `USER node` (+ `/data` ownership); runtime
+      `npm ci --omit=dev` (+ tsx) trims dev deps; `deploy.js` validates/quotes `remoteDir`;
+      `server/index.ts` mkdirs the real `DB_PATH` dir (fixed EACCES when unprivileged).
+- [ ] **Docker review leftovers** (lower priority): pin the base image to a digest (`node:22-slim`
+      floats; loads `node:sqlite` unflagged today at v22.23.1); `deploy.js` doesn't bundle the
+      `otel/opentelemetry-collector` image (remote pulls from registry under `--profile otel`);
+      add a side-effect-free `/healthz` (healthcheck currently hits `/api/topology`, which
+      triggers `flushHistory`); `docker save | gzip` for faster transfer. **S**
+- [ ] **`dev-stop.sh` auto-wipe** — proposal: make wipe the default (it's a testbed; only
+      Postgres persists and it grows unbounded with loadgen) with a `--keep` opt-out, keeping
+      `--wipe` as a no-op alias. Decision paused. **S**
 
 ---
 

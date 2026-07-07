@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ApiError, fetchTraceDetail } from "../lib/api";
 import { formatMicros } from "../lib/format";
@@ -34,9 +34,15 @@ export function TracePage() {
       .then((detail) => {
         if (cancelled) return;
         setState({ kind: "ready", detail });
-        // Land on the failing span when there is one, else the root.
+        // Deep-link: honor #spanId in the URL if it names a real span; otherwise land on the
+        // failing span, else the root.
         const spans = detail.spans ?? [];
-        setSelectedSpanId(spans.find((s) => s.status === "error")?.spanId ?? spans[0]?.spanId ?? null);
+        const hashId = window.location.hash.slice(1);
+        const initial =
+          hashId && spans.some((s) => s.spanId === hashId)
+            ? hashId
+            : (spans.find((s) => s.status === "error")?.spanId ?? spans[0]?.spanId ?? null);
+        setSelectedSpanId(initial);
       })
       .catch((e: unknown) => {
         if (cancelled) return;
@@ -53,6 +59,12 @@ export function TracePage() {
       cancelled = true;
     };
   }, [traceId]);
+
+  // Select a span and reflect it in the URL hash (shareable deep-link), without a history entry.
+  const selectSpan = useCallback((id: string) => {
+    setSelectedSpanId(id);
+    if (id) window.history.replaceState(null, "", `#${id}`);
+  }, []);
 
   return (
     <div className="trace-page">
@@ -138,18 +150,20 @@ export function TracePage() {
                 <div className="trace-view">
                   {tab === "waterfall" ? (
                     <WaterfallView
+                      key={traceId}
                       spans={spans}
                       traceStart={state.detail.summary.startTime}
                       traceDuration={state.detail.summary.durationMicros}
                       selectedId={selectedSpanId}
-                      onSelect={setSelectedSpanId}
+                      onSelect={selectSpan}
+                      criticalPath={state.detail.criticalPath}
                     />
                   ) : (
                     <SequenceView
                       detail={state.detail}
                       showSummary={false}
                       selectedSpanId={selectedSpanId}
-                      onSelectSpan={setSelectedSpanId}
+                      onSelectSpan={selectSpan}
                     />
                   )}
                 </div>

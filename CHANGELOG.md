@@ -3,6 +3,18 @@
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
 ## [2026-07-07]
+- **Waterfall: critical-path highlight, self-time shading, collapse/expand, span deep-links.**
+  The remaining diagram followups. New pure core `criticalPath()` (`packages/core/src/
+  critical-path.ts`) computes the chain that determines the trace's end time by sweeping
+  backward from each node's end (last finisher on the path; spans that ran concurrently in a
+  sibling's shadow are excluded) — unit tested, shipped as `TraceDetail.criticalPath`. The
+  waterfall now: marks critical spans (◆ + accent bar outline + row accent); shades each bar's
+  child-covered time ranges (hatched) so the solid remainder reads as **self-time**; lets you
+  **collapse/expand** a span's subtree (chevron toggle + "+N hidden" count, DFS-order hiding);
+  and syncs the selected span to a **`#spanId` URL hash** for shareable deep-links (trace page
+  honors the hash on load). 1 new core test + 4 e2e (**54 unit + 22 e2e green**), typecheck + UI
+  build clean; verified against a seeded nested trace — the redis cache that ran inside the DB
+  call's window is correctly left off the critical path. Docs: `docs/live-views.md`.
 - **Docker image hardening (follow-up review of the deployment PR).** Three fixes after building
   and running the image end to end:
   - **Runs as non-root.** Added `USER node` + `chown node:node /data` so the server and its SQLite

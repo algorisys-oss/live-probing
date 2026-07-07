@@ -1034,6 +1034,10 @@ body {
 }
 .wf-axis-gutter {
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding-left: 6px;
+  overflow: hidden;
 }
 .wf-axis-track {
   position: relative;
@@ -1137,6 +1141,63 @@ body {
 }
 .wf-bar-error {
   background: var(--error);
+}
+/* critical path: outline the bar and accent the row */
+.wf-bar-critical {
+  outline: 1.5px solid var(--accent);
+  outline-offset: 1px;
+}
+.wf-row-critical {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.wf-critical-mark {
+  color: var(--accent);
+  font-size: 9px;
+  flex-shrink: 0;
+}
+/* self-time shading: child-covered ranges drawn lighter/hatched over the bar */
+.wf-bar-childtime {
+  position: absolute;
+  top: 7px;
+  height: 12px;
+  border-radius: 2px;
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(0, 0, 0, 0.32),
+    rgba(0, 0, 0, 0.32) 3px,
+    transparent 3px,
+    transparent 6px
+  );
+  pointer-events: none;
+}
+/* subtree collapse toggle */
+.wf-toggle {
+  width: 12px;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 9px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+.wf-toggle:hover {
+  color: var(--text);
+}
+.wf-toggle-leaf {
+  cursor: default;
+}
+.wf-hidden-count {
+  margin-left: 6px;
+  font-size: 10px;
+  color: var(--text-faint);
+  flex-shrink: 0;
+}
+.wf-axis-hint {
+  font-size: 10px;
+  color: var(--text-faint);
+  white-space: nowrap;
 }
 .wf-bar-dur {
   position: absolute;

@@ -5,6 +5,7 @@ import {
   TraceWindow,
   sequenceFor,
   sequenceLayout,
+  criticalPath,
   toMermaidSequence,
   toMermaidFlow,
   type Event,
@@ -397,4 +398,33 @@ test("sequenceLayout offsets overlapping activations on the same lifeline by dep
   const B = layout.messages.find((m) => m.spanId === "B")!;
   assert.equal(A.depth, 0);
   assert.equal(B.depth, 1); // B opens while A is still active on lifeline c
+});
+
+// --- criticalPath: the chain that determines the trace end time ---
+
+test("criticalPath follows the last-finisher chain and excludes shadowed concurrent spans", () => {
+  // root [0,100]; A [10,30] then B [40,90] run sequentially under root (both on the path);
+  // C [45,60] runs concurrently *inside* B's span (shadowed → off the path).
+  const w = new TraceWindow();
+  const base = { traceId: "cp", status: "unset" as const, attributes: {} };
+  w.add([
+    { ...base, spanId: "root", participant: "gw", operation: "GET /", kind: "server", startTime: 0, duration: 100 },
+    { ...base, spanId: "A", parentSpanId: "root", participant: "gw", operation: "a", kind: "internal", startTime: 10, duration: 20 },
+    { ...base, spanId: "B", parentSpanId: "root", participant: "gw", operation: "b", kind: "internal", startTime: 40, duration: 50 },
+    { ...base, spanId: "C", parentSpanId: "B", participant: "gw", operation: "c", kind: "internal", startTime: 45, duration: 15 },
+  ]);
+  const cp = new Set(criticalPath(w.assemble("cp")!));
+  assert.ok(cp.has("root") && cp.has("A") && cp.has("B"), "root, A, B are on the path");
+  assert.ok(cp.has("C"), "C ends B's tail (45+15=60 <= cursor 90) so it is critical within B");
+
+  // Now make C run entirely in B's shadow (ends well before B ends) → off the path.
+  const w2 = new TraceWindow();
+  w2.add([
+    { ...base, traceId: "cp2", spanId: "root", participant: "gw", operation: "GET /", kind: "server", startTime: 0, duration: 100 },
+    { ...base, traceId: "cp2", spanId: "B", parentSpanId: "root", participant: "gw", operation: "b", kind: "internal", startTime: 40, duration: 50 }, // ends 90
+    { ...base, traceId: "cp2", spanId: "D", parentSpanId: "root", participant: "gw", operation: "d", kind: "internal", startTime: 45, duration: 20 }, // ends 65, inside B
+  ]);
+  const cp2 = new Set(criticalPath(w2.assemble("cp2")!));
+  assert.ok(cp2.has("root") && cp2.has("B"), "root and B on path");
+  assert.ok(!cp2.has("D"), "D ran concurrently in B's shadow → not on the critical path");
 });
