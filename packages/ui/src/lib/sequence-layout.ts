@@ -45,8 +45,9 @@ export interface SequenceGroup {
 // (it brackets children) and is never folded — only leaf runs collapse, so nesting is never hidden.
 const GROUP_MIN = 3; // fewer than this reads fine as individual rows; don't fold pairs
 
+const SIG_SEP = "\u0000"; // NUL field delimiter (collision-proof); escaped so the file stays text
 function sig(m: Message): string {
-  return `${m.from} ${m.to} ${m.label} ${m.async ? "a" : "s"}`;
+  return [m.from, m.to, m.label, m.async ? "a" : "s"].join(SIG_SEP);
 }
 
 function detectGroups(ordered: LaidOutMessage[]): SequenceGroup[] {
