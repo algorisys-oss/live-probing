@@ -23,6 +23,19 @@ test("switching to the sequence tab renders the sequence diagram", async ({ page
   await expect(page.locator(".seq-svg")).toBeVisible();
 });
 
+test("the sequence view draws activation bars and dashed return arrows", async ({ page }) => {
+  await page.goto(`/trace/${TRACE_IDS.checkout}`);
+  await page.locator(".tab", { hasText: "Sequence" }).click();
+  await expect(page.locator(".seq-svg")).toBeVisible();
+  // each sync call gets an activation bar + a return arrow (SVG lines are zero-height, so
+  // assert presence by count rather than visibility)
+  await expect(page.locator(".seq-activation").first()).toBeVisible();
+  expect(await page.locator(".seq-activation").count()).toBeGreaterThan(0);
+  expect(await page.locator(".seq-return").count()).toBeGreaterThan(0);
+  // the shared detail panel is present (span selection covered by the cross-tab test)
+  await expect(page.locator(".wf-detail")).toBeVisible();
+});
+
 test("waterfall shows a time axis, depth rails, and the shared span detail", async ({ page }) => {
   await page.goto(`/trace/${TRACE_IDS.checkout}`);
   // time axis ticks over the track column

@@ -10,4 +10,11 @@ export {
   type WindowOptions,
 } from "./trace-window.js";
 export { sequenceFor, type Sequence, type Message } from "./sequence.js";
+export {
+  sequenceLayout,
+  type SequenceLayout,
+  type SequenceRow,
+  type Activation,
+  type LaidOutMessage,
+} from "./sequence-layout.js";
 export { toMermaidSequence, toMermaidFlow } from "./export/mermaid.js";

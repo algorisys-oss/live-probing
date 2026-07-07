@@ -3,6 +3,21 @@
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
 ## [2026-07-07]
+- **Sequence view: activation bars + call/return arrows (UML).** The sequence tab was a flat
+  list of one-way call arrows; it now renders a proper UML interaction. New pure core function
+  `sequenceLayout()` (`packages/core/src/sequence-layout.ts`, mirrored browser-side in
+  `packages/ui/src/lib/sequence-layout.ts`) turns the time-ordered messages into a bracketed
+  call/return layout: each **synchronous** call gets an **activation bar** on the callee's
+  lifeline (call row → return row), rows are bracketed so a parent's return lands after its
+  children's, and overlapping activations on one lifeline get a depth-offset lane. The renderer
+  draws the bars, **solid call arrows** (filled head), and **dashed reply arrows** (open/stick
+  head) labelled with the call duration. Convention: **dashing = reply vs call; arrowhead =
+  sync vs async** — async (producer/consumer) messages are solid with an open head and get no
+  return or activation (fire-and-forget). Nesting is inferred from time containment (no
+  parent-id dependency). Selection is preserved: clicking a bar or arrow still selects the span
+  in the shared detail panel. 4 core unit tests + 1 e2e (**53 unit + 18 e2e green**), typecheck
+  clean; verified visually against the live testbed (`POST /api/checkout`, 50 spans — nested
+  gateway⊃auth⊃redis activations, dashed returns with µs labels). Docs: `docs/live-views.md`.
 - **algo-instrumentation: stop dropping `spans[]` sent under `payload`, and never orphan a
   child (Gap C).** The adapter read child spans only from the top-level `spans` field, but the
   spec (and some emitters) nest them under `payload.spans` — those were silently dropped, so the

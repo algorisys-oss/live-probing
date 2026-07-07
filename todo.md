@@ -91,9 +91,14 @@ items: **S** = hours, **M** = ~a day, **L** = multi-day.
       selects the same span and drives one shared attribute panel. Waterfall gained a time axis
       + gridlines and depth rails (tree structure). 2 new e2e (axis/rails/shared-detail +
       cross-tab selection); verified against the live testbed (`POST /api/checkout`, 9 svc/50 spans).
-- [ ] **Trace-page follow-ups** (from the sequence/waterfall enhancement menu): activation bars +
-      return arrows on the sequence view; critical-path highlight + self-time shading on the
-      waterfall; collapse/expand subtrees; deep-link a span via `#spanId`. **M**
+- [x] **Sequence view: activation bars + UML call/return arrows** — pure core `sequenceLayout()`
+      (bracketed call/return, activation bars per sync call, depth-lane offset for overlaps),
+      mirrored in the UI; solid call arrows + dashed reply arrows (dashing = reply vs call,
+      arrowhead = sync vs async); async = open head, no return. Nesting from time containment.
+      4 core tests + 1 e2e; verified vs the testbed (`POST /api/checkout`, 50 spans).
+- [ ] **Trace-page follow-ups** (remaining from the enhancement menu): critical-path highlight +
+      self-time shading on the waterfall; collapse/expand subtrees; deep-link a span via
+      `#spanId`. **M**
 
 ### B. Diagnostics & analysis
 - [x] Error explorer (errored traces grouped by endpoint + error label, each links to a trace)
