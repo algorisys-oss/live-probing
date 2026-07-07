@@ -1,5 +1,5 @@
 import type { AssembledTrace, TraceNode } from "@liveprobe/core";
-import { sequenceFor, toMermaidSequence, type Sequence } from "@liveprobe/core";
+import { criticalPath, sequenceFor, toMermaidSequence, type Sequence } from "@liveprobe/core";
 
 export interface TraceSummary {
   traceId: string;
@@ -73,6 +73,7 @@ export interface TraceDetail {
   sequence: Sequence;
   mermaidSequence: string;
   spans: SpanRow[];
+  criticalPath: string[]; // span ids on the critical path (determine the trace's end time)
 }
 
 export function detail(trace: AssembledTrace): TraceDetail {
@@ -82,5 +83,6 @@ export function detail(trace: AssembledTrace): TraceDetail {
     sequence,
     mermaidSequence: toMermaidSequence(sequence),
     spans: flattenSpans(trace),
+    criticalPath: criticalPath(trace),
   };
 }

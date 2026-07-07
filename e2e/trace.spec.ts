@@ -68,6 +68,37 @@ test("span selection is shared across the waterfall and sequence tabs", async ({
   await expect(page.locator(".wf-row-selected")).toContainText("charge");
 });
 
+test("the waterfall marks the critical path and shades self-time", async ({ page }) => {
+  await page.goto(`/trace/${TRACE_IDS.checkout}`);
+  await expect(page.locator(".wf-row").first()).toBeVisible();
+  // root -> client -> downstream is a sequential chain → all on the critical path
+  expect(await page.locator(".wf-critical-mark").count()).toBeGreaterThan(0);
+  // the root/client spans have children, so their bars carry self-time (child-covered) shading
+  expect(await page.locator(".wf-bar-childtime").count()).toBeGreaterThan(0);
+});
+
+test("collapsing a span hides its subtree in the waterfall", async ({ page }) => {
+  await page.goto(`/trace/${TRACE_IDS.checkout}`);
+  await expect(page.locator(".wf-row").first()).toBeVisible();
+  const before = await page.locator(".wf-row").count();
+  expect(before).toBeGreaterThanOrEqual(3);
+  // collapse the root span → its descendants disappear
+  await page.locator(".wf-row").first().locator("button.wf-toggle").click();
+  expect(await page.locator(".wf-row").count()).toBeLessThan(before);
+});
+
+test("a #spanId deep-link selects that span on load", async ({ page }) => {
+  // the checkout trace's downstream span is `<traceId>-c` (the failing "charge")
+  await page.goto(`/trace/${TRACE_IDS.checkout}#${TRACE_IDS.checkout}-c`);
+  await expect(page.locator(".wf-detail")).toContainText("charge");
+});
+
+test("selecting a span writes it to the URL hash", async ({ page }) => {
+  await page.goto(`/trace/${TRACE_IDS.checkout}`);
+  await page.locator(".wf-row").first().click();
+  await expect.poll(() => page.evaluate(() => window.location.hash)).not.toBe("");
+});
+
 test("the back link returns to the live dashboard", async ({ page }) => {
   await page.goto(`/trace/${TRACE_IDS.checkout}`);
   await page.getByRole("link", { name: "← Live" }).click();

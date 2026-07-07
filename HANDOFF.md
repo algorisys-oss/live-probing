@@ -5,7 +5,27 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-**Docker deployment PR review + hardening.** Reviewed the merged docker PR (`Dockerfile`,
+**Waterfall followups: critical path + self-time + collapse/expand + span deep-links.** Branch
+`diagram-followups` (merged to `dev`). Completes the diagram track.
+- **Core:** new pure `criticalPath(trace)` in `packages/core/src/critical-path.ts` — backward
+  last-finisher sweep from each node's end; spans that ran concurrently in a sibling's shadow are
+  excluded. Unit tested. Shipped in `TraceDetail.criticalPath` (server `summary.detail()`).
+- **UI (`waterfall-view.tsx`):** marks critical spans (◆ + accent bar outline + row accent);
+  shades each bar's child-covered ranges (hatched) so the solid remainder = self-time; collapse/
+  expand a subtree (chevron + "+N" hidden count, DFS-order hiding); `trace-page.tsx` syncs the
+  selected span to a `#spanId` URL hash (deep-link honored on load, updated on select via
+  `history.replaceState`). Waterfall is keyed by `traceId` so collapse state resets per trace.
+
+**54 unit + 22 e2e green** (1 core test + 4 e2e), typecheck + UI build clean. Verified against a
+seeded 8-span nested trace: 7/8 on the critical path, the redis cache in the DB call's shadow
+correctly excluded; screenshot confirmed ◆ marks, hatched self-time, chevrons.
+
+Open threads now tracked in `todo.md`: **A** (diagram track — done), **D** (algo emitter Gaps
+A/B, HRMS-side), **G** (Docker review leftovers; `dev-stop` auto-wipe decision).
+
+---
+
+Prior task: **Docker deployment PR review + hardening.** Reviewed the merged docker PR (`Dockerfile`,
 `docker-compose.yml`, `.dockerignore`, `otel-collector-config.yaml`, `scripts/deploy.js`) by
 actually building and running the image; it works end to end. Applied three hardening fixes on
 branch `fix-docker-hardening` (merged to `dev`):

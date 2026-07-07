@@ -60,6 +60,7 @@ export interface TraceDetail {
   sequence: Sequence;
   mermaidSequence: string;
   spans: SpanRow[];
+  criticalPath?: string[]; // span ids on the critical path (absent in pre-upgrade stored payloads)
 }
 
 export interface DayInfo {
