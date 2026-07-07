@@ -676,6 +676,32 @@ body {
   font-weight: 700;
 }
 
+/* Collapsed repeated-sibling group (the ×N row). The fold is the finding, so it reads louder
+   than a normal arrow: bolder label, an accent aggregate badge, and a dashed activation bar. */
+.seq-msg-group .seq-msg-label {
+  fill: var(--text);
+  font-weight: 600;
+}
+.seq-msg-group .seq-line {
+  stroke-width: 2.4;
+}
+.seq-group-badge {
+  fill: var(--accent);
+  font-weight: 600;
+}
+.seq-activation-group {
+  stroke-width: 1.6;
+  stroke-dasharray: 3 2;
+}
+/* Suspected N+1: a sequential run of >=5 identical calls. Amber warning accent (⚠ in the label). */
+.seq-msg-n1 .seq-msg-label {
+  fill: var(--new);
+  font-weight: 700;
+}
+.seq-msg-n1 .seq-group-badge {
+  fill: var(--new);
+}
+
 /* ---------- trace page ---------- */
 .trace-body {
   display: flex;

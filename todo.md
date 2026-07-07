@@ -103,6 +103,16 @@ items: **S** = hours, **M** = ~a day, **L** = multi-day.
       collapse/expand a span's subtree (chevron + hidden-count), and syncs the selected span to a
       `#spanId` URL hash (shareable deep-link). 1 core test + 4 e2e; verified vs a seeded nested
       trace (redis cache correctly excluded from the critical path).
+- [x] **Sequence view: collapse repeated sibling spans into a ×N group.** A run of ≥3 repeated
+      *leaf* siblings with the same signature (`from→to · operation · async`) — the N+1 / hot-loop
+      shape — folds into one collapsed row that names the problem: `×N`, `Σ<total>` timing,
+      sequential (N+1) vs concurrent (fan-out), `⚠` on a sequential run of ≥5, `· N err` if a
+      member errored (errors never hidden). Click a fold or its bar to expand; `<title>` tooltip
+      has the full breakdown. Leaf-only so nesting is never hidden; buckets by signature within
+      each contiguous leaf run (interleaved dept/emp ⇒ one group each). Pure core
+      `sequenceLayout(sequence, expanded?)` + `SequenceGroup`, mirrored in the UI; 7 core tests;
+      verified vs a synthesized `GET /apply-leave` N+1 (30-row staircase → 5 rows). View-only —
+      event stream + Mermaid export unchanged.
 
 ### B. Diagnostics & analysis
 - [x] Error explorer (errored traces grouped by endpoint + error label, each links to a trace)

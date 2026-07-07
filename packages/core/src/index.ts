@@ -16,6 +16,7 @@ export {
   type SequenceRow,
   type Activation,
   type LaidOutMessage,
+  type SequenceGroup,
 } from "./sequence-layout.js";
 export { criticalPath } from "./critical-path.js";
 export { toMermaidSequence, toMermaidFlow } from "./export/mermaid.js";

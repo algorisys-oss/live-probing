@@ -400,6 +400,104 @@ test("sequenceLayout offsets overlapping activations on the same lifeline by dep
   assert.equal(B.depth, 1); // B opens while A is still active on lifeline c
 });
 
+// --- sequenceLayout: collapsing repeated sibling leaf calls into a ×N group ---
+
+test("sequenceLayout folds a run of >=3 identical sibling leaf calls into one collapsed row", () => {
+  const calls = [0, 20, 40, 60].map((t, i) =>
+    msg({ from: "a", to: "db", label: "db.find", spanId: `s${i}`, startTime: t, durationMicros: 10 }),
+  );
+  const layout = sequenceLayout(seq(calls));
+
+  assert.equal(layout.groups.length, 1);
+  const g = layout.groups[0]!;
+  assert.equal(g.count, 4);
+  assert.deepEqual(g.spanIds, ["s0", "s1", "s2", "s3"]);
+
+  // Collapsed by default: the four calls become one synthetic sync call → call + return = 2 rows.
+  assert.equal(layout.rows.length, 2);
+  const call = layout.rows.find((r) => r.kind === "call")!;
+  assert.equal(call.message.groupRole, "collapsed");
+  assert.equal(call.message.group?.count, 4);
+});
+
+test("sequenceLayout does not group below the threshold (2 identical calls stay individual)", () => {
+  const calls = [0, 20].map((t, i) =>
+    msg({ from: "a", to: "db", label: "db.find", spanId: `s${i}`, startTime: t, durationMicros: 10 }),
+  );
+  const layout = sequenceLayout(seq(calls));
+  assert.equal(layout.groups.length, 0);
+  assert.ok(layout.rows.every((r) => r.message.group === undefined));
+});
+
+test("sequenceLayout never folds a non-leaf call (a parent that contains children)", () => {
+  // Three identical a→b parents, each strictly containing a distinct child — parents are not leaves.
+  const messages = [0, 100, 200].flatMap((base, i) => [
+    msg({ from: "a", to: "b", label: "handle", spanId: `P${i}`, startTime: base, durationMicros: 50 }),
+    msg({ from: "b", to: "x", label: `child${i}`, spanId: `C${i}`, startTime: base + 10, durationMicros: 20 }),
+  ]);
+  const layout = sequenceLayout(seq(messages));
+  assert.equal(layout.groups.length, 0, "parents contain children → not grouped; children are distinct sigs");
+});
+
+test("sequenceLayout group carries aggregate timing, error count, and concurrency flag", () => {
+  const durs = [10, 20, 30, 40];
+  const calls = durs.map((d, i) =>
+    msg({
+      from: "a",
+      to: "db",
+      label: "db.find",
+      spanId: `s${i}`,
+      startTime: i * 100, // non-overlapping → sequential
+      durationMicros: d,
+      status: i === 1 ? "error" : "ok",
+    }),
+  );
+  const g = sequenceLayout(seq(calls)).groups[0]!;
+  assert.equal(g.totalDurationMicros, 100);
+  assert.equal(g.minDurationMicros, 10);
+  assert.equal(g.maxDurationMicros, 40);
+  assert.equal(g.avgDurationMicros, 25);
+  assert.equal(g.errorCount, 1);
+  assert.equal(g.concurrent, false, "non-overlapping run is sequential (N+1 shape)");
+});
+
+test("sequenceLayout flags overlapping repeated calls as concurrent (fan-out, not N+1)", () => {
+  const calls = [0, 10, 20].map((t, i) =>
+    msg({ from: "a", to: "db", label: "db.find", spanId: `s${i}`, startTime: t, durationMicros: 100 }),
+  );
+  const g = sequenceLayout(seq(calls)).groups[0]!;
+  assert.equal(g.concurrent, true);
+});
+
+test("sequenceLayout buckets an interleaved leaf cluster into one group per signature", () => {
+  // dept/emp override lookups interleaved in one contiguous leaf run → two groups.
+  const messages = [
+    msg({ from: "a", to: "db", label: "dept.find", spanId: "d0", startTime: 0, durationMicros: 10 }),
+    msg({ from: "a", to: "db", label: "emp.find", spanId: "e0", startTime: 12, durationMicros: 10 }),
+    msg({ from: "a", to: "db", label: "dept.find", spanId: "d1", startTime: 24, durationMicros: 10 }),
+    msg({ from: "a", to: "db", label: "emp.find", spanId: "e1", startTime: 36, durationMicros: 10 }),
+    msg({ from: "a", to: "db", label: "dept.find", spanId: "d2", startTime: 48, durationMicros: 10 }),
+    msg({ from: "a", to: "db", label: "emp.find", spanId: "e2", startTime: 60, durationMicros: 10 }),
+  ];
+  const layout = sequenceLayout(seq(messages));
+  assert.equal(layout.groups.length, 2);
+  assert.deepEqual(layout.groups.map((g) => g.count).sort(), [3, 3]);
+});
+
+test("sequenceLayout expands a group when its id is in the expanded set", () => {
+  const calls = [0, 20, 40, 60].map((t, i) =>
+    msg({ from: "a", to: "db", label: "db.find", spanId: `s${i}`, startTime: t, durationMicros: 10 }),
+  );
+  const g = sequenceLayout(seq(calls)).groups[0]!;
+  const layout = sequenceLayout(seq(calls), new Set([g.id]));
+
+  assert.ok(layout.rows.some((r) => r.message.spanId === "s0"), "member rows are drawn when expanded");
+  assert.ok(
+    layout.rows.every((r) => r.message.groupRole !== "collapsed"),
+    "no synthetic collapsed row while expanded",
+  );
+});
+
 // --- criticalPath: the chain that determines the trace end time ---
 
 test("criticalPath follows the last-finisher chain and excludes shadowed concurrent spans", () => {

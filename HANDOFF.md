@@ -5,23 +5,52 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-**Waterfall followups: critical path + self-time + collapse/expand + span deep-links.** Branch
-`diagram-followups` (merged to `dev`). Completes the diagram track.
-- **Core:** new pure `criticalPath(trace)` in `packages/core/src/critical-path.ts` — backward
+**Sequence view: collapse repeated sibling spans into a ×N group.** On `dev` (not yet synced). An
+N+1 (or any hot loop) drew as a staircase of identical rows; the sequence view now folds a run of
+≥3 repeated **leaf** sibling calls (same `from→to · operation · async`) into one collapsed ×N row
+that **names** the problem instead of hiding it. This came out of diagnosing a real HRMS
+`GET /apply-leave` N+1 (see below).
+- **Core (`packages/core/src/sequence-layout.ts`, TDD):** `sequenceLayout(sequence, expanded?)`
+  now detects groups (new `SequenceGroup`, exported). Leaf-only — a call that strictly contains
+  another is a parent and is never folded, so nesting is never hidden. Grouping buckets by
+  signature *within each contiguous leaf run*, so an interleaved dept/emp cluster yields one group
+  each. Each group carries `count`, `spanIds`, total/min/max/avg duration, `errorCount`, and
+  `concurrent` (any member overlap ⇒ fan-out; else sequential ⇒ N+1 shape). Collapsed by default;
+  `expanded` (a `Set` of group ids) opens one. 7 new tests.
+- **UI:** mirror in `packages/ui/src/lib/sequence-layout.ts` (**keep in sync** with core);
+  `sequence-view.tsx` renders the collapsed row (bold label + `×N`, `Σ<total> · sequential|
+  concurrent` badge, `⚠` when a sequential run ≥5 = suspected N+1, `· N err` when a member
+  errored — **errors are never folded away**), a per-group expand/collapse toggle (click the row
+  or its activation bar), and a `<title>` tooltip with the full breakdown. Local `expanded` state,
+  reset on trace change. New CSS: `.seq-msg-group`, `.seq-group-badge`, `.seq-activation-group`,
+  `.seq-msg-n1` (amber `--new`).
+
+**61 unit green**, typecheck + UI build clean. Verified in a headless browser against a synthesized
+`GET /apply-leave` trace (3 distinct prologue queries left ungrouped + interleaved
+`DepartmentLeaveOverride ×15` / `EmployeeLeaveOverride ×15`, one member errored): the 30-row
+staircase collapses to 5 rows, both folds show `⚠` + sequential, the emp fold shows `· 1 err` in
+red, and expanding one leaves the other folded.
+
+**Diagnostic context (HRMS, not changed):** the trigger was a real N+1 on HRMS `GET /apply-leave`
+— `app/routes/apply-leave.tsx:182` calls `resolveEffectiveLeaveType` per leave type, and
+`app/services/leave-policy-override.server.ts` fires 3 queries each (redundant base refetch + dept
++ emp override `findFirst`) ⇒ 3N queries. Fix (batch to 2 `findMany`s) was scoped but **HRMS was
+left untouched at the user's request**; the same pattern also lives in `resolveAllLeaveTypesForEmployee`.
+
+Open threads in `todo.md`: **D** (algo emitter Gaps A/B, HRMS-side), **G** (Docker review
+leftovers; `dev-stop` auto-wipe decision).
+
+---
+
+Prior task: **Waterfall followups: critical path + self-time + collapse/expand + span deep-links.**
+Branch `diagram-followups` (merged to `dev`). Completed the diagram track.
+- **Core:** pure `criticalPath(trace)` in `packages/core/src/critical-path.ts` — backward
   last-finisher sweep from each node's end; spans that ran concurrently in a sibling's shadow are
   excluded. Unit tested. Shipped in `TraceDetail.criticalPath` (server `summary.detail()`).
 - **UI (`waterfall-view.tsx`):** marks critical spans (◆ + accent bar outline + row accent);
   shades each bar's child-covered ranges (hatched) so the solid remainder = self-time; collapse/
   expand a subtree (chevron + "+N" hidden count, DFS-order hiding); `trace-page.tsx` syncs the
-  selected span to a `#spanId` URL hash (deep-link honored on load, updated on select via
-  `history.replaceState`). Waterfall is keyed by `traceId` so collapse state resets per trace.
-
-**54 unit + 22 e2e green** (1 core test + 4 e2e), typecheck + UI build clean. Verified against a
-seeded 8-span nested trace: 7/8 on the critical path, the redis cache in the DB call's shadow
-correctly excluded; screenshot confirmed ◆ marks, hatched self-time, chevrons.
-
-Open threads now tracked in `todo.md`: **A** (diagram track — done), **D** (algo emitter Gaps
-A/B, HRMS-side), **G** (Docker review leftovers; `dev-stop` auto-wipe decision).
+  selected span to a `#spanId` URL hash. Waterfall keyed by `traceId` so collapse state resets.
 
 ---
 
@@ -371,6 +400,15 @@ Details/ports: `README.md`. Jaeger at http://localhost:16687. Sample login `alic
   docker-compose.dev.yml --profile load up -d --force-recreate loadgen` (same idea with
   `--profile ui … frontend`). As of 2026-07-02 `frontend` still holds a stale reference —
   force-recreate it before next use.
+- **UI dev port drifted to :5174 this session**: another app (**Yappy**) was already on :5173, so
+  LiveProbe's Vite fell through to **:5174** (its `<title>` is `LiveProbe`; API/ws still :4319). The
+  :4319 server in this session was **API-only** (root `/` → `{"error":"not_found"}`, no static UI
+  host) — to screenshot the UI, hit the Vite port, not :4319. Confirm the port with
+  `ss -ltnp | grep vite` and `curl :<port>/ | grep -i '<title>'`.
+- **Synthetic verification trace in the DB**: verifying the ×N fold injected a demo trace
+  `n1apply00000000000000000000000001` (`GET /apply-leave`, HRMS→postgresql) via `POST /v1/events`.
+  Harmless; drops on `./dev-stop.sh --wipe`. Use a **near-now** `startTime` (epoch µs) when seeding —
+  a past timestamp is evicted from the live window immediately (learned the hard way).
 - **Git flow**: work on `dev`; the word **"sync"** = commit → push dev → fast-forward `main` →
   push main → back to dev. Don't commit/push between syncs. Check the branch before pushing.
 - **Stray servers on :4319**: only run ONE LiveProbe server against `packages/server/data`. A

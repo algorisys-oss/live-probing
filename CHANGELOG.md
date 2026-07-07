@@ -3,6 +3,26 @@
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
 ## [2026-07-07]
+- **Sequence view: collapse repeated sibling spans into a ×N group.** A run of ≥3 repeated *leaf*
+  sibling calls with the same signature (`from→to · operation · async`) — the shape an N+1 query or
+  hot loop makes — now folds into one collapsed row instead of a long staircase. The fold *names*
+  the problem rather than hiding it: it shows `×N`, the aggregate `Σ<total>` timing, whether the run
+  was **sequential** (N+1 shape) or **concurrent** (fan-out), a `⚠` on a sequential run of ≥5, and
+  `· N err` if any member errored (errors are never folded away). Click a fold (or its activation
+  bar) to expand it; a `<title>` tooltip carries the full count/timing/error breakdown.
+  - **Core (`packages/core/src/sequence-layout.ts`, TDD):** `sequenceLayout(sequence, expanded?)`
+    detects groups (new exported `SequenceGroup`). Leaf-only — a call that strictly contains another
+    is a parent and is never folded, so nesting is preserved. Buckets by signature within each
+    contiguous leaf run (an interleaved dept/emp cluster ⇒ one group per signature). Collapsed by
+    default; the optional `expanded` set opens specific groups. 7 new tests.
+  - **UI:** browser mirror kept in sync (`packages/ui/src/lib/sequence-layout.ts`); `sequence-view.tsx`
+    renders the ×N row, per-group expand/collapse (local state, reset per trace), and the aggregate
+    badge; new CSS `.seq-msg-group` / `.seq-group-badge` / `.seq-activation-group` / `.seq-msg-n1`.
+  - **61 unit green**, typecheck + UI build clean. Verified in a headless browser against a
+    synthesized `GET /apply-leave` N+1 (interleaved `DepartmentLeaveOverride ×15` /
+    `EmployeeLeaveOverride ×15`, one errored): 30-row staircase → 5 rows, both flagged `⚠`
+    sequential, the errored fold shows `· 1 err`. Purely a view projection — the normalized event
+    stream and Mermaid export are unchanged.
 - **Waterfall: critical-path highlight, self-time shading, collapse/expand, span deep-links.**
   The remaining diagram followups. New pure core `criticalPath()` (`packages/core/src/
   critical-path.ts`) computes the chain that determines the trace's end time by sweeping

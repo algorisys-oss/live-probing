@@ -47,6 +47,11 @@ export function SequenceView({
   const [fetchedDetail, setDetail] = useState<TraceDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // Group ids the viewer has expanded. Repeated-sibling runs collapse to a ×N row by default;
+  // opening one reveals its members. Reset when the trace changes (the trace page also remounts
+  // via key={traceId}, but the store-driven embed swaps traces without remounting).
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  useEffect(() => setExpanded(new Set()), [selectedTraceId]);
 
   useEffect(() => {
     if (providedDetail) return; // detail supplied by the parent — nothing to fetch
@@ -106,7 +111,17 @@ export function SequenceView({
 
   // UML call/return layout: each sync call becomes an activation bar spanning its call row to
   // its return row, bracketed by nesting. Rows (call + return) drive the vertical axis.
-  const layout = sequenceLayout(sequence);
+  const layout = sequenceLayout(sequence, expanded);
+  const collapsedGroupIds = new Set(
+    layout.groups.filter((g) => !expanded.has(g.id)).map((g) => g.id),
+  );
+  const toggleGroup = (id: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   const rowY = (row: number) => HEADER_H + MARGIN_TOP + row * ROW_H;
   const laneX = (participant: string, depth: number) => (colX.get(participant) ?? 0) + depth * ACT_LANE;
 
@@ -233,13 +248,21 @@ export function SequenceView({
             const top = rowY(a.fromRow);
             const h = Math.max(rowY(a.toRow) - top, 8);
             const selected = selectedSpanId != null && a.spanId === selectedSpanId;
+            const isGroup = collapsedGroupIds.has(a.spanId);
             const cls = [
               "seq-activation",
               a.status === "error" ? "seq-activation-error" : "",
+              isGroup ? "seq-activation-group" : "",
               selected ? "seq-activation-selected" : "",
             ]
               .filter(Boolean)
               .join(" ");
+            // A collapsed group's bar expands the group; a real span selects it.
+            const onActClick = isGroup
+              ? () => toggleGroup(a.spanId)
+              : onSelectSpan
+                ? () => onSelectSpan(a.spanId)
+                : undefined;
             return (
               <rect
                 key={`act-${a.spanId}`}
@@ -249,7 +272,7 @@ export function SequenceView({
                 height={h}
                 rx={2}
                 className={cls}
-                onClick={onSelectSpan ? () => onSelectSpan(a.spanId) : undefined}
+                onClick={onActClick}
               />
             );
           })}
@@ -264,15 +287,48 @@ export function SequenceView({
             const selfCall = m.from === m.to;
             const selected = selectedSpanId != null && m.spanId === selectedSpanId;
             const clickable = onSelectSpan !== undefined;
+
+            // Group rows: the collapsed ×N header and the expanded lead toggle collapse/expand;
+            // an expanded member is a normal row that still selects its own span.
+            const g = m.group;
+            const isGroupRow = m.groupRole === "collapsed" || m.groupRole === "lead";
+            const suspectN1 = g ? !g.concurrent && g.count >= 5 : false;
             const groupClass = [
               "seq-msg",
-              clickable ? "seq-msg-clickable" : "",
+              clickable || isGroupRow ? "seq-msg-clickable" : "",
+              isGroupRow ? "seq-msg-group" : "",
+              suspectN1 && m.groupRole === "collapsed" ? "seq-msg-n1" : "",
               selected ? "seq-msg-selected" : "",
             ]
               .filter(Boolean)
               .join(" ");
-            const onClick = clickable ? () => onSelectSpan!(m.spanId) : undefined;
-            const labelText = m.label.length > 40 ? m.label.slice(0, 39) + "…" : m.label;
+            const onClick = isGroupRow
+              ? () => toggleGroup(g!.id)
+              : clickable
+                ? () => onSelectSpan!(m.spanId)
+                : undefined;
+            const rawLabel = m.label.length > 40 ? m.label.slice(0, 39) + "…" : m.label;
+            const labelText =
+              m.groupRole === "collapsed"
+                ? `${suspectN1 ? "⚠ " : "▸ "}${rawLabel} ×${g!.count}`
+                : m.groupRole === "lead"
+                  ? `▾ ${rawLabel} (×${g!.count})`
+                  : rawLabel;
+            // Collapsed return row trades the single duration for the cluster's aggregate.
+            const groupBadge =
+              g && m.groupRole === "collapsed"
+                ? `Σ${formatMicros(g.totalDurationMicros)} · ${g.concurrent ? "concurrent" : "sequential"}` +
+                  (g.errorCount ? ` · ${g.errorCount} err` : "")
+                : null;
+            const groupTitle = g
+              ? `${g.count} identical calls — ${
+                  g.concurrent ? "concurrent (fan-out)" : "sequential" + (suspectN1 ? ", likely N+1" : "")
+                }. ` +
+                `Σ${formatMicros(g.totalDurationMicros)}, avg ${formatMicros(g.avgDurationMicros)}, ` +
+                `max ${formatMicros(g.maxDurationMicros)}` +
+                (g.errorCount ? `, ${g.errorCount} error${g.errorCount > 1 ? "s" : ""}` : "") +
+                `. Click to ${m.groupRole === "collapsed" ? "expand" : "collapse"}.`
+              : undefined;
 
             // Arrows connect the caller lifeline to the near edge of the callee's activation bar.
             const calleeCenter = laneX(m.to, m.depth);
@@ -288,6 +344,7 @@ export function SequenceView({
               const x = calleeCenter;
               return (
                 <g key={i} className={groupClass} onClick={onClick}>
+                  {groupTitle && <title>{groupTitle}</title>}
                   <rect x={x - 4} y={y - 16} width={COL_W} height={ROW_H} fill="transparent" />
                   <path
                     d={`M ${x + ACT_W / 2} ${y} h 26 v 16 h -26`}
@@ -314,6 +371,7 @@ export function SequenceView({
                   : "url(#seq-arrow)";
               return (
                 <g key={i} className={groupClass} onClick={onClick}>
+                  {groupTitle && <title>{groupTitle}</title>}
                   <rect x={hitX} y={y - 18} width={hitW} height={ROW_H} fill="transparent" />
                   <text x={midX} y={y - 6} className="seq-msg-label" textAnchor="middle">
                     {labelText}
@@ -335,9 +393,17 @@ export function SequenceView({
             const marker = isError ? "url(#seq-arrow-open-error)" : "url(#seq-arrow-open)";
             return (
               <g key={i} className={groupClass} onClick={onClick}>
+                {groupTitle && <title>{groupTitle}</title>}
                 <rect x={hitX} y={y - 18} width={hitW} height={ROW_H} fill="transparent" />
-                <text x={midX} y={y - 6} className="seq-msg-label seq-return-label" textAnchor="middle">
-                  {m.durationMicros > 0 ? formatMicros(m.durationMicros) : ""}
+                <text
+                  x={midX}
+                  y={y - 6}
+                  className={
+                    groupBadge ? "seq-msg-label seq-return-label seq-group-badge" : "seq-msg-label seq-return-label"
+                  }
+                  textAnchor="middle"
+                >
+                  {groupBadge ?? (m.durationMicros > 0 ? formatMicros(m.durationMicros) : "")}
                 </text>
                 <line
                   x1={calleeEdge}
