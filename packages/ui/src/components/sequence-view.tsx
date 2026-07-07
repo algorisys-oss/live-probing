@@ -21,19 +21,32 @@ interface SequenceViewProps {
    * shows its own header). Defaults to true.
    */
   showSummary?: boolean;
+  /**
+   * When provided, render this already-loaded detail instead of fetching it
+   * (lets the trace page share one fetch across the waterfall and sequence).
+   */
+  detail?: TraceDetail;
+  /** Currently selected span id, highlighted on its arrow. */
+  selectedSpanId?: string | null;
+  /** Called when a message arrow is clicked, with the span it represents. */
+  onSelectSpan?: (spanId: string) => void;
 }
 
 export function SequenceView({
   traceId,
   showSummary = true,
+  detail: providedDetail,
+  selectedSpanId = null,
+  onSelectSpan,
 }: SequenceViewProps = {}) {
   const storeSelectedTraceId = useLiveStore((s) => s.selectedTraceId);
   const selectedTraceId = traceId ?? storeSelectedTraceId;
-  const [detail, setDetail] = useState<TraceDetail | null>(null);
+  const [fetchedDetail, setDetail] = useState<TraceDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    if (providedDetail) return; // detail supplied by the parent — nothing to fetch
     if (!selectedTraceId) {
       setDetail(null);
       setError(null);
@@ -55,9 +68,11 @@ export function SequenceView({
     return () => {
       cancelled = true;
     };
-  }, [selectedTraceId]);
+  }, [selectedTraceId, providedDetail]);
 
-  if (!selectedTraceId) {
+  const detail = providedDetail ?? fetchedDetail;
+
+  if (!providedDetail && !selectedTraceId) {
     return (
       <div className="empty-hint">
         Select a trace from the list to view its sequence diagram.
@@ -189,13 +204,31 @@ export function SequenceView({
             const y = HEADER_H + MARGIN_TOP + i * ROW_H;
             const isError = m.status === "error";
             const selfCall = m.from === m.to;
+            const selected = selectedSpanId != null && m.spanId === selectedSpanId;
+            const clickable = onSelectSpan !== undefined;
+            const groupClass = [
+              "seq-msg",
+              clickable ? "seq-msg-clickable" : "",
+              selected ? "seq-msg-selected" : "",
+            ]
+              .filter(Boolean)
+              .join(" ");
+            const onClick = clickable ? () => onSelectSpan!(m.spanId) : undefined;
             const labelText =
               m.label.length > 40 ? m.label.slice(0, 39) + "…" : m.label;
 
             if (selfCall) {
               const x = fromX;
               return (
-                <g key={i} className="seq-msg">
+                <g key={i} className={groupClass} onClick={onClick}>
+                  {/* transparent hit target for easy clicking */}
+                  <rect
+                    x={x - 4}
+                    y={y - 16}
+                    width={COL_W}
+                    height={ROW_H}
+                    fill="transparent"
+                  />
                   <path
                     d={`M ${x} ${y} h 26 v 16 h -26`}
                     className={
@@ -222,8 +255,18 @@ export function SequenceView({
             }
 
             const midX = (fromX + toX) / 2;
+            const hitX = Math.min(fromX, toX);
+            const hitW = Math.abs(toX - fromX);
             return (
-              <g key={i} className="seq-msg">
+              <g key={i} className={groupClass} onClick={onClick}>
+                {/* transparent hit target for easy clicking */}
+                <rect
+                  x={hitX}
+                  y={y - 18}
+                  width={hitW}
+                  height={ROW_H}
+                  fill="transparent"
+                />
                 <text
                   x={midX}
                   y={y - 6}

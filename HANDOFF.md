@@ -5,7 +5,39 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-**Live HRMS wiring: `serve.sh --collector` + wildcard-URL fix.** Two changes, committed together.
+**Trace-page cohesion: the waterfall and sequence tabs are now one linked view.** Branch
+`trace-page-cohesion` (merged to `dev`). The waterfall was already interactive (click a span →
+attribute panel) but the sequence view was inert and the two tabs held independent selection.
+Four changes shipped together:
+
+1. **`Message.spanId` (core, TDD).** `sequenceFor()` (`packages/core/src/sequence.ts`) tags each
+   message with the span it represents — request arrow → the callee's server span, peer arrow →
+   the client span — so a sequence arrow links to a real waterfall row. Mirrored in
+   `packages/ui/src/lib/types.ts`.
+2. **Shared span selection.** `selectedSpanId` is lifted to `packages/ui/src/pages/trace-page.tsx`
+   and passed to both `WaterfallView` (`selectedId`/`onSelect`) and `SequenceView`
+   (`selectedSpanId`/`onSelectSpan`). One shared `SpanDetail` panel (now exported from
+   `waterfall-view.tsx`) renders at page level for both tabs. Selection persists across tab
+   switches; on load it auto-selects the first errored span (else the root). `SequenceView` takes
+   an optional `detail` prop and reuses the page's already-loaded detail instead of re-fetching.
+3. **Waterfall time axis + gridlines** — a tick ruler over the track column with vertical
+   gridlines behind the bars; narrow-bar durations render outside the bar.
+4. **Waterfall depth rails** — one vertical guide per ancestor level in the label gutter marks
+   the tree structure.
+
+**47 unit + 17 e2e green**, typecheck + UI build clean. 2 new e2e in `e2e/trace.spec.ts`
+(axis/rails/shared-detail; cross-tab selection sync). Verified visually against the live testbed
+(`POST /api/checkout`, 9 services / 50 spans): clicking the `get` arrow (auth→redis) highlights it
+and shows that span's redis attributes in the shared panel. New doc `docs/live-views.md` explains
+the homepage flow graph (rolling-window aggregate) and the trace views.
+
+Gotcha found this session: Playwright's `reuseExistingServer` reuses a stale server already on
+:4399 **without rebuilding the UI**, so new-markup e2e assertions fail against old assets. If e2e
+fails only on new UI, kill whatever holds :4399 and re-run so `e2e:serve` rebuilds fresh.
+
+---
+
+Prior task: **Live HRMS wiring: `serve.sh --collector` + wildcard-URL fix.** Two changes, committed together.
 
 **(a) `serve.sh --collector`.** `serve.sh` only starts the OTLP/native server (:4319); the
 algo-instrumentation stream (`/v1/event/*` → app/module + function granularity) needs the

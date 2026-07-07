@@ -4,6 +4,7 @@ import type { AssembledTrace } from "./trace-window.js";
 export interface Message {
   from: string;
   to: string;
+  spanId: string; // the span this arrow represents (links to the waterfall row)
   label: string;
   startTime: number;
   durationMicros: number;
@@ -58,6 +59,7 @@ export function sequenceFor(trace: AssembledTrace): Sequence {
       messages.push({
         from: parent.participant,
         to: e.participant,
+        spanId: e.spanId,
         label: e.operation,
         startTime: e.startTime,
         durationMicros: e.duration,
@@ -71,6 +73,7 @@ export function sequenceFor(trace: AssembledTrace): Sequence {
       messages.push({
         from: e.participant,
         to: e.peer,
+        spanId: e.spanId,
         label: e.operation,
         startTime: e.startTime,
         durationMicros: e.duration,
