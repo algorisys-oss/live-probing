@@ -264,6 +264,47 @@ test("adapterId2 prefers real request.traceId/spanId and unpacks spans[] childre
   assert.equal(perm.attributes["spanKind"], "db");
 });
 
+test("adapterId2 unpacks spans[] whether they arrive top-level or under payload", () => {
+  const child = {
+    spanId: "s-perm",
+    parentSpanId: "req-span-1",
+    kind: "db",
+    name: "fetchPermissions",
+    startTime: TS,
+    durationMs: 5.39,
+    success: true,
+  };
+  const base = {
+    eventId: "evt-1",
+    eventType: "instrumentation",
+    timestamp: TS,
+    application: { name: "hrms", module: "dashboard" },
+    request: { requestId: "rq-1", traceId: "trace-abc", spanId: "req-span-1" },
+  };
+  // The emitter may nest spans[] under payload (spec) instead of top-level — both must work.
+  const nested = algoInstrumentation({
+    ...base,
+    payload: { endpoint: "/dashboard", method: "GET", status_code: 200, success: true, spans: [child] },
+  });
+  assert.equal(nested.length, 3); // root + request span + 1 child (not dropped)
+  assert.equal(nested[2]!.spanId, "s-perm");
+  assert.equal(nested[2]!.peer, "database");
+});
+
+test("adapterId2 attaches an orphan child (no parentSpanId) to the request span", () => {
+  const events = algoInstrumentation({
+    eventId: "evt-2",
+    eventType: "instrumentation",
+    timestamp: TS,
+    application: { name: "hrms", module: "dashboard" },
+    request: { requestId: "rq-1", traceId: "trace-abc", spanId: "req-span-1" },
+    payload: { endpoint: "/dashboard", method: "GET", status_code: 200, success: true },
+    spans: [{ spanId: "s-loose", kind: "function", name: "loadWidgets", startTime: TS, durationMs: 2 }],
+  });
+  const loose = events.find((e) => e.spanId === "s-loose")!;
+  assert.equal(loose.parentSpanId, "req-span-1"); // not undefined — never orphaned to a root
+});
+
 test("adapterId2 stays backward-compatible when traceId/spans are absent", () => {
   const events = algoInstrumentation({
     eventId: "old-1",

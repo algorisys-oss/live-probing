@@ -5,7 +5,29 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-**Trace-page cohesion: the waterfall and sequence tabs are now one linked view.** Branch
+**algo-instrumentation Gap C: accept `payload.spans[]` and never orphan a child.** Branch
+`fix-algo-spans-location` (merged to `dev`). The adapter
+(`packages/collector/src/adapters/algo-instrumentation.ts`) read child spans only from top-level
+`r.spans`, but the spec / some emitters nest them under `payload.spans` — silently dropped, so
+those requests rendered flat (no db/function children), looking exactly like an emitter that sent
+no spans at all. Now reads `spans[]` from **either** location, and `childSpan` takes a
+`parentFallback` (the handler span id) so a child with no `parentSpanId` attaches to the handler
+instead of becoming a second root. 2 new tests (**49 unit green**, typecheck clean). Verified end
+to end through the real collector `http` source → sink → server (isolated ports 4391 → 4390): a
+`payload.spans[]` event yields `child-db` (peer `database`) + orphan `child-fn`, both parented to
+the handler span.
+
+This closes only the LiveProbe-side gap. **Gaps A (shallow one-level fan-out — every child
+parented to `request.spanId` instead of its real enclosing span) and B (routes emitting no/partial
+`spans[]`, e.g. `/permissions`) are emitter-side (HRMS)** and still open — the algo stream stays
+shallow until HRMS emits true nested `parentSpanId`s and populates `spans[]` for every route. The
+adapter already honours real parent ids, so deeper trees render the moment the emitter provides
+them. Activation-bars work (scoped, not yet built) should target the OTel stream first, which has
+real depth today.
+
+---
+
+Prior task: **Trace-page cohesion: the waterfall and sequence tabs are now one linked view.** Branch
 `trace-page-cohesion` (merged to `dev`). The waterfall was already interactive (click a span →
 attribute panel) but the sequence view was inert and the two tabs held independent selection.
 Four changes shipped together:

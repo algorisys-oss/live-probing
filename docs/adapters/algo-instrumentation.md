@@ -140,11 +140,16 @@ to the synthesis below when they're absent (older emitters).
 
 - `request.traceId` / `request.spanId` — real IDs. `traceId = request.traceId ?? requestId ??
   eventId`; the event's own span uses `spanId = request.spanId` so children can attach to it.
-- `payload.spans[]` — real child operations of the request. Each entry:
+- `spans[]` — real child operations of the request. Accepted **top-level (`spans`) or nested
+  under `payload` (`payload.spans`)** — emitters send it either way and both are unpacked. Each
+  entry:
   ```json
   { "spanId","parentSpanId","traceId","kind","name","startTime","endTime","durationMs","success" }
   ```
-  Every child parents to `request.spanId` (a one-level fan-out). Mapping:
+  A child with no `parentSpanId` attaches to the request span (the handler), never orphaned to a
+  root. Emitters today parent every child to `request.spanId` (a one-level fan-out); the adapter
+  honours whatever `parentSpanId` a child carries, so real nested trees render as soon as the
+  emitter provides them. Mapping:
   | span `kind` | LiveProbe `kind` | `peer` | effect |
   |---|---|---|---|
   | `db` | `client` | `database` | draws a **database** lifeline + topology edge per query |
