@@ -16,13 +16,13 @@ This repo has two parts:
 
 ## Status
 
-| Part | State |
-|------|-------|
-| LiveProbe core (event model, OTLP normalizer, trace window, sequence, Mermaid) | **done, tested** |
-| LiveProbe server (OTLP ingest + REST + websocket) | **done, tested** |
-| LiveProbe UI (React + zustand live dashboard: flow + sequence views) | **done** |
-| Testbed T0–T4 (full 8-service system + SPA + load gen) | **done, verified** |
-| Testbed T5 (OTel collector -> LiveProbe) | **done, verified with live traffic** |
+| Part                                                                           | State                                |
+| ------------------------------------------------------------------------------ | ------------------------------------ |
+| LiveProbe core (event model, OTLP normalizer, trace window, sequence, Mermaid) | **done, tested**                     |
+| LiveProbe server (OTLP ingest + REST + websocket)                              | **done, tested**                     |
+| LiveProbe UI (React + zustand live dashboard: flow + sequence views)           | **done**                             |
+| Testbed T0–T4 (full 8-service system + SPA + load gen)                         | **done, verified**                   |
+| Testbed T5 (OTel collector -> LiveProbe)                                       | **done, verified with live traffic** |
 
 The testbed is 8 services (gateway, auth, catalog, cart, order + payment/inventory/
 notification workers) over Postgres, Redis, and RabbitMQ, all OpenTelemetry-instrumented.
@@ -71,10 +71,10 @@ Tear down with `docker compose down` (add `-v` to also drop the Postgres volume)
 The auth service seeds a few accounts on startup, so you can log in (via the storefront SPA
 at :8088 or the API) without signing up. All share the same password:
 
-| Email | Password |
-|-------|----------|
+| Email                 | Password      |
+| --------------------- | ------------- |
 | `alice@shopwave.test` | `password123` |
-| `bob@shopwave.test` | `password123` |
+| `bob@shopwave.test`   | `password123` |
 | `carol@shopwave.test` | `password123` |
 
 ```bash
@@ -86,22 +86,22 @@ Signing up new accounts still works too; the seed is idempotent and never overwr
 
 ### Ports (host side)
 
-| Service | URL / port |
-|---------|-----------|
-| Storefront SPA | http://localhost:8088 (start with `--profile ui`) |
-| Gateway API | http://localhost:3000 |
-| Auth API | http://localhost:3001 |
-| Catalog API | http://localhost:3002 |
-| Cart API | http://localhost:3003 |
-| Order API | http://localhost:3004 |
-| Payment worker | http://localhost:3005/healthz |
-| Inventory worker | http://localhost:3006/healthz |
-| Notification worker | http://localhost:3007/healthz |
-| Jaeger UI | http://localhost:16687 |
-| OTLP collector | localhost:24317 (gRPC), 24318 (HTTP) |
-| Postgres | localhost:55432 |
-| Redis | localhost:56379 |
-| RabbitMQ | localhost:55672 (amqp), http://localhost:15673 (management) |
+| Service             | URL / port                                                  |
+| ------------------- | ----------------------------------------------------------- |
+| Storefront SPA      | http://localhost:8088 (start with `--profile ui`)           |
+| Gateway API         | http://localhost:3000                                       |
+| Auth API            | http://localhost:3001                                       |
+| Catalog API         | http://localhost:3002                                       |
+| Cart API            | http://localhost:3003                                       |
+| Order API           | http://localhost:3004                                       |
+| Payment worker      | http://localhost:3005/healthz                               |
+| Inventory worker    | http://localhost:3006/healthz                               |
+| Notification worker | http://localhost:3007/healthz                               |
+| Jaeger UI           | http://localhost:16687                                      |
+| OTLP collector      | localhost:24317 (gRPC), 24318 (HTTP)                        |
+| Postgres            | localhost:55432                                             |
+| Redis               | localhost:56379                                             |
+| RabbitMQ            | localhost:55672 (amqp), http://localhost:15673 (management) |
 
 ### Traffic generator (start / stop)
 
@@ -134,7 +134,39 @@ nonzero error count in its stats and red edges in the LiveProbe flow view are ex
 docker compose --profile ui up -d frontend      # storefront SPA on :8088
 ```
 
-## Running LiveProbe
+## Running LiveProbe with Docker
+
+Run LiveProbe in a container (UI + OTLP ingest + API + websocket). History is persisted in a
+named volume.
+
+```bash
+docker compose up -d --build
+# open http://localhost:4319
+```
+
+Optional profiles:
+
+```bash
+# Algo-instrumentation HTTP collector (same as ./serve.sh --collector)
+docker compose --profile collector up -d
+
+# OTel collector — accepts OTLP/protobuf from instrumented apps, forwards JSON to LiveProbe
+docker compose --profile otel up -d
+# point OTEL_EXPORTER_OTLP_ENDPOINT at http://localhost:4318
+```
+
+Environment variables (set in `.env` or the shell): `PORT` (default 4319), `RETENTION_DAYS`
+(default 14), `COLLECTOR_PORT` (default 4320), `OTEL_GRPC_PORT` / `OTEL_HTTP_PORT` (defaults
+4317 / 4318). Tear down with `docker compose down` (add `-v` to drop history).
+
+When LiveProbe runs in Docker and your app stack is in a separate compose project, point the
+app's OTel collector at `http://<liveprobe-host>:4319` (or join both stacks on a shared Docker
+network and use `http://liveprobe:4319`). The testbed's collector config uses
+`host.docker.internal` for LiveProbe on the host — change
+[testbed/otel/collector-config.yaml](testbed/otel/collector-config.yaml) to
+`http://liveprobe:4319` if both run in Docker on the same network.
+
+## Running LiveProbe (development)
 
 One command brings up the whole thing — testbed, traffic, and LiveProbe — with **hot reload
 by default**:
@@ -200,14 +232,14 @@ The testbed collector is already wired to export OTLP/JSON to LiveProbe on the h
 (`host.docker.internal:4319`) in
 [testbed/otel/collector-config.yaml](testbed/otel/collector-config.yaml). LiveProbe endpoints:
 
-| Endpoint | What |
-|----------|------|
-| `POST /v1/traces` | OTLP/HTTP ingest (gzip-aware) |
-| `POST /v1/events` | native ingest — a batch of normalized events (what adapters produce) |
-| `GET /api/traces?limit=` | recent trace summaries |
-| `GET /api/traces/:id` | one trace: sequence model + Mermaid |
-| `GET /api/topology` | aggregate service/datastore graph + Mermaid |
-| `ws /ws` | live snapshot + deltas |
+| Endpoint                 | What                                                                 |
+| ------------------------ | -------------------------------------------------------------------- |
+| `POST /v1/traces`        | OTLP/HTTP ingest (gzip-aware)                                        |
+| `POST /v1/events`        | native ingest — a batch of normalized events (what adapters produce) |
+| `GET /api/traces?limit=` | recent trace summaries                                               |
+| `GET /api/traces/:id`    | one trace: sequence model + Mermaid                                  |
+| `GET /api/topology`      | aggregate service/datastore graph + Mermaid                          |
+| `ws /ws`                 | live snapshot + deltas                                               |
 
 Apps that don't speak OpenTelemetry can be fed via an **adapter + collector** that maps a
 client's instrumentation format to normalized events and POSTs them to `/v1/events` — see
