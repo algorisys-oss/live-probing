@@ -5,7 +5,31 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-**Sequence view: activation bars + UML call/return arrows.** Branch `seq-activation-bars`
+**Docker deployment PR review + hardening.** Reviewed the merged docker PR (`Dockerfile`,
+`docker-compose.yml`, `.dockerignore`, `otel-collector-config.yaml`, `scripts/deploy.js`) by
+actually building and running the image; it works end to end. Applied three hardening fixes on
+branch `fix-docker-hardening` (merged to `dev`):
+- **Non-root:** `USER node` + `chown node:node /data` in the Dockerfile.
+- **Leaner runtime:** `npm ci --omit=dev && npm install --no-save tsx@^4.19.2` (drops
+  vite/typescript/playwright from the runtime image).
+- **`deploy.js`:** validate `remoteDir` against a safe charset + single-quote it in the remote
+  `cd` (path-with-spaces bug / shell-injection).
+- **Server boot fix (exposed by non-root):** `packages/server/src/index.ts` unconditionally
+  `mkdir`ed a hardcoded `packages/server/data` even when `DB_PATH` was elsewhere (EACCES as
+  `node`). Now `mkdir`s the directory of the *actual* `dbPath` (skips `:memory:`).
+
+Verified by build+run: boots as uid 1000, `/api/topology` 200, ingest 200, `/data/liveprobe.db`
+written node-owned, healthcheck healthy. 53 unit + 18 e2e green, typecheck clean.
+
+**Docker review — remaining (not applied, lower priority):** pin the base image to a digest
+(`node:22-slim` floats; loads `node:sqlite` unflagged today at v22.23.1); `deploy.js` doesn't
+bundle the `otel/opentelemetry-collector` image (remote pulls from registry under `--profile
+otel`); healthcheck hits `/api/topology` (triggers `flushHistory`) — a side-effect-free
+`/healthz` would be cleaner; `docker save | gzip` for faster transfer.
+
+---
+
+Prior task: **Sequence view: activation bars + UML call/return arrows.** Branch `seq-activation-bars`
 (merged to `dev`). The sequence tab drew a flat list of one-way call arrows; it's now a proper
 UML interaction diagram.
 

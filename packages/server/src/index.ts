@@ -13,13 +13,16 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   // Serve the built UI if it has been copied next to the server.
   const here = dirname(fileURLToPath(import.meta.url));
   const publicDir = join(here, "..", "public");
-  const dataDir = join(here, "..", "data");
-  mkdirSync(dataDir, { recursive: true });
+  // Persist history at DB_PATH (e.g. a mounted /data volume) or next to the server by default.
+  // Ensure the db's own directory exists — not a hardcoded one — so a custom DB_PATH works and
+  // we never try to mkdir an unwritable path (e.g. running unprivileged in a container).
+  const dbPath = process.env.DB_PATH ?? join(here, "..", "data", "liveprobe.db");
+  if (dbPath !== ":memory:") mkdirSync(dirname(dbPath), { recursive: true });
   // RETENTION_DAYS: keep the N most recent UTC days of history (default 14; 0 disables).
   const retentionEnv = Number(process.env.RETENTION_DAYS);
   const server = createServer({
     publicDir: existsSync(publicDir) ? publicDir : undefined,
-    dbPath: process.env.DB_PATH ?? join(dataDir, "liveprobe.db"),
+    dbPath,
     retentionDays: Number.isFinite(retentionEnv) ? retentionEnv : undefined,
   });
 
