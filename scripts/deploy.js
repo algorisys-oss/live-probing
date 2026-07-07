@@ -82,6 +82,22 @@ function imageTag(version) {
   return `${IMAGE_NAME}:${version}`;
 }
 
+/**
+ * Reject remote directories with shell-unsafe characters. Remote paths are re-parsed by the
+ * server's shell (both `ssh host cmd args` and the `cd <dir>` in runShell), so a space or a
+ * metacharacter would split the path or inject a command.
+ */
+function validateRemoteDir(dir) {
+  if (!/^[A-Za-z0-9_@%+=:,./-]+$/.test(dir)) {
+    console.error(
+      `Remote directory "${dir}" contains unsupported characters.\n` +
+        "Use only letters, digits, and these: _ @ % + = : , . / -",
+    );
+    process.exit(1);
+  }
+  return dir;
+}
+
 /** Reuse one SSH session so password is only asked once per deploy. */
 function createSshSession({ user, host, port }) {
   const controlPath = join(tmpdir(), `liveprobe-ssh-${user}-${host}-${port}`);
@@ -222,9 +238,9 @@ async function main() {
   const port = (await prompt(`SSH port [${defaultPort}]: `)) || defaultPort;
 
   const defaultRemoteDir = "/var/www/liveprobe";
-  const remoteDir =
-    (await prompt(`Remote directory [${defaultRemoteDir}]: `)) ||
-    defaultRemoteDir;
+  const remoteDir = validateRemoteDir(
+    (await prompt(`Remote directory [${defaultRemoteDir}]: `)) || defaultRemoteDir,
+  );
 
   const runRemote = (
     await prompt("Run `docker compose up -d` on the remote host? [y/N]: ")
@@ -332,7 +348,7 @@ async function main() {
     if (runRemote) {
       console.log("==> Running docker compose up -d on remote host");
       await ssh
-        .runShell(`cd ${remoteDir} && docker compose up -d --no-build`)
+        .runShell(`cd '${remoteDir}' && docker compose up -d --no-build`)
         .catch((err) => {
           console.error(
             "remote docker compose up failed:",

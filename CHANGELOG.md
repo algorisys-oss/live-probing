@@ -3,6 +3,19 @@
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
 ## [2026-07-07]
+- **Docker image hardening (follow-up review of the deployment PR).** Three fixes after building
+  and running the image end to end:
+  - **Runs as non-root.** Added `USER node` + `chown node:node /data` so the server and its SQLite
+    volume run unprivileged (was root).
+  - **Leaner runtime image.** Runtime `npm ci` now uses `--omit=dev` (drops vite/typescript/
+    playwright) and re-adds only `tsx` (`npm install --no-save tsx@^4.19.2`).
+  - **`deploy.js`: remote-dir hardening.** `remoteDir` is validated against a safe charset and
+    single-quoted in the remote `cd`, closing a path-with-spaces bug / latent shell injection.
+  - **Server fix exposed by non-root:** `packages/server/src/index.ts` created a *hardcoded*
+    `packages/server/data` dir on boot even when `DB_PATH` pointed elsewhere (fine as root, EACCES
+    as `node`). It now ensures the directory of the *actual* `dbPath` exists (skipping `:memory:`).
+  Verified by building + running the image: boots as uid 1000, `/api/topology` 200, native ingest
+  200, `/data/liveprobe.db` written node-owned, Docker healthcheck healthy. 53 unit + 18 e2e green.
 - **Sequence view: activation bars + call/return arrows (UML).** The sequence tab was a flat
   list of one-way call arrows; it now renders a proper UML interaction. New pure core function
   `sequenceLayout()` (`packages/core/src/sequence-layout.ts`, mirrored browser-side in
