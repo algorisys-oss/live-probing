@@ -134,13 +134,16 @@ items: **S** = hours, **M** = ~a day, **L** = multi-day.
 - [x] Collector: RabbitMQ connection-error handling / reconnect — `error`/`close` handled,
       exponential-backoff reconnect re-runs the full setup; initial connect still fails fast;
       runbook recommends a supervisor (`docs/implementation-review.md` #2)
-- [ ] **algo-instrumentation emitter gaps (HRMS-side, not ours)** — the algo stream renders
-      shallow until the emitter improves. **Gap A:** children are parented flat to
-      `request.spanId` (one-level fan-out) instead of their real enclosing span → sequence
-      activation bars can't nest; fix = track the current span (AsyncLocalStorage) and set each
-      sub-span's real `parentSpanId`. **Gap B:** some routes emit no/partial `payload.spans[]`
-      (e.g. `/permissions`) → 1-span traces; fix = instrument every route consistently. Our side
-      (Gap C: accept `payload.spans[]` + orphan-parent fallback) is **done**. **M (emitter)**
+- [~] **algo-instrumentation emitter (HRMS-side)** — reviewed the HRMS `app/instrumentation/`
+      module (2026-07-07). **Gaps A & B are largely closed:** real nesting via AsyncLocalStorage
+      + a span stack; Prisma `db.$use`, ioredis, fetch, and 26 service classes auto-traced;
+      132/132 routes wrapped; spans emitted top-level (`event.spans`) with `request.traceId/
+      spanId` — matches our adapter. **Residual bug (Gap A):** the shared mutable `parentStack`
+      mis-parents spans under concurrency (`Promise.all`, used in 41 routes + 28 services) → the
+      waterfall/critical-path tree scrambles (the time-containment **sequence view is immune**).
+      Fix = ALS-scoped current-span instead of a shared stack. Minor: 3 un-instrumented routes
+      (admin-dashboard, letters, plans.$id); audit-log `$use` double-queries add db-span noise;
+      hardcoded service list. Our side (Gap C) done.
 - [ ] Docs: pure-ESM Node apps need `--import` (not `--require`) for auto-instrumentation —
       add to recipes A/B/E (`docs/implementation-review.md` gap 1) **S**
 - [ ] Native SDK (`packages/sdk-js`) — drop-in tracer, use LiveProbe without OpenTelemetry **L**
