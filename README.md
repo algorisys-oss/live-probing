@@ -134,38 +134,6 @@ nonzero error count in its stats and red edges in the LiveProbe flow view are ex
 docker compose --profile ui up -d frontend      # storefront SPA on :8088
 ```
 
-## Running LiveProbe with Docker
-
-Run LiveProbe in a container (UI + OTLP ingest + API + websocket). History is persisted in a
-named volume.
-
-```bash
-docker compose up -d --build
-# open http://localhost:4319
-```
-
-Optional profiles:
-
-```bash
-# Algo-instrumentation HTTP collector (same as ./serve.sh --collector)
-docker compose --profile collector up -d
-
-# OTel collector — accepts OTLP/protobuf from instrumented apps, forwards JSON to LiveProbe
-docker compose --profile otel up -d
-# point OTEL_EXPORTER_OTLP_ENDPOINT at http://localhost:4318
-```
-
-Environment variables (set in `.env` or the shell): `PORT` (default 4319), `RETENTION_DAYS`
-(default 14), `COLLECTOR_PORT` (default 4320), `OTEL_GRPC_PORT` / `OTEL_HTTP_PORT` (defaults
-4317 / 4318). Tear down with `docker compose down` (add `-v` to drop history).
-
-When LiveProbe runs in Docker and your app stack is in a separate compose project, point the
-app's OTel collector at `http://<liveprobe-host>:4319` (or join both stacks on a shared Docker
-network and use `http://liveprobe:4319`). The testbed's collector config uses
-`host.docker.internal` for LiveProbe on the host — change
-[testbed/otel/collector-config.yaml](testbed/otel/collector-config.yaml) to
-`http://liveprobe:4319` if both run in Docker on the same network.
-
 ## Running LiveProbe (development)
 
 One command brings up the whole thing — testbed, traffic, and LiveProbe — with **hot reload
@@ -261,6 +229,195 @@ One gotcha worth knowing: some OTel instrumentations (ioredis, and likely amqpli
 hook the CommonJS `require` path, not ESM `import`. The shared layer loads those clients
 via `createRequire` so their spans actually appear. See
 [testbed/packages/shared/src/redis.ts](testbed/packages/shared/src/redis.ts).
+
+## Running LiveProbe with Docker
+
+Run LiveProbe in a container (UI + OTLP ingest + API + websocket). History is persisted in a
+named volume.
+
+```bash
+docker compose up -d --build
+# open http://localhost:4319
+```
+
+Optional profiles:
+
+```bash
+# Algo-instrumentation HTTP collector (same as ./serve.sh --collector)
+docker compose --profile collector up -d
+
+# OTel collector — accepts OTLP/protobuf from instrumented apps, forwards JSON to LiveProbe
+docker compose --profile otel up -d
+# point OTEL_EXPORTER_OTLP_ENDPOINT at http://localhost:4318
+```
+
+Environment variables (set in `.env` or the shell): `PORT` (default 4319), `RETENTION_DAYS`
+(default 14), `COLLECTOR_PORT` (default 4320), `OTEL_GRPC_PORT` / `OTEL_HTTP_PORT` (defaults
+4317 / 4318). Tear down with `docker compose down` (add `-v` to drop history).
+
+When LiveProbe runs in Docker and your app stack is in a separate compose project, point the
+app's OTel collector at `http://<liveprobe-host>:4319` (or join both stacks on a shared Docker
+network and use `http://liveprobe:4319`). The testbed's collector config uses
+`host.docker.internal` for LiveProbe on the host — change
+[testbed/otel/collector-config.yaml](testbed/otel/collector-config.yaml) to
+`http://liveprobe:4319` if both run in Docker on the same network.
+
+## Deploying LiveProbe to a remote server
+
+Use [scripts/deploy.js](scripts/deploy.js) to ship a production build to a VPS or other host
+over SSH. The script builds the image on your machine, uploads it as a tarball (no registry
+required), rewrites `docker-compose.yml` to use the pre-built image instead of `build: .`, and
+optionally runs `docker compose up -d` on the server.
+
+```bash
+npm run deploy
+# or: node scripts/deploy.js
+```
+
+Run this from the **repo root** (where `docker-compose.yml` and the `Dockerfile` live).
+
+### Prerequisites
+
+**Local machine**
+
+- Docker (your user must be able to run `docker` without `sudo`)
+- `ssh` and `scp`
+- Node.js 20+ (only to run the script; the server image is self-contained)
+
+**Remote host**
+
+- Docker and Docker Compose v2
+- SSH access for your user (key-based auth recommended)
+- Your user in the `docker` group (same as local — `docker` must work without `sudo`)
+- A directory to deploy into (default `/var/www/liveprobe`)
+
+One-time server setup example:
+
+```bash
+# on the server
+sudo apt update && sudo apt install -y docker.io docker-compose-v2
+sudo usermod -aG docker $USER
+# log out and back in, then verify:
+docker ps
+```
+
+Ensure you can reach the host from your laptop:
+
+```bash
+ssh -p 22 user@your-server.example.com
+```
+
+### Deployment flow
+
+The script is interactive. It prompts for each value (press Enter to accept the default):
+
+| Prompt                      | Default                   | Notes                                                             |
+| --------------------------- | ------------------------- | ----------------------------------------------------------------- |
+| Image version               | `latest`                  | Tag suffix only — e.g. `1.0.0` or `v1.2.3`, not `liveprobe:1.0.0` |
+| Remote host                 | `your-server.example.com` | Hostname or IP                                                    |
+| SSH username                | `root`                    | User with Docker access                                           |
+| SSH port                    | `22`                      |                                                                   |
+| Remote directory            | `/var/www/liveprobe`      | Created if missing                                                |
+| Run `docker compose up -d`? | no                        | Answer `y` to start (or restart) services after upload            |
+
+After a summary, confirm with `y` to proceed. The script then:
+
+1. Builds `liveprobe:<version>` locally from the `Dockerfile`
+2. Saves the image to a tarball
+3. Opens one multiplexed SSH session (password asked at most once)
+4. Uploads the tarball, a remote-ready `docker-compose.yml`, and `otel-collector-config.yaml`
+5. Runs `docker load` on the server and removes the tarball
+6. Optionally runs `docker compose up -d --no-build` in the remote directory
+
+Example session:
+
+```text
+=== LiveProbe deploy ===
+
+Image version [latest]: 1.0.0
+Remote host [your-server.example.com]: prod.example.com
+SSH username [root]: deploy
+SSH port [22]:
+Remote directory [/var/www/liveprobe]:
+Run `docker compose up -d` on the remote host? [y/N]: y
+
+Summary:
+  Image            : liveprobe:1.0.0
+  Remote host      : deploy@prod.example.com:22
+  Remote directory : /var/www/liveprobe
+  Run remote up    : yes
+
+Proceed? [y/N]: y
+```
+
+### After deploy
+
+On the server, LiveProbe listens on port **4319** by default (UI + OTLP/HTTP ingest + API +
+websocket). History is stored in the `liveprobe-data` Docker volume.
+
+```bash
+ssh deploy@prod.example.com
+cd /var/www/liveprobe
+
+docker compose ps
+docker compose logs -f liveprobe
+
+# smoke test
+curl -s http://localhost:4319/api/topology | head
+```
+
+Open `http://<your-server>:4319` in a browser (ensure the host firewall allows that port).
+
+**Environment variables** — create `/var/www/liveprobe/.env` on the server before or after the
+first `compose up` (same variables as local Docker):
+
+```bash
+PORT=4319
+RETENTION_DAYS=14
+# optional profiles:
+# COLLECTOR_PORT=4320
+# OTEL_GRPC_PORT=4317
+# OTEL_HTTP_PORT=4318
+```
+
+Then restart: `docker compose up -d`.
+
+**Optional compose profiles** (same as local):
+
+```bash
+cd /var/www/liveprobe
+docker compose --profile collector up -d   # algo-instrumentation adapter on :4320
+docker compose --profile otel up -d        # OTel collector on :4317/:4318 -> LiveProbe
+```
+
+Point instrumented apps at `http://<your-server>:4318` (OTel HTTP) or
+`http://<your-server>:4319/v1/traces` (OTLP/JSON direct to LiveProbe).
+
+### Manual deploy steps
+
+If you answer **no** to “Run `docker compose up`?”, the image and configs are still uploaded
+and loaded. Start or upgrade on the server yourself:
+
+```bash
+cd /var/www/liveprobe
+docker compose up -d --no-build
+```
+
+To redeploy a new version, run `npm run deploy` again with a new version tag. The script
+overwrites `docker-compose.yml` and loads the new image; run `docker compose up -d --no-build`
+to pick it up (or let the script do that for you).
+
+### Troubleshooting
+
+| Symptom                                            | Fix                                                                                              |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `Cannot access Docker (permission denied)` locally | `sudo usermod -aG docker $USER`, then `newgrp docker`                                            |
+| `ssh connect failed`                               | Check host, port, key, and that the user exists                                                  |
+| `remote docker compose up failed`                  | SSH in and run `docker compose logs`; confirm Docker works for that user                         |
+| UI loads but no traces                             | Open firewall for OTLP (4318/4319); point your app's `OTEL_EXPORTER_OTLP_ENDPOINT` at the server |
+
+The remote host does **not** need the git repo or Node.js — only Docker, the compose file,
+the collector config, and the loaded image.
 
 ## Working docs
 
