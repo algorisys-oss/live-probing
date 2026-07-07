@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { ApiError, fetchTraceDetail } from "../lib/api";
 import { formatMicros } from "../lib/format";
 import { SequenceView } from "../components/sequence-view";
-import { WaterfallView } from "../components/waterfall-view";
+import { WaterfallView, SpanDetail } from "../components/waterfall-view";
 import { copyText } from "../lib/export-diagram";
 import type { TraceDetail } from "../lib/types";
 
@@ -19,6 +19,8 @@ export function TracePage() {
   const { traceId } = useParams();
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [tab, setTab] = useState<TraceTab>("waterfall");
+  // Selected span is shared across both tabs (waterfall rows + sequence arrows).
+  const [selectedSpanId, setSelectedSpanId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!traceId) {
@@ -27,9 +29,14 @@ export function TracePage() {
     }
     let cancelled = false;
     setState({ kind: "loading" });
+    setSelectedSpanId(null);
     fetchTraceDetail(traceId)
       .then((detail) => {
-        if (!cancelled) setState({ kind: "ready", detail });
+        if (cancelled) return;
+        setState({ kind: "ready", detail });
+        // Land on the failing span when there is one, else the root.
+        const spans = detail.spans ?? [];
+        setSelectedSpanId(spans.find((s) => s.status === "error")?.spanId ?? spans[0]?.spanId ?? null);
       })
       .catch((e: unknown) => {
         if (cancelled) return;
@@ -123,15 +130,35 @@ export function TracePage() {
             </button>
           </div>
 
-          {tab === "waterfall" ? (
-            <WaterfallView
-              spans={state.detail.spans ?? []}
-              traceStart={state.detail.summary.startTime}
-              traceDuration={state.detail.summary.durationMicros}
-            />
-          ) : (
-            <SequenceView traceId={traceId} showSummary={false} />
-          )}
+          {(() => {
+            const spans = state.detail.spans ?? [];
+            const selectedSpan = spans.find((s) => s.spanId === selectedSpanId) ?? null;
+            return (
+              <div className="trace-body">
+                <div className="trace-view">
+                  {tab === "waterfall" ? (
+                    <WaterfallView
+                      spans={spans}
+                      traceStart={state.detail.summary.startTime}
+                      traceDuration={state.detail.summary.durationMicros}
+                      selectedId={selectedSpanId}
+                      onSelect={setSelectedSpanId}
+                    />
+                  ) : (
+                    <SequenceView
+                      detail={state.detail}
+                      showSummary={false}
+                      selectedSpanId={selectedSpanId}
+                      onSelectSpan={setSelectedSpanId}
+                    />
+                  )}
+                </div>
+                {selectedSpan && (
+                  <SpanDetail span={selectedSpan} traceStart={state.detail.summary.startTime} />
+                )}
+              </div>
+            );
+          })()}
         </>
       )}
     </div>

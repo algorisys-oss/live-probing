@@ -85,6 +85,15 @@ items: **S** = hours, **M** = ~a day, **L** = multi-day.
 - [x] Span waterfall on the trace page + click-to-expand span attributes (Waterfall tab: Gantt bars nested by depth, colored per service, click a span → attributes panel)
 - [x] Filter the live view (pick a service -> feed shows only its traces, flow shows its subgraph)
 - [x] Export diagrams: copy Mermaid + download SVG/PNG (flow); copy Mermaid (sequence). D2 TODO
+- [x] **Trace-page cohesion** — the waterfall and sequence tabs are now one linked view.
+      `Message` carries the `spanId` it represents (core, TDD); span selection is lifted to the
+      trace page and shared across both tabs, so clicking a sequence arrow *or* a waterfall row
+      selects the same span and drives one shared attribute panel. Waterfall gained a time axis
+      + gridlines and depth rails (tree structure). 2 new e2e (axis/rails/shared-detail +
+      cross-tab selection); verified against the live testbed (`POST /api/checkout`, 9 svc/50 spans).
+- [ ] **Trace-page follow-ups** (from the sequence/waterfall enhancement menu): activation bars +
+      return arrows on the sequence view; critical-path highlight + self-time shading on the
+      waterfall; collapse/expand subtrees; deep-link a span via `#spanId`. **M**
 
 ### B. Diagnostics & analysis
 - [x] Error explorer (errored traces grouped by endpoint + error label, each links to a trace)

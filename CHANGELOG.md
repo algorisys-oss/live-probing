@@ -2,6 +2,26 @@
 
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
+## [2026-07-07]
+- **Trace-page cohesion: waterfall + sequence are now one linked view.** Previously the
+  waterfall was interactive (click a span → attribute panel) but the sequence view was inert,
+  and the two tabs held independent state. Four changes, shipped together:
+  - **`Message.spanId` (core, TDD).** `sequenceFor()` now tags each message with the span it
+    represents (request arrow → the callee's server span; peer arrow → the client span), so a
+    sequence arrow can be linked to its waterfall row. 1 new unit test (**47 unit green**).
+  - **Shared span selection.** Selection is lifted to the trace page and passed to both tabs;
+    clicking a sequence arrow *or* a waterfall row selects the same span and drives a single
+    shared attribute panel. Switching tabs preserves the selection. The sequence view reuses the
+    page's already-loaded detail instead of re-fetching.
+  - **Waterfall time axis + gridlines.** A tick ruler (0 → trace duration) over the track column
+    with vertical gridlines behind the bars; narrow-bar durations render outside the bar.
+  - **Waterfall depth rails.** One vertical guide per ancestor level marks the tree structure in
+    the label gutter (readable for deep traces).
+  2 new e2e (axis/rails/shared-detail render; cross-tab selection sync) — **17 e2e green**,
+  typecheck clean. Verified visually against the live testbed (`POST /api/checkout`, 9 services /
+  50 spans): clicking the `get` arrow (auth→redis) highlights it and shows that span's redis
+  attributes in the shared panel. Docs: `docs/live-views.md` (new), `docs/README.md`.
+
 ## [2026-07-06]
 - **`serve.sh --collector`.** `serve.sh` starts only the OTLP/native server (:4319), so the
   algo-instrumentation stream (the internal `/v1/event/*` format that carries app/module +

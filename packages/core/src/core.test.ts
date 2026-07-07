@@ -204,6 +204,17 @@ test("sequenceFor orders messages and lists participants by first appearance", (
   );
 });
 
+test("sequenceFor tags each message with the span it represents", () => {
+  const w = new TraceWindow();
+  w.add(ghostFixture());
+  const seq = sequenceFor(w.assemble("t-ghost")!);
+  // request arrow -> the callee's server span; peer arrow -> the client span
+  assert.deepEqual(
+    seq.messages.map((m) => `${m.from}->${m.to}:${m.spanId}`),
+    ["gateway->catalog:s", "gateway->legacy-api:g"],
+  );
+});
+
 test("mermaid exporters produce valid-looking text", () => {
   const w = new TraceWindow();
   w.add(normalizeOtlp(fixture));

@@ -26,6 +26,7 @@ export interface Topology {
 export interface Message {
   from: string;
   to: string;
+  spanId: string; // the span this arrow represents (links to the waterfall row)
   label: string;
   startTime: number;
   durationMicros: number;

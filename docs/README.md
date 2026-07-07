@@ -6,6 +6,9 @@ Detailed docs for the two halves of this repo.
   pipeline (ingest → window → projections → UI), the testbed, and how they connect.
 - [event-model.md](event-model.md) — the normalized `Event` structure field by field, how
   OTLP spans map onto it, and how the topology and sequence diagrams are derived from it.
+- [live-views.md](live-views.md) — what the homepage **Live** tab shows: the flow/topology
+  graph as a rolling-window aggregate (nodes, edges, ghost peers, the two edge numbers) vs.
+  the per-trace sequence list, and how live differs from the persisted History view.
 - [shopwave-events.md](shopwave-events.md) — the e-commerce testbed: every HTTP action, the
   RabbitMQ messages published on each action, their exact payload structure, and the trace
   each user action produces.

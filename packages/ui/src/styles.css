@@ -621,7 +621,36 @@ body {
   stroke-linejoin: round;
 }
 
+/* Clickable / selected message arrows (trace page links them to the waterfall). */
+.seq-msg-clickable {
+  cursor: pointer;
+}
+.seq-msg-clickable:hover .seq-line {
+  stroke-width: 2.6;
+}
+.seq-msg-selected .seq-line {
+  stroke-width: 3;
+}
+.seq-msg-selected .seq-msg-label {
+  fill: var(--text);
+  font-weight: 700;
+}
+
 /* ---------- trace page ---------- */
+.trace-body {
+  display: flex;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.trace-view {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
 .trace-page {
   flex: 1;
   display: flex;
@@ -951,11 +980,59 @@ body {
 /* --- waterfall --- */
 .waterfall {
   display: flex;
-  gap: 12px;
+  flex-direction: column;
   flex: 1;
   min-height: 0;
   overflow: hidden;
   padding: 0 16px 16px;
+}
+/* time axis over the track column */
+.wf-axis {
+  display: flex;
+  height: 18px;
+  flex-shrink: 0;
+}
+.wf-axis-gutter {
+  flex-shrink: 0;
+}
+.wf-axis-track {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+.wf-tick-label {
+  position: absolute;
+  top: 2px;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.wf-tick-label:first-child {
+  transform: none;
+}
+.wf-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+/* vertical gridlines drawn once behind all rows (x-fixed; ignore vertical scroll) */
+.wf-grid {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  pointer-events: none;
+}
+.wf-gridline {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--border);
+  opacity: 0.5;
 }
 .wf-rows {
   flex: 1;
@@ -977,6 +1054,7 @@ body {
   background: var(--accent-soft);
 }
 .wf-label {
+  position: relative;
   width: 280px;
   flex-shrink: 0;
   display: flex;
@@ -985,6 +1063,14 @@ body {
   overflow: hidden;
   white-space: nowrap;
   padding-right: 10px;
+}
+/* depth rail: one vertical guide per ancestor level, marking the tree structure */
+.wf-rail {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--border);
 }
 .wf-dot {
   width: 8px;
