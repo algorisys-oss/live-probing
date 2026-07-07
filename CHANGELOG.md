@@ -3,6 +3,18 @@
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
 ## [2026-07-07]
+- **algo-instrumentation: stop dropping `spans[]` sent under `payload`, and never orphan a
+  child (Gap C).** The adapter read child spans only from the top-level `spans` field, but the
+  spec (and some emitters) nest them under `payload.spans` — those were silently dropped, so the
+  request rendered as a flat 1-span trace with no internal fan-out (indistinguishable from an
+  emitter that sent no children at all). It now accepts `spans[]` at **either** location, and a
+  child arriving without a `parentSpanId` attaches to the request/handler span instead of
+  becoming a second root. 2 new tests (**49 unit green**, typecheck clean); verified end to end
+  through the collector `http` source (:4391 → server :4390): a `payload.spans[]` event produces
+  `child-db` (peer `database`) + orphan `child-fn` both parented to the handler span. Adapter
+  behaviour for real-nested `parentSpanId` is unchanged — it already honours whatever parent a
+  child carries, so deeper trees render as soon as the emitter provides them (Gaps A/B are
+  emitter-side). Docs: `docs/adapters/algo-instrumentation.md`.
 - **Trace-page cohesion: waterfall + sequence are now one linked view.** Previously the
   waterfall was interactive (click a span → attribute panel) but the sequence view was inert,
   and the two tabs held independent state. Four changes, shipped together:

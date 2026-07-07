@@ -6,8 +6,9 @@ import type { Event, SpanKind, SpanStatus } from "@liveprobe/core";
 //
 // HRMS now also emits real trace structure (optional, back-compat preserved):
 // - request.traceId / request.spanId — genuine identity; preferred over the old synthesis.
-// - payload-level spans[] — child operations (db / function / http …) parented to
-//   request.spanId, so a request draws its real internal fan-out (e.g. dashboard → database).
+// - spans[] (top-level or under payload) — child operations (db / function / http …)
+//   parented to request.spanId, so a request draws its real internal fan-out (e.g.
+//   dashboard → database). A child with no parentSpanId attaches to the request span.
 //
 // Mapping:
 // - traceId   = request.traceId ?? request.requestId ?? eventId
@@ -50,8 +51,9 @@ const CHILD_KIND: Record<string, { kind: SpanKind; peer?: string }> = {
 };
 
 // Map one HRMS spans[] entry (a real child operation) to a normalized Event. Returns null
-// if it lacks a spanId. traceId/participant default from the parent event.
-function childSpan(raw: unknown, traceId: string, participant: string): Event | null {
+// if it lacks a spanId. traceId/participant default from the parent event; a child with no
+// parentSpanId attaches to the request span (`parentFallback`) rather than becoming a root.
+function childSpan(raw: unknown, traceId: string, participant: string, parentFallback: string): Event | null {
   const s = obj(raw);
   const spanId = str(s["spanId"]);
   if (!spanId) return null;
@@ -73,7 +75,7 @@ function childSpan(raw: unknown, traceId: string, participant: string): Event | 
   const event: Event = {
     traceId: str(s["traceId"]) || traceId,
     spanId,
-    parentSpanId: str(s["parentSpanId"]) || undefined,
+    parentSpanId: str(s["parentSpanId"]) || parentFallback || undefined,
     participant,
     operation: str(s["name"]) || kindName || "span",
     kind: mapped.kind,
@@ -180,11 +182,17 @@ export function algoInstrumentation(raw: unknown): Event[] {
     attributes,
   };
 
-  // Real child operations (db / function / http …), parented to request.spanId.
+  // Real child operations (db / function / http …). Emitters send spans[] either top-level
+  // or nested under payload (per spec) — accept both, and parent orphans to the handler span.
   const children: Event[] = [];
-  if (eventType === "instrumentation" && Array.isArray(r["spans"])) {
-    for (const raw of r["spans"] as unknown[]) {
-      const child = childSpan(raw, traceId, participant);
+  const rawSpans = Array.isArray(r["spans"])
+    ? (r["spans"] as unknown[])
+    : Array.isArray(payload["spans"])
+      ? (payload["spans"] as unknown[])
+      : [];
+  if (eventType === "instrumentation" && rawSpans.length > 0) {
+    for (const raw of rawSpans) {
+      const child = childSpan(raw, traceId, participant, span.spanId);
       if (child) children.push(child);
     }
   }
