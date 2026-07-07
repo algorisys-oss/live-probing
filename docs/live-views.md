@@ -57,6 +57,26 @@ Flow graph        ──►  whole window ──►  topology  (system shape + v
 Both come from the same normalized `Event` stream. The sequence view filters to a single
 `traceId`; the flow view aggregates the window.
 
+## The sequence view (trace page)
+
+Opening a trace renders a UML-style sequence diagram from `sequenceLayout()` (pure, in
+[`packages/core/src/sequence-layout.ts`](../packages/core/src/sequence-layout.ts); mirrored in
+the UI). Reading it:
+
+- **Lifeline** — one per participant (service / datastore / ghost peer).
+- **Activation bar** — the rectangle on a lifeline; the participant is "active" from the call
+  that entered it down to its return. Nested bars = nested calls (a parent's bar encloses its
+  children's). Overlapping calls on one lifeline step right into depth lanes.
+- **Solid arrow, filled head** — a synchronous **call**.
+- **Dashed arrow, open head** — the **return** (reply), labelled with the call's duration.
+- **Solid arrow, open/stick head** — an **async** message (producer/consumer): fire-and-forget,
+  so it has no return arrow and no activation bar.
+
+The rule: **dashing distinguishes reply-vs-call; the arrowhead distinguishes sync-vs-async.**
+Nesting is inferred from time containment (a sync parent is active while its children run), not
+from parent ids — so it works on any stream that carries per-span start + duration. Clicking a
+bar or arrow selects that span in the shared detail panel (same selection as the waterfall tab).
+
 ## Caveats
 
 - **Edge latency is a plain average** (`totalDuration / calls`), so a single slow outlier

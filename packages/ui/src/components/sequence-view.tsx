@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useLiveStore } from "../store/use-live-store";
 import { fetchTraceDetail } from "../lib/api";
 import { formatMicros } from "../lib/format";
+import { sequenceLayout } from "../lib/sequence-layout";
 import type { TraceDetail } from "../lib/types";
 
 const COL_W = 170;
@@ -9,6 +10,8 @@ const HEADER_H = 56;
 const ROW_H = 46;
 const MARGIN_X = 40;
 const MARGIN_TOP = 20;
+const ACT_W = 10; // activation bar width
+const ACT_LANE = 6; // x-offset per nested activation on one lifeline
 
 interface SequenceViewProps {
   /**
@@ -101,9 +104,14 @@ export function SequenceView({
     colX.set(p, MARGIN_X + COL_W / 2 + i * COL_W);
   });
 
+  // UML call/return layout: each sync call becomes an activation bar spanning its call row to
+  // its return row, bracketed by nesting. Rows (call + return) drive the vertical axis.
+  const layout = sequenceLayout(sequence);
+  const rowY = (row: number) => HEADER_H + MARGIN_TOP + row * ROW_H;
+  const laneX = (participant: string, depth: number) => (colX.get(participant) ?? 0) + depth * ACT_LANE;
+
   const svgWidth = MARGIN_X * 2 + participants.length * COL_W;
-  const svgHeight =
-    HEADER_H + MARGIN_TOP + sequence.messages.length * ROW_H + 40;
+  const svgHeight = HEADER_H + MARGIN_TOP + Math.max(layout.rows.length, 1) * ROW_H + 40;
   const lifelineTop = HEADER_H;
   const lifelineBottom = svgHeight - 20;
 
@@ -165,6 +173,29 @@ export function SequenceView({
                 className="seq-arrowhead-error"
               />
             </marker>
+            {/* open / stick head — UML reply arrow and async (fire-and-forget) messages */}
+            <marker
+              id="seq-arrow-open"
+              viewBox="0 0 10 10"
+              refX="9"
+              refY="5"
+              markerWidth="8"
+              markerHeight="8"
+              orient="auto-start-reverse"
+            >
+              <path d="M 0 0 L 10 5 L 0 10" className="seq-arrowhead-open" fill="none" />
+            </marker>
+            <marker
+              id="seq-arrow-open-error"
+              viewBox="0 0 10 10"
+              refX="9"
+              refY="5"
+              markerWidth="8"
+              markerHeight="8"
+              orient="auto-start-reverse"
+            >
+              <path d="M 0 0 L 10 5 L 0 10" className="seq-arrowhead-open-error" fill="none" />
+            </marker>
           </defs>
 
           {/* lifelines + headers */}
@@ -196,12 +227,39 @@ export function SequenceView({
             );
           })}
 
-          {/* messages */}
-          {sequence.messages.map((m, i) => {
+          {/* activation bars — one per sync call, on the callee lifeline (drawn under arrows) */}
+          {layout.activations.map((a) => {
+            const x = laneX(a.participant, a.depth);
+            const top = rowY(a.fromRow);
+            const h = Math.max(rowY(a.toRow) - top, 8);
+            const selected = selectedSpanId != null && a.spanId === selectedSpanId;
+            const cls = [
+              "seq-activation",
+              a.status === "error" ? "seq-activation-error" : "",
+              selected ? "seq-activation-selected" : "",
+            ]
+              .filter(Boolean)
+              .join(" ");
+            return (
+              <rect
+                key={`act-${a.spanId}`}
+                x={x - ACT_W / 2}
+                y={top}
+                width={ACT_W}
+                height={h}
+                rx={2}
+                className={cls}
+                onClick={onSelectSpan ? () => onSelectSpan(a.spanId) : undefined}
+              />
+            );
+          })}
+
+          {/* call + return arrows, one per layout row */}
+          {layout.rows.map((row, i) => {
+            const m = row.message;
             const fromX = colX.get(m.from);
-            const toX = colX.get(m.to);
-            if (fromX === undefined || toX === undefined) return null;
-            const y = HEADER_H + MARGIN_TOP + i * ROW_H;
+            if (fromX === undefined || colX.get(m.to) === undefined) return null;
+            const y = rowY(i);
             const isError = m.status === "error";
             const selfCall = m.from === m.to;
             const selected = selectedSpanId != null && m.spanId === selectedSpanId;
@@ -214,80 +272,81 @@ export function SequenceView({
               .filter(Boolean)
               .join(" ");
             const onClick = clickable ? () => onSelectSpan!(m.spanId) : undefined;
-            const labelText =
-              m.label.length > 40 ? m.label.slice(0, 39) + "…" : m.label;
+            const labelText = m.label.length > 40 ? m.label.slice(0, 39) + "…" : m.label;
 
+            // Arrows connect the caller lifeline to the near edge of the callee's activation bar.
+            const calleeCenter = laneX(m.to, m.depth);
+            const dir = calleeCenter >= fromX ? 1 : -1;
+            const calleeEdge = calleeCenter - dir * (ACT_W / 2);
+            const midX = (fromX + calleeEdge) / 2;
+            const hitX = Math.min(fromX, calleeCenter) - 6;
+            const hitW = Math.abs(calleeCenter - fromX) + 12;
+
+            // Self-message: a loop on the call row only (the return is implied).
             if (selfCall) {
-              const x = fromX;
+              if (row.kind === "return") return null;
+              const x = calleeCenter;
               return (
                 <g key={i} className={groupClass} onClick={onClick}>
-                  {/* transparent hit target for easy clicking */}
-                  <rect
-                    x={x - 4}
-                    y={y - 16}
-                    width={COL_W}
-                    height={ROW_H}
-                    fill="transparent"
-                  />
+                  <rect x={x - 4} y={y - 16} width={COL_W} height={ROW_H} fill="transparent" />
                   <path
-                    d={`M ${x} ${y} h 26 v 16 h -26`}
-                    className={
-                      isError ? "seq-line seq-line-error" : "seq-line"
-                    }
-                    strokeDasharray={m.async ? "5 4" : undefined}
-                    markerEnd={
-                      isError
-                        ? "url(#seq-arrow-error)"
-                        : "url(#seq-arrow)"
-                    }
+                    d={`M ${x + ACT_W / 2} ${y} h 26 v 16 h -26`}
+                    className={isError ? "seq-line seq-line-error" : "seq-line"}
+                    markerEnd={isError ? "url(#seq-arrow-error)" : "url(#seq-arrow)"}
                     fill="none"
                   />
-                  <text
-                    x={x + 32}
-                    y={y - 3}
-                    className="seq-msg-label"
-                    textAnchor="start"
-                  >
+                  <text x={x + 32} y={y - 3} className="seq-msg-label" textAnchor="start">
                     {labelText}
                   </text>
                 </g>
               );
             }
 
-            const midX = (fromX + toX) / 2;
-            const hitX = Math.min(fromX, toX);
-            const hitW = Math.abs(toX - fromX);
+            if (row.kind === "call") {
+              // Sync → filled head; async (fire-and-forget) → open/stick head. Line is solid
+              // either way — dashing is reserved for the reply.
+              const marker = m.async
+                ? isError
+                  ? "url(#seq-arrow-open-error)"
+                  : "url(#seq-arrow-open)"
+                : isError
+                  ? "url(#seq-arrow-error)"
+                  : "url(#seq-arrow)";
+              return (
+                <g key={i} className={groupClass} onClick={onClick}>
+                  <rect x={hitX} y={y - 18} width={hitW} height={ROW_H} fill="transparent" />
+                  <text x={midX} y={y - 6} className="seq-msg-label" textAnchor="middle">
+                    {labelText}
+                  </text>
+                  <line
+                    x1={fromX}
+                    y1={y}
+                    x2={calleeEdge}
+                    y2={y}
+                    className={isError ? "seq-line seq-line-error" : "seq-line"}
+                    markerEnd={marker}
+                  />
+                </g>
+              );
+            }
+
+            // Return row: dashed reply from the callee's bar back to the caller (open head),
+            // labelled with the call's duration.
+            const marker = isError ? "url(#seq-arrow-open-error)" : "url(#seq-arrow-open)";
             return (
               <g key={i} className={groupClass} onClick={onClick}>
-                {/* transparent hit target for easy clicking */}
-                <rect
-                  x={hitX}
-                  y={y - 18}
-                  width={hitW}
-                  height={ROW_H}
-                  fill="transparent"
-                />
-                <text
-                  x={midX}
-                  y={y - 6}
-                  className="seq-msg-label"
-                  textAnchor="middle"
-                >
-                  {labelText}
-                  {m.durationMicros > 0
-                    ? `  (${formatMicros(m.durationMicros)})`
-                    : ""}
+                <rect x={hitX} y={y - 18} width={hitW} height={ROW_H} fill="transparent" />
+                <text x={midX} y={y - 6} className="seq-msg-label seq-return-label" textAnchor="middle">
+                  {m.durationMicros > 0 ? formatMicros(m.durationMicros) : ""}
                 </text>
                 <line
-                  x1={fromX}
+                  x1={calleeEdge}
                   y1={y}
-                  x2={toX}
+                  x2={fromX}
                   y2={y}
-                  className={isError ? "seq-line seq-line-error" : "seq-line"}
-                  strokeDasharray={m.async ? "6 4" : undefined}
-                  markerEnd={
-                    isError ? "url(#seq-arrow-error)" : "url(#seq-arrow)"
-                  }
+                  className={isError ? "seq-return seq-return-error" : "seq-return"}
+                  strokeDasharray="4 4"
+                  markerEnd={marker}
                 />
               </g>
             );

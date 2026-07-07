@@ -611,6 +611,46 @@ body {
 .seq-arrowhead-error {
   fill: var(--error);
 }
+/* open / stick head for reply + async arrows */
+.seq-arrowhead-open {
+  stroke: var(--accent);
+  stroke-width: 1.4;
+}
+.seq-arrowhead-open-error {
+  stroke: var(--error);
+  stroke-width: 1.4;
+}
+
+/* dashed reply (return) arrow */
+.seq-return {
+  stroke: var(--text-dim);
+  stroke-width: 1.3;
+  fill: none;
+}
+.seq-return-error {
+  stroke: var(--error);
+}
+.seq-return-label {
+  fill: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* activation bar — the callee is "active" from the call down to its return */
+.seq-activation {
+  fill: var(--accent-soft);
+  stroke: var(--accent);
+  stroke-width: 1;
+  cursor: pointer;
+}
+.seq-activation-error {
+  fill: var(--error-soft);
+  stroke: var(--error);
+}
+.seq-activation-selected {
+  fill: var(--accent);
+  fill-opacity: 0.55;
+  stroke-width: 1.6;
+}
 
 .seq-msg-label {
   fill: var(--text-dim);

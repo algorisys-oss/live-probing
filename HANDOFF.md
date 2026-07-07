@@ -5,7 +5,41 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-**algo-instrumentation Gap C: accept `payload.spans[]` and never orphan a child.** Branch
+**Sequence view: activation bars + UML call/return arrows.** Branch `seq-activation-bars`
+(merged to `dev`). The sequence tab drew a flat list of one-way call arrows; it's now a proper
+UML interaction diagram.
+
+- **Core:** new pure `sequenceLayout(sequence)` in `packages/core/src/sequence-layout.ts` —
+  turns time-ordered messages into a bracketed call/return layout. Each **sync** call → an
+  **activation bar** on the callee lifeline (call row → return row); rows are bracketed so a
+  parent's return lands after its children's; overlapping activations on one lifeline get a
+  depth-offset lane. Nesting is inferred from **time containment** (a sync parent is active
+  while its children run) — no parent-id dependency. Async → call row only, no return/bar.
+  Exported from core index. 4 unit tests.
+- **UI:** the browser mirrors the same pure fn in `packages/ui/src/lib/sequence-layout.ts`
+  (the UI stays decoupled from the core package and mirrors its shapes; core is the tested
+  source of truth — **keep the two in sync**). `sequence-view.tsx` now draws activation rects,
+  solid call arrows (filled head), and dashed reply arrows (open/stick head) labelled with the
+  call duration. **Convention: dashing = reply vs call; arrowhead = sync vs async.** Two new SVG
+  markers (`seq-arrow-open`, `seq-arrow-open-error`). Selection preserved (click a bar or arrow
+  → shared detail panel).
+
+**53 unit + 18 e2e green** (1 new e2e in `e2e/trace.spec.ts`), typecheck + UI build clean.
+Verified visually against the live testbed (`POST /api/checkout`, 50 spans): nested
+gateway⊃auth⊃redis activation bars, dashed returns with µs labels, clicked call highlighted +
+its span in the shared panel.
+
+**Next in the diagram track** (scoped/queued in `todo.md`): waterfall critical-path highlight +
+self-time shading; collapse/expand subtrees; deep-link a span via `#spanId`. Emitter-side algo
+Gaps A/B (shallow one-level fan-out, missing `spans[]` per route) remain open on HRMS — the
+sequence layout renders real depth the moment the emitter provides nested parents.
+
+Still open (non-diagram): the `dev-stop` auto-wipe change was discussed (recommendation: wipe by
+default + `--keep` opt-out) but not implemented — the user paused on it.
+
+---
+
+Prior task: **algo-instrumentation Gap C: accept `payload.spans[]` and never orphan a child.** Branch
 `fix-algo-spans-location` (merged to `dev`). The adapter
 (`packages/collector/src/adapters/algo-instrumentation.ts`) read child spans only from top-level
 `r.spans`, but the spec / some emitters nest them under `payload.spans` — silently dropped, so

@@ -4,10 +4,13 @@ import {
   normalizeOtlp,
   TraceWindow,
   sequenceFor,
+  sequenceLayout,
   toMermaidSequence,
   toMermaidFlow,
   type Event,
+  type Message,
   type OtlpPayload,
+  type Sequence,
 } from "./index.js";
 
 // A gateway -> catalog -> postgres/redis trace, in OTLP/HTTP JSON shape.
@@ -322,4 +325,76 @@ test("window evicts traces older than the horizon and past the cap", () => {
     capped.add([{ ...old, traceId: `t${i}`, spanId: `s${i}`, startTime: 1_000_000 + i }]);
   }
   assert.equal(capped.size(), 2);
+});
+
+// --- sequenceLayout: activation bars + call/return bracketing ---
+
+function msg(over: Partial<Message>): Message {
+  return {
+    from: "a",
+    to: "b",
+    spanId: "s",
+    label: "op",
+    startTime: 0,
+    durationMicros: 10,
+    status: "ok",
+    async: false,
+    ...over,
+  };
+}
+
+function seq(messages: Message[]): Sequence {
+  const participants: string[] = [];
+  for (const m of messages) for (const p of [m.from, m.to]) if (!participants.includes(p)) participants.push(p);
+  return { participants, messages, externals: [] };
+}
+
+test("sequenceLayout brackets a nested sync call: parent return lands after the child's", () => {
+  const parent = msg({ from: "a", to: "b", spanId: "P", startTime: 0, durationMicros: 100 });
+  const child = msg({ from: "b", to: "c", spanId: "A", startTime: 10, durationMicros: 20 });
+  const layout = sequenceLayout(seq([parent, child]));
+
+  const P = layout.messages.find((m) => m.spanId === "P")!;
+  const A = layout.messages.find((m) => m.spanId === "A")!;
+  // rows: call P(0), call A(1), return A(2), return P(3)
+  assert.deepEqual([P.callRow, A.callRow, A.returnRow, P.returnRow], [0, 1, 2, 3]);
+  assert.equal(layout.rows.length, 4);
+
+  // the parent's activation encloses the child's
+  const actP = layout.activations.find((x) => x.spanId === "P")!;
+  const actA = layout.activations.find((x) => x.spanId === "A")!;
+  assert.ok(actP.fromRow < actA.fromRow && actA.toRow < actP.toRow, "P activation encloses A");
+});
+
+test("sequenceLayout returns a sync sibling before the next sibling's call", () => {
+  const parent = msg({ from: "a", to: "b", spanId: "P", startTime: 0, durationMicros: 100 });
+  const first = msg({ from: "b", to: "c", spanId: "A", startTime: 10, durationMicros: 20 }); // ends 30
+  const second = msg({ from: "b", to: "d", spanId: "B", startTime: 40, durationMicros: 20 });
+  const layout = sequenceLayout(seq([parent, first, second]));
+
+  const A = layout.messages.find((m) => m.spanId === "A")!;
+  const B = layout.messages.find((m) => m.spanId === "B")!;
+  assert.ok(A.returnRow < B.callRow, "A returns before B is called");
+});
+
+test("sequenceLayout gives async messages a call but no return or activation", () => {
+  const a = msg({ from: "a", to: "queue", spanId: "M", async: true });
+  const layout = sequenceLayout(seq([a]));
+
+  const M = layout.messages.find((m) => m.spanId === "M")!;
+  assert.equal(M.returnRow, M.callRow); // no separate return row
+  assert.equal(layout.rows.length, 1);
+  assert.equal(layout.rows[0]!.kind, "call");
+  assert.equal(layout.activations.length, 0);
+});
+
+test("sequenceLayout offsets overlapping activations on the same lifeline by depth", () => {
+  const first = msg({ from: "a", to: "c", spanId: "A", startTime: 10, durationMicros: 50 }); // ends 60
+  const second = msg({ from: "a", to: "c", spanId: "B", startTime: 20, durationMicros: 50 }); // overlaps A
+  const layout = sequenceLayout(seq([first, second]));
+
+  const A = layout.messages.find((m) => m.spanId === "A")!;
+  const B = layout.messages.find((m) => m.spanId === "B")!;
+  assert.equal(A.depth, 0);
+  assert.equal(B.depth, 1); // B opens while A is still active on lifeline c
 });
