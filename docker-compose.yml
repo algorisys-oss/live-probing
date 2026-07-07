@@ -1,0 +1,51 @@
+name: liveprobe
+
+services:
+  liveprobe:
+    build: .
+    ports:
+      - "${PORT:-4319}:4319"
+    environment:
+      PORT: "4319"
+      DB_PATH: /data/liveprobe.db
+      RETENTION_DAYS: "${RETENTION_DAYS:-14}"
+    volumes:
+      - liveprobe-data:/data
+    restart: unless-stopped
+
+  # Algo-instrumentation HTTP adapter (same as ./serve.sh --collector).
+  # docker compose --profile collector up -d
+  collector:
+    build: .
+    profiles: ["collector"]
+    command: ["npx", "tsx", "packages/collector/src/index.ts"]
+    environment:
+      SOURCE: http
+      ADAPTER: algo-instrumentation
+      HTTP_PORT: "4320"
+      LIVEPROBE_URL: http://liveprobe:4319
+    ports:
+      - "${COLLECTOR_PORT:-4320}:4320"
+    depends_on:
+      liveprobe:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # OTel collector: accepts OTLP/protobuf from instrumented apps and re-exports JSON to LiveProbe.
+  # docker compose --profile otel up -d
+  otel-collector:
+    image: otel/opentelemetry-collector:0.115.1
+    profiles: ["otel"]
+    command: ["--config=/etc/otel/config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel/config.yaml:ro
+    ports:
+      - "${OTEL_GRPC_PORT:-4317}:4317"
+      - "${OTEL_HTTP_PORT:-4318}:4318"
+    depends_on:
+      liveprobe:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  liveprobe-data:
