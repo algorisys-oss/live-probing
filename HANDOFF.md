@@ -5,7 +5,17 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-**Shared `maskPii()` PII/secret masking helper (core, TDD).** New `packages/core/src/mask.ts`
+**Retention default 14 → 30 days; live-window knobs now env-configurable.** `RETENTION_DAYS`
+defaults to 30 (`packages/server/src/server.ts:85`) — a trace's waterfall/sequence is retrievable by
+id for 30 days after it leaves the live window. Also wired two previously code-only options to env
+vars in `packages/server/src/index.ts` via a `numEnv()` helper: `LIVE_WINDOW_MINUTES` (→
+`horizonMicros`, default 5) and `MAX_TRACES` (→ `maxTraces`, default 2000). All three configurable
+via `.env`/shell; `RETENTION_DAYS=0` disables pruning. Note: `LIVE_WINDOW_MINUTES`/`MAX_TRACES` size
+the live *real-time* stream only — the by-id detail view is governed solely by `RETENTION_DAYS`.
+Docs synced (README env tables + sample `.env`, index/server comments, implementation-review,
+skillzengine adapter). Typecheck + 4 server tests green.
+
+Earlier on this branch — **Shared `maskPii()` PII/secret masking helper (core, TDD).** New `packages/core/src/mask.ts`
 (exported from `@liveprobe/core`): `maskPii(event, opts?)`, `maskEvents`, `maskString`. Redacts
 sensitive attribute keys by name and scrubs embedded emails / bearer tokens / Luhn-valid card
 numbers from string values and the identity fields (`operation`/`peer`/`participant`); never

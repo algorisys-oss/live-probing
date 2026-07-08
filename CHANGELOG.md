@@ -3,6 +3,16 @@
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
 ## [2026-07-08]
+- **Retention default raised 14 → 30 days; live-window knobs now env-configurable.**
+  `RETENTION_DAYS` now defaults to 30 UTC days (`server.ts`), so a single trace's waterfall/sequence
+  view stays viewable by id for 30 days after it ages out of the live in-memory window. Wired two
+  previously code-only `ServerOptions` to env vars in the entrypoint (`index.ts`):
+  `LIVE_WINDOW_MINUTES` (→ `horizonMicros`, default 5 — the real-time streaming window) and
+  `MAX_TRACES` (→ `maxTraces`, default 2000 — live in-memory cap), via a shared validating
+  `numEnv()` helper (finite, in-range, else fall back to the default). All three are now
+  `.env`/shell-configurable; `RETENTION_DAYS=0` disables pruning. Docs synced (README env tables +
+  sample `.env`, index/server comments, implementation-review, skillzengine adapter). Typecheck +
+  server tests green.
 - **Docs: `docs/pii-masking.md`** — reference for the masking helper (API, the two-layer
   key-based + value-based strategy, the Luhn-guarded card rule, usage as an allow-list backstop,
   and limitations). Linked from the `integration-adapters.md` PII section.

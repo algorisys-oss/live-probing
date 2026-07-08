@@ -22,7 +22,7 @@ export interface ServerOptions {
   horizonMicros?: number;
   topologyIntervalMs?: number;
   // Keep the N most recent UTC days of history (including today); older day-partitions are
-  // pruned at startup and hourly. 0 disables retention. Default 14.
+  // pruned at startup and hourly. 0 disables retention. Default 30.
   retentionDays?: number;
   // How often staged history writes are flushed to SQLite. Ingest only *stages* the latest
   // assembly of each touched trace; any /api read flushes first (read-your-writes), so this
@@ -82,7 +82,7 @@ export function createServer(opts: ServerOptions = {}): LiveProbeServer {
   flushTimer.unref();
 
   // Retention: drop day-partitions older than the window, at startup and hourly.
-  const retentionDays = opts.retentionDays ?? 14;
+  const retentionDays = opts.retentionDays ?? 30;
   const prune = () => {
     const dropped = store.prune(retentionDays);
     if (dropped > 0) console.log(`[liveprobe] retention: pruned ${dropped} traces older than ${retentionDays} days`);

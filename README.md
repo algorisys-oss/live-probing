@@ -162,7 +162,8 @@ real app is the trace source:
 ```bash
 ./serve.sh                # builds the UI if missing; serves on :4319
 ./serve.sh --collector    # also run the algo-instrumentation collector on :4320
-# env: PORT, DB_PATH, RETENTION_DAYS (default 14), COLLECTOR_PORT (--collector only, default 4320)
+# env: PORT, DB_PATH, RETENTION_DAYS (default 30), LIVE_WINDOW_MINUTES (default 5),
+#      MAX_TRACES (default 2000), COLLECTOR_PORT (--collector only, default 4320)
 ```
 
 `serve.sh` alone speaks OTLP + already-normalized native events. Apps that emit the internal
@@ -188,7 +189,9 @@ cd testbed && docker compose up -d --build && cd ..
 npm install
 PORT=4319 npx tsx packages/server/src/index.ts
 #   env: DB_PATH=<file> (history db location), RETENTION_DAYS=N (keep the N most recent
-#   UTC days of history; default 14, 0 disables — pruned at startup and hourly)
+#   UTC days of history; default 30, 0 disables — pruned at startup and hourly),
+#   LIVE_WINDOW_MINUTES=N (live streaming window, default 5), MAX_TRACES=N (live memory cap,
+#   default 2000)
 
 # 3. Generate traffic and watch LiveProbe fill up
 cd testbed && docker compose --profile load up -d loadgen && cd ..
@@ -252,8 +255,11 @@ docker compose --profile otel up -d
 ```
 
 Environment variables (set in `.env` or the shell): `PORT` (default 4319), `RETENTION_DAYS`
-(default 14), `COLLECTOR_PORT` (default 4320), `OTEL_GRPC_PORT` / `OTEL_HTTP_PORT` (defaults
-4317 / 4318). Tear down with `docker compose down` (add `-v` to drop history).
+(default 30 — how long a trace's waterfall/sequence stays viewable by id; `0` disables pruning),
+`LIVE_WINDOW_MINUTES` (default 5 — the live real-time streaming window) and `MAX_TRACES`
+(default 2000 — live in-memory trace cap), `COLLECTOR_PORT` (default 4320), `OTEL_GRPC_PORT` /
+`OTEL_HTTP_PORT` (defaults 4317 / 4318). Tear down with `docker compose down` (add `-v` to drop
+history).
 
 When LiveProbe runs in Docker and your app stack is in a separate compose project, point the
 app's OTel collector at `http://<liveprobe-host>:4319` (or join both stacks on a shared Docker
@@ -373,7 +379,9 @@ first `compose up` (same variables as local Docker):
 
 ```bash
 PORT=4319
-RETENTION_DAYS=14
+RETENTION_DAYS=30
+# LIVE_WINDOW_MINUTES=5   # live real-time streaming window
+# MAX_TRACES=2000         # live in-memory trace cap
 # optional profiles:
 # COLLECTOR_PORT=4320
 # OTEL_GRPC_PORT=4317

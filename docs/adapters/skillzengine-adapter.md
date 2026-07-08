@@ -97,7 +97,7 @@ service:
 ```
 
 LiveProbe itself runs anywhere reachable on :4319 (no infra of its own: in-memory window
-+ a local SQLite file; `RETENTION_DAYS` defaults to 14).
++ a local SQLite file; `RETENTION_DAYS` defaults to 30).
 
 ### 4. Verify the pipe before any SDK work
 
