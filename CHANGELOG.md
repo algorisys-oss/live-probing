@@ -2,6 +2,20 @@
 
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
+## [2026-07-08]
+- **Shared `maskPii()` PII/secret masking helper (core, TDD).** New pure module
+  `packages/core/src/mask.ts` exporting `maskPii(event, opts?)`, `maskEvents(events, opts?)`, and
+  `maskString(value)`, exported from `@liveprobe/core`. Two conservative layers: (1) key-based —
+  attribute keys whose name signals a secret/PII (`password`, `api_key`, `authorization`, `cvv`,
+  `*.email`, …) have their value replaced wholesale (string/number/boolean); (2) value-based — any
+  string (attribute value, `operation`, `peer`, `participant`) is scanned for embedded emails,
+  bearer tokens, and **Luhn-valid** card numbers and redacted inline (Luhn check avoids redacting
+  ordinary long digit runs like order ids). Options: `placeholder`, extra `redactKeys`,
+  `maskIdentityFields`. Never mutates its input. Intended as a backstop after a per-client
+  allow-list — adapters call `maskEvents(...)` before returning. 11 new tests; `docs/
+  integration-adapters.md` PII section points at it. Not yet wired into the existing adapters
+  (opt-in per client, to avoid changing verified output).
+
 ## [2026-07-07]
 - **Sequence view: collapse repeated sibling spans into a ×N group.** A run of ≥3 repeated *leaf*
   sibling calls with the same signature (`from→to · operation · async`) — the shape an N+1 query or

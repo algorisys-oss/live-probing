@@ -92,6 +92,12 @@ adapter. Nothing downstream re-inspects payloads for sensitive fields.
   an attribute costs nothing; leaking one into stored/rendered traces is a data-handling incident.
 - Keep the masking rules **in the adapter (or a shared helper)** so every source/transport that
   uses that adapter inherits them, and cover them in the adapter's `*.test.ts`.
+- A shared backstop ships in core: **`maskPii(event, opts?)`** (and `maskEvents`, `maskString`)
+  in `packages/core/src/mask.ts`. It redacts sensitive attribute keys by name and scrubs
+  embedded emails / bearer tokens / Luhn-valid card numbers from string values and the
+  identity fields. Prefer a per-client allow-list first, then run the result through `maskPii()`
+  as a catch-all: `return maskEvents([event]);`. Options: `placeholder`, extra `redactKeys`,
+  and `maskIdentityFields`.
 
 ## Deployment modes
 

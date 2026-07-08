@@ -5,7 +5,17 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-**Sequence view: collapse repeated sibling spans into a ×N group.** On `dev` (not yet synced). An
+**Shared `maskPii()` PII/secret masking helper (core, TDD).** New `packages/core/src/mask.ts`
+(exported from `@liveprobe/core`): `maskPii(event, opts?)`, `maskEvents`, `maskString`. Redacts
+sensitive attribute keys by name and scrubs embedded emails / bearer tokens / Luhn-valid card
+numbers from string values and the identity fields (`operation`/`peer`/`participant`); never
+mutates input. Meant as a backstop *after* a per-client allow-list — an adapter calls
+`maskEvents(...)` before returning. 11 new tests (72 total green), typecheck clean. **Not yet wired
+into `adapter-id-1` / `algo-instrumentation`** — opt-in per client so existing verified output
+doesn't change. `docs/integration-adapters.md` PII section documents it. Synced to `origin/main`
+and `dev`.
+
+Earlier on this branch — **Sequence view: collapse repeated sibling spans into a ×N group.** An
 N+1 (or any hot loop) drew as a staircase of identical rows; the sequence view now folds a run of
 ≥3 repeated **leaf** sibling calls (same `from→to · operation · async`) into one collapsed ×N row
 that **names** the problem instead of hiding it. This came out of diagnosing a real HRMS

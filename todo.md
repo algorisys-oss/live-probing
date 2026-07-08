@@ -154,6 +154,10 @@ items: **S** = hours, **M** = ~a day, **L** = multi-day.
       Fix = ALS-scoped current-span instead of a shared stack. Minor: 3 un-instrumented routes
       (admin-dashboard, letters, plans.$id); audit-log `$use` double-queries add db-span noise;
       hardcoded service list. Our side (Gap C) done.
+- [~] **Shared `maskPii()` helper** (`packages/core/src/mask.ts`, exported): redacts sensitive
+      attribute keys by name + scrubs embedded emails/bearer tokens/Luhn-valid cards from string
+      values and identity fields; `maskEvents`/`maskString` too. 11 tests. **Still to do:** wire it
+      into `adapter-id-1` / `algo-instrumentation` (opt-in per client) so real feeds are masked. **S**
 - [ ] Docs: pure-ESM Node apps need `--import` (not `--require`) for auto-instrumentation —
       add to recipes A/B/E (`docs/implementation-review.md` gap 1) **S**
 - [ ] Native SDK (`packages/sdk-js`) — drop-in tracer, use LiveProbe without OpenTelemetry **L**

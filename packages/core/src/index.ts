@@ -19,4 +19,5 @@ export {
   type SequenceGroup,
 } from "./sequence-layout.js";
 export { criticalPath } from "./critical-path.js";
+export { maskPii, maskEvents, maskString, type MaskOptions } from "./mask.js";
 export { toMermaidSequence, toMermaidFlow } from "./export/mermaid.js";
