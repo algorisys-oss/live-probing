@@ -74,6 +74,25 @@ Source notes:
   it unchanged — the event type must live in the payload, not the URL. `HTTP_PORT` (default
   4320), `GET /healthz`, 5MB body cap. Implementation: `packages/collector/src/sources/http.ts`.
 
+## PII and sensitive data (mask in the adapter)
+
+The adapter is the **single chokepoint** every client's raw data passes through before it is
+buffered, POSTed to `/v1/events`, persisted to SQLite, and shown in the UI. So it is also the
+place to **mask PII and secrets** — do it in `raw → Event[]`, before the event leaves the
+adapter. Nothing downstream re-inspects payloads for sensitive fields.
+
+- **`attributes` is the highest-risk field.** It is free-form key/values and often the widest
+  copy of the source payload (e.g. audit `before`/`after` flattening, per-type payload fields).
+  Prefer an **allow-list** of known-safe keys over copying everything and denying a few. When a
+  value may hold PII (email, phone, name, government id, card/PAN, token, password, auth header),
+  **redact, hash, or drop it** — don't forward it raw.
+- **Watch the other free-text fields too.** `operation` (routes/messages can embed ids or
+  emails — e.g. `GET /users/jane@acme.com`), `peer`, and `participant` can all leak identifiers.
+- **When unsure, drop it.** LiveProbe is a live-diagnostics view, not a system of record — losing
+  an attribute costs nothing; leaking one into stored/rendered traces is a data-handling incident.
+- Keep the masking rules **in the adapter (or a shared helper)** so every source/transport that
+  uses that adapter inherits them, and cover them in the adapter's `*.test.ts`.
+
 ## Deployment modes
 
 The collector supports two deployment shapes; pick per client (or mix):
