@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   normalizeOtlp,
+  coerceEvents,
   TraceWindow,
   sequenceFor,
   sequenceLayout,
@@ -326,6 +327,24 @@ test("window evicts traces older than the horizon and past the cap", () => {
     capped.add([{ ...old, traceId: `t${i}`, spanId: `s${i}`, startTime: 1_000_000 + i }]);
   }
   assert.equal(capped.size(), 2);
+});
+
+test("coerceEvents clamps a far-future timestamp so it can't evict recent traces", () => {
+  const now = Date.now() * 1000;
+  // A genuine, current trace...
+  const real = coerceEvents([
+    { traceId: "real", spanId: "r", participant: "svc", operation: "GET /x", startTime: now, duration: 1000 },
+  ]);
+  // ...and a hostile event dated far in the future (pre-clamp it would become the window clock).
+  const poison = coerceEvents([
+    { traceId: "poison", spanId: "p", participant: "svc", operation: "x", startTime: 1e30, duration: 1 },
+  ]);
+  assert.ok(poison[0]!.startTime <= now + 60_000_000 + 1, "future start time clamped to ~now");
+
+  const w = new TraceWindow({ horizonMicros: 5 * 60 * 1_000_000 });
+  w.add(real);
+  w.add(poison);
+  assert.ok(w.traceIds().includes("real"), "the recent trace survives a future-dated poison event");
 });
 
 // --- sequenceLayout: activation bars + call/return bracketing ---

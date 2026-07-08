@@ -7,9 +7,11 @@ import {
   TraceWindow,
   normalizeOtlp,
   coerceEvents,
+  maskEvents,
   toMermaidFlow,
   type AssembledTrace,
   type Event,
+  type MaskOptions,
   type OtlpPayload,
 } from "@liveprobe/core";
 import { detail, summarize, type TraceSummary } from "./summary.js";
@@ -28,7 +30,21 @@ export interface ServerOptions {
   // assembly of each touched trace; any /api read flushes first (read-your-writes), so this
   // interval bounds crash loss, not visibility. Default 1500ms.
   historyFlushMs?: number;
+  // Interface to bind. Default "127.0.0.1" (loopback only) — the ingest and API have no auth,
+  // so exposing them on all interfaces is opt-in. Set to "0.0.0.0" to listen everywhere.
+  host?: string;
+  // PII/secret masking applied to every ingested event before it is buffered, persisted, or
+  // broadcast. Defaults to the built-in ruleset. Pass `false` to disable (not recommended).
+  mask?: MaskOptions | false;
+  // Extra browser origins allowed for CORS / WebSocket beyond the always-allowed loopback
+  // origins (localhost / 127.0.0.1 / ::1, any port).
+  corsOrigins?: string[];
 }
+
+// Hard limits on a single ingest request. The body cap bounds buffering; the decompression
+// cap bounds a gzip bomb (a few KB of zeros can otherwise expand to gigabytes).
+const MAX_BODY_BYTES = 8 * 1024 * 1024;
+const MAX_DECOMPRESSED_BYTES = 32 * 1024 * 1024;
 
 const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -76,7 +92,14 @@ export function createServer(opts: ServerOptions = {}): LiveProbeServer {
     if (pendingHistory.size === 0) return;
     const batch = [...pendingHistory.values()];
     pendingHistory.clear();
-    store.upsertMany(batch);
+    // Never let a bad batch escape: this runs on a timer with no caller to catch it, so an
+    // uncaught throw here would take down the whole process (upsertMany already rolls back
+    // its transaction on error).
+    try {
+      store.upsertMany(batch);
+    } catch (err) {
+      console.error("[liveprobe] history flush failed:", (err as Error).message);
+    }
   };
   const flushTimer = setInterval(flushHistory, opts.historyFlushMs ?? 1500);
   flushTimer.unref();
@@ -91,9 +114,15 @@ export function createServer(opts: ServerOptions = {}): LiveProbeServer {
   const pruneTimer = setInterval(prune, 3_600_000);
   pruneTimer.unref();
 
+  // PII/secret masking at the ingest chokepoint: scrub before an event is buffered,
+  // persisted, or broadcast. Nothing downstream re-inspects payloads, so this is the place.
+  const maskOpt = opts.mask;
+  const scrub = (events: Event[]): Event[] => (maskOpt === false ? events : maskEvents(events, maskOpt));
+
   // Shared ingest path for both OTLP and native events.
-  const ingestEvents = (events: Event[]) => {
-    if (events.length === 0) return;
+  const ingestEvents = (rawEvents: Event[]) => {
+    if (rawEvents.length === 0) return;
+    const events = scrub(rawEvents);
     window.add(events);
 
     const affected = [...new Set(events.map((e) => e.traceId))];
@@ -107,9 +136,28 @@ export function createServer(opts: ServerOptions = {}): LiveProbeServer {
     topologyDirty = true;
   };
 
+  // A browser Origin is allowed if it is loopback (any port) or explicitly configured.
+  // Non-browser clients (no Origin header — e.g. the collector, curl) are not subject to the
+  // same-origin policy and pass through; the check exists to stop a malicious *website* from
+  // reading traces cross-origin (CORS) or hijacking the live stream (cross-site WebSocket).
+  const originAllowed = (origin: string | undefined): boolean => {
+    if (!origin) return true;
+    if (opts.corsOrigins?.includes(origin)) return true;
+    try {
+      const host = new URL(origin).hostname;
+      return host === "localhost" || host === "127.0.0.1" || host === "::1" || host === "[::1]";
+    } catch {
+      return false;
+    }
+  };
+
   const httpServer = createHttpServer((req, res) => void handle(req, res));
 
-  const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
+  const wss = new WebSocketServer({
+    server: httpServer,
+    path: "/ws",
+    verifyClient: (info: { origin?: string }) => originAllowed(info.origin),
+  });
   wss.on("connection", (ws) => {
     clients.add(ws);
     ws.on("close", () => clients.delete(ws));
@@ -164,8 +212,14 @@ export function createServer(opts: ServerOptions = {}): LiveProbeServer {
   };
 
   async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
-    res.setHeader("access-control-allow-origin", "*");
-    res.setHeader("access-control-allow-headers", "content-type");
+    // Reflect only allowed origins (loopback or configured) rather than a blanket "*", so an
+    // arbitrary website can't read the trace store from the operator's browser.
+    const origin = req.headers.origin;
+    if (typeof origin === "string" && originAllowed(origin)) {
+      res.setHeader("access-control-allow-origin", origin);
+      res.setHeader("vary", "origin");
+      res.setHeader("access-control-allow-headers", "content-type");
+    }
     if (req.method === "OPTIONS") return end(res, 204, "");
 
     const url = new URL(req.url ?? "/", "http://localhost");
@@ -176,9 +230,12 @@ export function createServer(opts: ServerOptions = {}): LiveProbeServer {
 
     try {
       if (req.method === "POST" && (path === "/v1/traces" || path === "/v1/events")) {
-        const raw = await readBody(req);
+        const raw = await readBody(req, MAX_BODY_BYTES);
         const encoding = String(req.headers["content-encoding"] ?? "");
-        const text = encoding.includes("gzip") ? gunzipSync(raw).toString("utf8") : raw.toString("utf8");
+        // Cap decompression so a small gzip payload can't expand to gigabytes (zip bomb).
+        const text = encoding.includes("gzip")
+          ? gunzipSync(raw, { maxOutputLength: MAX_DECOMPRESSED_BYTES }).toString("utf8")
+          : raw.toString("utf8");
         const body: unknown = text ? JSON.parse(text) : {};
         // /v1/traces = OTLP spans; /v1/events = already-normalized events (from an adapter).
         if (path === "/v1/traces") {
@@ -260,14 +317,17 @@ export function createServer(opts: ServerOptions = {}): LiveProbeServer {
       if (req.method === "GET") return serveStatic(res, path, opts.publicDir);
       return json(res, 404, { error: "not_found" });
     } catch (err) {
-      return json(res, 400, { error: "bad_request", message: String((err as Error).message) });
+      // Map a body-too-large signal to 413; everything else is a generic 400. Don't echo the
+      // internal error message back to the client (it can leak paths/state).
+      const status = (err as { statusCode?: number }).statusCode === 413 ? 413 : 400;
+      return json(res, status, { error: status === 413 ? "payload_too_large" : "bad_request" });
     }
   }
 
   return {
     window,
     listen: (port: number) =>
-      new Promise((resolvePromise) => httpServer.listen(port, "0.0.0.0", () => resolvePromise())),
+      new Promise((resolvePromise) => httpServer.listen(port, opts.host ?? "127.0.0.1", () => resolvePromise())),
     close: () =>
       new Promise((resolvePromise) => {
         clearInterval(timer);
@@ -283,11 +343,26 @@ export function createServer(opts: ServerOptions = {}): LiveProbeServer {
   };
 }
 
-function readBody(req: IncomingMessage): Promise<Buffer> {
+function readBody(req: IncomingMessage, maxBytes: number): Promise<Buffer> {
   return new Promise((resolvePromise, reject) => {
     const chunks: Buffer[] = [];
-    req.on("data", (c: Buffer) => chunks.push(c));
-    req.on("end", () => resolvePromise(Buffer.concat(chunks)));
+    let size = 0;
+    let aborted = false;
+    req.on("data", (c: Buffer) => {
+      if (aborted) return;
+      size += c.length;
+      if (size > maxBytes) {
+        // Stop buffering and reject; the handler answers 413. We don't destroy the socket so
+        // the response can still flush, but nothing further is retained in memory.
+        aborted = true;
+        reject(Object.assign(new Error("payload too large"), { statusCode: 413 }));
+        return;
+      }
+      chunks.push(c);
+    });
+    req.on("end", () => {
+      if (!aborted) resolvePromise(Buffer.concat(chunks));
+    });
     req.on("error", reject);
   });
 }

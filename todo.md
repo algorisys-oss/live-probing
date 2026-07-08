@@ -7,6 +7,14 @@ items: **S** = hours, **M** = ~a day, **L** = multi-day.
 
 ## Completed
 
+### Security hardening (review-driven, TDD; verified against the Shopwave testbed)
+- [x] Fix remote crash: out-of-range `startTime` no longer throws in the history-flush timer
+      (`clampMicros` at ingest + non-throwing `dayOf` + try/catch around `upsertMany`)
+- [x] Fix live-view eviction: far-future `startTime` capped at `now + 60s` (`startTimeCeiling`)
+- [x] Wire `maskPii` into `ingestEvents` (was dead code) — PII/secrets scrubbed before store/broadcast; `MASK_PII=off` opts out
+- [x] Request-body cap (8 MB → 413) and gzip-decompression cap (32 MB, zip-bomb guard)
+- [x] Bind loopback by default (`HOST=0.0.0.0` to expose); CORS + WebSocket limited to loopback/`CORS_ORIGINS`; stop echoing internal error messages
+
 ### Planning & docs
 - [x] Brainstorm + decisions: observe behavior not source, OTLP-first ingest, React + zustand
       UI, lowercase-hyphenated naming

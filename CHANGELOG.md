@@ -3,6 +3,20 @@
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
 ## [2026-07-08]
+- **Security hardening of the ingest server (review-driven, TDD).** Fixed five issues found by a
+  critical review and reproduced end-to-end against the Shopwave testbed:
+  - *Remote crash (Critical):* an out-of-range `startTime` (e.g. `1e30`) threw `RangeError` in
+    `dayOf()` inside the history-flush timer → process exit. Added `clampMicros()` at both ingest
+    paths (`core/native.ts`, `core/otlp.ts`), made `dayOf()` non-throwing (`history-store.ts`), and
+    wrapped `flushHistory()`'s `upsertMany` in try/catch (`server.ts`).
+  - *Live-view eviction:* a far-future `startTime` became the window clock and evicted recent
+    traces; `clampMicros` now caps start times at `now + 60s` (`startTimeCeiling()`).
+  - *PII/secret masking wired in:* `ingestEvents()` now runs `maskEvents()` on every event before
+    buffering/persisting/broadcasting (the helper was previously dead code). `MASK_PII=off` opts out.
+  - *Resource limits:* 8 MB request-body cap (413) and 32 MB gzip-decompression cap (zip-bomb guard).
+  - *Network posture:* default bind `127.0.0.1` (`HOST=0.0.0.0` to expose); CORS/WebSocket restricted
+    to loopback origins (or `CORS_ORIGINS`) instead of `*`; errors no longer echo internal messages.
+  - Tests: +5 server, +1 core (77 total green); typecheck clean.
 - **Retention default raised 14 → 30 days; live-window knobs now env-configurable.**
   `RETENTION_DAYS` now defaults to 30 UTC days (`server.ts`), so a single trace's waterfall/sequence
   view stays viewable by id for 30 days after it ages out of the live in-memory window. Wired two

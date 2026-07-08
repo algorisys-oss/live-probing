@@ -1,4 +1,4 @@
-import type { Event, SpanKind, SpanStatus } from "./event.js";
+import { clampMicros, startTimeCeiling, type Event, type SpanKind, type SpanStatus } from "./event.js";
 
 // Minimal shapes of OTLP/HTTP JSON. We parse defensively rather than pull in the full
 // protobuf schema: the collector is configured to export OTLP as JSON.
@@ -130,6 +130,7 @@ function resolvePeer(kind: SpanKind, attrs: Attrs): string | undefined {
 
 // Flatten an OTLP/HTTP JSON payload into normalized events.
 export function normalizeOtlp(payload: OtlpPayload): Event[] {
+  const startCeil = startTimeCeiling();
   const events: Event[] = [];
   for (const rs of payload.resourceSpans ?? []) {
     const resourceAttrs = toAttrs(rs.resource?.attributes);
@@ -140,8 +141,8 @@ export function normalizeOtlp(payload: OtlpPayload): Event[] {
         if (!span.traceId || !span.spanId) continue;
         const attrs = toAttrs(span.attributes);
         const kind = mapKind(span.kind);
-        const start = toMicros(span.startTimeUnixNano);
-        const end = toMicros(span.endTimeUnixNano);
+        const start = clampMicros(toMicros(span.startTimeUnixNano), startCeil);
+        const end = clampMicros(toMicros(span.endTimeUnixNano), startCeil);
         events.push({
           traceId: String(span.traceId),
           spanId: String(span.spanId),

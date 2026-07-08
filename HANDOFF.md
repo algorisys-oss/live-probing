@@ -5,7 +5,30 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-**Retention default 14 → 30 days; live-window knobs now env-configurable.** `RETENTION_DAYS`
+**Security hardening of the ingest server (review-driven, TDD).** A critical review — validated
+end-to-end against the Shopwave testbed — found five issues in the network-facing server; all fixed,
+77 tests green (5 new server + 1 new core), typecheck clean.
+- **Remote crash (Critical).** A native event with an out-of-range `startTime` (e.g. `1e30`) made
+  `dayOf()` throw `RangeError` inside `upsertMany`, on the unguarded history-flush `setInterval` →
+  whole process exits. Fixed three ways: `clampMicros()` in `core/event.ts` bounds every ingested
+  timestamp (native + OTLP); `dayOf()` in `history-store.ts` never throws (falls back to epoch day);
+  `flushHistory()` in `server.ts` wraps `upsertMany` in try/catch.
+- **Live-view eviction (found while testing the crash fix).** A far-future `startTime` became the
+  window's clock reference and evicted every recent trace. `clampMicros` now also caps a start time
+  at `now + 60s` (`startTimeCeiling()`, `FUTURE_SKEW_MICROS`, kept < the 5-min live horizon).
+- **PII/secret masking was dead code (High).** `maskPii` existed but was never called, so emails /
+  cards / bearer tokens reached SQLite and the UI verbatim (confirmed live). Now wired at the true
+  chokepoint: `ingestEvents()` runs `maskEvents()` on every event before buffer/persist/broadcast.
+  This supersedes the earlier "wire it per-adapter" plan — one central point covers OTLP + native.
+  Disable with `MASK_PII=off`.
+- **No body/decompression limits (High).** `server.ts` now caps request bodies at 8 MB (413) and
+  gzip output at 32 MB (`gunzipSync maxOutputLength`) — was an unbounded buffer + zip-bomb OOM.
+- **Wide-open network posture (High).** Default bind is now `127.0.0.1` (set `HOST=0.0.0.0` to
+  expose — **needed for the dockerized testbed collector → host path**); CORS reflects only loopback
+  origins (or `CORS_ORIGINS`) instead of `*`; the WebSocket upgrade enforces the same origin policy.
+  Error responses no longer echo internal messages.
+
+Earlier on this branch — **Retention default 14 → 30 days; live-window knobs now env-configurable.** `RETENTION_DAYS`
 defaults to 30 (`packages/server/src/server.ts:85`) — a trace's waterfall/sequence is retrievable by
 id for 30 days after it leaves the live window. Also wired two previously code-only options to env
 vars in `packages/server/src/index.ts` via a `numEnv()` helper: `LIVE_WINDOW_MINUTES` (→

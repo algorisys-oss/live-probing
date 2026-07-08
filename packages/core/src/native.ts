@@ -1,4 +1,4 @@
-import type { Event, SpanKind, SpanStatus } from "./event.js";
+import { clampMicros, startTimeCeiling, type Event, type SpanKind, type SpanStatus } from "./event.js";
 
 // Validate/coerce a batch of already-normalized events (the shape adapters produce and the
 // server accepts at POST /v1/events). Anything missing traceId/spanId is dropped; other
@@ -7,11 +7,6 @@ import type { Event, SpanKind, SpanStatus } from "./event.js";
 const KINDS = new Set<SpanKind>(["client", "server", "producer", "consumer", "internal"]);
 const STATUSES = new Set<SpanStatus>(["ok", "error", "unset"]);
 
-function toNumber(v: unknown): number {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : 0;
-}
-
 export function coerceEvents(input: unknown): Event[] {
   const arr = Array.isArray(input)
     ? input
@@ -19,6 +14,7 @@ export function coerceEvents(input: unknown): Event[] {
       ? (input as { events: unknown[] }).events
       : [];
 
+  const startCeil = startTimeCeiling();
   const out: Event[] = [];
   for (const raw of arr) {
     if (!raw || typeof raw !== "object") continue;
@@ -39,8 +35,8 @@ export function coerceEvents(input: unknown): Event[] {
       peer: typeof r["peer"] === "string" && r["peer"] ? (r["peer"] as string) : undefined,
       operation: typeof r["operation"] === "string" ? (r["operation"] as string) : "",
       kind,
-      startTime: toNumber(r["startTime"]),
-      duration: Math.max(0, toNumber(r["duration"])),
+      startTime: clampMicros(r["startTime"], startCeil),
+      duration: clampMicros(r["duration"]),
       status,
       attributes,
     });

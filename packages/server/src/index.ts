@@ -32,12 +32,24 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   // affects the by-id waterfall/sequence detail view — that is governed by RETENTION_DAYS.
   const liveWindowMinutes = numEnv("LIVE_WINDOW_MINUTES", { min: 0 });
   const maxTraces = numEnv("MAX_TRACES", { min: 1 });
+  // Bind loopback by default (the ingest/API have no auth). Point a containerized collector or
+  // a remote app at LiveProbe by setting HOST=0.0.0.0 — and keep the port on a trusted network.
+  const host = process.env.HOST || "127.0.0.1";
+  // CORS_ORIGINS: comma-separated extra browser origins allowed beyond loopback.
+  const corsOrigins = (process.env.CORS_ORIGINS ?? "")
+    .split(",")
+    .map((o) => o.trim())
+    .filter((o) => o.length > 0);
   const server = createServer({
     publicDir: existsSync(publicDir) ? publicDir : undefined,
     dbPath,
     retentionDays,
     horizonMicros: liveWindowMinutes !== undefined ? liveWindowMinutes * 60 * 1_000_000 : undefined,
     maxTraces,
+    host,
+    // MASK_PII=off disables the built-in PII/secret scrubbing (not recommended).
+    mask: process.env.MASK_PII === "off" ? false : undefined,
+    corsOrigins: corsOrigins.length > 0 ? corsOrigins : undefined,
   });
 
   const shutdown = () => void server.close().then(() => process.exit(0));
@@ -45,6 +57,6 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   process.on("SIGTERM", shutdown);
 
   server.listen(port).then(() => {
-    console.log(`liveprobe server listening on :${port} (OTLP ingest POST /v1/traces, ws /ws)`);
+    console.log(`liveprobe server listening on ${host}:${port} (OTLP ingest POST /v1/traces, ws /ws)`);
   });
 }

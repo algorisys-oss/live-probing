@@ -109,8 +109,15 @@ function rowToSummary(r: Record<string, unknown>): TraceSummary {
   };
 }
 
+// UTC day partition ("YYYY-MM-DD") for an epoch-microsecond timestamp. Ingest clamps
+// timestamps into range, but this is the last line before `Date.toISOString()` — which
+// throws `RangeError` on an out-of-range value — so it never trusts its input: an invalid
+// date falls back to the epoch day rather than crashing the writer (and, via the flush
+// timer, the whole process).
 function dayOf(startMicros: number): string {
-  return new Date(Math.floor(startMicros / 1000)).toISOString().slice(0, 10);
+  const d = new Date(Math.floor(startMicros / 1000));
+  if (Number.isNaN(d.getTime())) return "1970-01-01";
+  return d.toISOString().slice(0, 10);
 }
 
 export class HistoryStore {

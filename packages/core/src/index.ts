@@ -1,4 +1,4 @@
-export { type Event, type SpanKind, type SpanStatus, DATASTORE_SYSTEMS } from "./event.js";
+export { type Event, type SpanKind, type SpanStatus, DATASTORE_SYSTEMS, clampMicros, MAX_EPOCH_MICROS } from "./event.js";
 export { normalizeOtlp, type OtlpPayload } from "./otlp.js";
 export { coerceEvents } from "./native.js";
 export {
