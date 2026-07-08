@@ -3,6 +3,9 @@
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
 ## [2026-07-08]
+- **Docs: `docs/pii-masking.md`** — reference for the masking helper (API, the two-layer
+  key-based + value-based strategy, the Luhn-guarded card rule, usage as an allow-list backstop,
+  and limitations). Linked from the `integration-adapters.md` PII section.
 - **Shared `maskPii()` PII/secret masking helper (core, TDD).** New pure module
   `packages/core/src/mask.ts` exporting `maskPii(event, opts?)`, `maskEvents(events, opts?)`, and
   `maskString(value)`, exported from `@liveprobe/core`. Two conservative layers: (1) key-based —

@@ -12,8 +12,9 @@ numbers from string values and the identity fields (`operation`/`peer`/`particip
 mutates input. Meant as a backstop *after* a per-client allow-list — an adapter calls
 `maskEvents(...)` before returning. 11 new tests (72 total green), typecheck clean. **Not yet wired
 into `adapter-id-1` / `algo-instrumentation`** — opt-in per client so existing verified output
-doesn't change. `docs/integration-adapters.md` PII section documents it. Synced to `origin/main`
-and `dev`.
+doesn't change. Documented in `docs/pii-masking.md` (full reference: two-layer strategy, Luhn card
+rule, limitations), linked from the `docs/integration-adapters.md` PII section. Synced to
+`origin/main` and `dev`.
 
 Earlier on this branch — **Sequence view: collapse repeated sibling spans into a ×N group.** An
 N+1 (or any hot loop) drew as a staircase of identical rows; the sequence view now folds a run of

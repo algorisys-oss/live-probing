@@ -97,7 +97,8 @@ adapter. Nothing downstream re-inspects payloads for sensitive fields.
   embedded emails / bearer tokens / Luhn-valid card numbers from string values and the
   identity fields. Prefer a per-client allow-list first, then run the result through `maskPii()`
   as a catch-all: `return maskEvents([event]);`. Options: `placeholder`, extra `redactKeys`,
-  and `maskIdentityFields`.
+  and `maskIdentityFields`. Full reference (how the two layers work, patterns, limitations):
+  `docs/pii-masking.md`.
 
 ## Deployment modes
 
