@@ -17,6 +17,17 @@ mixed-health → red/amber/healthy correct, legend present, 0 overflow) + agains
 (:4319, slow gateway edges go amber). **Next: #2 latency histogram + heatmap, then #3 flamegraph.**
 Verify server for this track runs on :4409 (isolated, `:memory:`), reused across the three features.
 
+**Feature 2 of 3 shipped: latency distribution histogram + heatmap.** New pure
+`packages/core/src/latency-buckets.ts` (fixed log-ish buckets, `latencyBucketIndex`, exported from
+core) drives `HistoryStore.endpointDistribution(day, endpoint)` — one grouped SQL scan bucketed via a
+CASE built from the core edges — returned alongside `buckets` from `/api/day/:date/latency`. Two
+hand-rolled SVG components (`latency-histogram.tsx`, `latency-heatmap.tsx`, labels mirrored in
+`ui/src/lib/latency-buckets.ts`) render in a new "Latency distribution" section on the day page when
+an endpoint is selected. Verified end to end (38 seeded bimodal traces → correct histogram + 3-min
+heatmap, screenshots). 91 unit green. **Next: #3 aggregate flamegraph per endpoint.**
+**Gotcha:** verify servers must avoid test-used ports — a leftover verify server on :4409 made
+`server.test.ts` fail with EADDRINUSE (it binds :4409). Now using :4416 for this track.
+
 Earlier — **UI: landscape support for the responsive layout.** The mobile/tablet breakpoints were width-only,
 so a phone in landscape (short height) got the stacked layout and lost its vertical space. Added a
 `@media (max-height: 500px) and (orientation: landscape)` block at the end of

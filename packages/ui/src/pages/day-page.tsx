@@ -4,7 +4,9 @@ import { ApiError, fetchDaySummary, fetchEndpointLatency } from "../lib/api";
 import { formatMicros } from "../lib/format";
 import { ThroughputChart } from "../components/throughput-chart";
 import { LatencyChart } from "../components/latency-chart";
-import type { DaySummary, LatencyBucket } from "../lib/types";
+import { LatencyHistogram } from "../components/latency-histogram";
+import { LatencyHeatmap } from "../components/latency-heatmap";
+import type { DaySummary, LatencyBucket, LatencyDistribution } from "../lib/types";
 
 type LoadState =
   | { kind: "loading" }
@@ -26,14 +28,22 @@ export function DayPage() {
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [latEndpoint, setLatEndpoint] = useState<string | null>(null);
   const [latBuckets, setLatBuckets] = useState<LatencyBucket[] | null>(null);
+  const [latDist, setLatDist] = useState<LatencyDistribution | null>(null);
 
   const selectEndpoint = (op: string) => {
     if (!date) return;
     setLatEndpoint(op);
     setLatBuckets(null);
+    setLatDist(null);
     fetchEndpointLatency(date, op)
-      .then((r) => setLatBuckets(r.buckets))
-      .catch(() => setLatBuckets([]));
+      .then((r) => {
+        setLatBuckets(r.buckets);
+        setLatDist(r.distribution);
+      })
+      .catch(() => {
+        setLatBuckets([]);
+        setLatDist({ histogram: [], heatmap: [] });
+      });
   };
 
   useEffect(() => {
@@ -173,6 +183,20 @@ export function DayPage() {
               </div>
             )}
           </section>
+
+          {latEndpoint !== null && latDist !== null && (
+            <section className="day-section">
+              <h2 className="section-title">Latency distribution — {latEndpoint}</h2>
+              <div className="chart-card">
+                <div className="chart-subtitle">Distribution (how requests spread across latency)</div>
+                <LatencyHistogram histogram={latDist.histogram} />
+                <div className="chart-subtitle chart-subtitle-spaced">
+                  Heatmap over time (slowest on top — a rising band is a regression)
+                </div>
+                <LatencyHeatmap heatmap={latDist.heatmap} />
+              </div>
+            </section>
+          )}
 
           <section className="day-section">
             <h2 className="section-title">Slowest traces</h2>

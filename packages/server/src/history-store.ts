@@ -1,5 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 import type { AssembledTrace, Event } from "@liveprobe/core";
+import { LATENCY_EDGES_MICROS, NUM_LATENCY_BUCKETS } from "@liveprobe/core";
 import { detail, summarize, type TraceDetail, type TraceSummary } from "./summary.js";
 
 export interface ErrorGroup {
@@ -16,6 +17,13 @@ export interface LatencyBucket {
   p50: number;
   p95: number;
   p99: number;
+}
+
+export interface LatencyDistribution {
+  // Total count per latency bucket (length NUM_LATENCY_BUCKETS) — the distribution histogram.
+  histogram: number[];
+  // Per-minute bucket counts — the time × latency heatmap (each row's counts is one column).
+  heatmap: { minute: number; counts: number[] }[];
 }
 
 // A compact, searchable projection of a trace's span attributes: the distinct "key=value"
@@ -282,6 +290,41 @@ export class HistoryStore {
         p95: pct(ds, 0.95),
         p99: pct(ds, 0.99),
       }));
+  }
+
+  // Latency distribution for one endpoint on a day: an overall histogram plus a per-minute
+  // heatmap, both over the shared fixed latency buckets. Bucketing happens in SQL (one grouped
+  // scan) so a busy day isn't pulled into JS row by row. The CASE mirrors latencyBucketIndex
+  // (lower-exclusive edges); edges are numeric constants, so interpolating them is injection-safe.
+  endpointDistribution(day: string, endpoint: string): LatencyDistribution {
+    const caseExpr =
+      "CASE " +
+      LATENCY_EDGES_MICROS.map((e, i) => `WHEN duration_micros < ${e} THEN ${i}`).join(" ") +
+      ` ELSE ${LATENCY_EDGES_MICROS.length} END`;
+    const rows = this.db
+      .prepare(
+        `SELECT (start_time/60000000) AS minute, ${caseExpr} AS bucket, count(*) AS c
+         FROM traces WHERE day = ? AND root_operation = ? GROUP BY minute, bucket ORDER BY minute`,
+      )
+      .all(day, endpoint);
+    const histogram = new Array<number>(NUM_LATENCY_BUCKETS).fill(0);
+    const byMinute = new Map<number, number[]>();
+    for (const r of rows) {
+      const minute = Number(r["minute"]);
+      const bucket = Number(r["bucket"]);
+      const c = Number(r["c"]);
+      histogram[bucket] = (histogram[bucket] ?? 0) + c;
+      let counts = byMinute.get(minute);
+      if (!counts) {
+        counts = new Array<number>(NUM_LATENCY_BUCKETS).fill(0);
+        byMinute.set(minute, counts);
+      }
+      counts[bucket] = (counts[bucket] ?? 0) + c;
+    }
+    const heatmap = [...byMinute.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([minute, counts]) => ({ minute, counts }));
+    return { histogram, heatmap };
   }
 
   // Search across all persisted traces. Every filter is optional and ANDed together.

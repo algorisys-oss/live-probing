@@ -1484,6 +1484,43 @@ body {
   stroke: var(--error);
 }
 
+/* latency distribution histogram + heatmap (day page) */
+.chart-subtitle {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+.chart-subtitle-spaced {
+  margin-top: 18px;
+}
+.lat-hist,
+.lat-heatmap {
+  width: 100%;
+  height: auto;
+}
+.lat-hist-bar rect {
+  fill: var(--accent);
+}
+.lat-hist-bar:hover rect {
+  fill: var(--new);
+}
+.lat-hist-count {
+  fill: var(--text-dim);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+.lat-hist-label {
+  fill: var(--text-faint);
+  font-size: 9px;
+}
+.heat-cell {
+  fill: var(--accent);
+}
+.heat-cell:hover {
+  stroke: var(--text);
+  stroke-width: 1;
+}
+
 .search-input-wide {
   min-width: 300px;
   flex: 1;

@@ -3,6 +3,7 @@ import type {
   DaySummary,
   ErrorGroup,
   LatencyBucket,
+  LatencyDistribution,
   ServiceDetail,
   TraceDetail,
   TraceSummary,
@@ -79,8 +80,11 @@ export function fetchService(name: string): Promise<ServiceDetail> {
   return getJson<ServiceDetail>(`/api/service/${encodeURIComponent(name)}`);
 }
 
-export function fetchEndpointLatency(date: string, endpoint: string): Promise<{ buckets: LatencyBucket[] }> {
-  return getJson<{ buckets: LatencyBucket[] }>(
+export function fetchEndpointLatency(
+  date: string,
+  endpoint: string,
+): Promise<{ buckets: LatencyBucket[]; distribution: LatencyDistribution }> {
+  return getJson<{ buckets: LatencyBucket[]; distribution: LatencyDistribution }>(
     `/api/day/${encodeURIComponent(date)}/latency?endpoint=${encodeURIComponent(endpoint)}`,
   );
 }

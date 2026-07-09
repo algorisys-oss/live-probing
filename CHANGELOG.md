@@ -3,6 +3,16 @@
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
 ## [2026-07-09]
+- **UI: latency distribution histogram + heatmap (feature 2/3, TDD).** The day page's per-endpoint
+  latency section now shows two hand-rolled SVG charts beside the percentile lines: a **histogram**
+  (how requests spread across fixed latency buckets — reveals long tails and bimodal fast/slow splits
+  the percentiles hide) and a **time × latency heatmap** (slowest bucket on top, cell brightness by
+  count — a band rising over time is a regression as it happens). New pure `core/latency-buckets.ts`
+  (fixed log-ish buckets + `latencyBucketIndex`, 4 tests) shared by a new `HistoryStore.endpointDistribution`
+  (one grouped SQL scan, bucketed via a CASE built from the core edges; 1 test); returned alongside
+  the existing `buckets` from `/api/day/:date/latency`. Verified end to end against 38 seeded
+  bimodal traces — histogram `[6,10,8,4,0,0,7,0,3,…]` and a 3-minute heatmap rendered correctly, 0
+  overflow. 14 new/changed tests, 91 unit green, typecheck + build clean.
 - **UI: health-colored live topology (feature 1/3, TDD).** The flow graph now traffic-lights nodes and
   edges from the live call counts it already carries — red at ≥5% error rate, amber at ≥1% or when an
   edge's latency is ≥2× the graph's median (relative, so it adapts to the system's normal). A node is

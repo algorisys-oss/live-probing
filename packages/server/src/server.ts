@@ -276,7 +276,10 @@ export function createServer(opts: ServerOptions = {}): LiveProbeServer {
         const day = decodeURIComponent(path.split("/")[3]!);
         const endpoint = url.searchParams.get("endpoint");
         if (!endpoint) return json(res, 400, { error: "endpoint_required" });
-        return json(res, 200, { buckets: store.endpointLatency(day, endpoint) });
+        return json(res, 200, {
+          buckets: store.endpointLatency(day, endpoint),
+          distribution: store.endpointDistribution(day, endpoint),
+        });
       }
       if (req.method === "GET" && path === "/api/search") {
         const q = url.searchParams;

@@ -138,3 +138,8 @@ export interface LatencyBucket {
   p95: number;
   p99: number;
 }
+
+export interface LatencyDistribution {
+  histogram: number[]; // count per latency bucket (length NUM_LATENCY_BUCKETS)
+  heatmap: { minute: number; counts: number[] }[]; // per-minute bucket counts
+}

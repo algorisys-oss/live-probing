@@ -133,3 +133,52 @@ test("HistoryStore search filters by text, service, error, and latency", () => {
   assert.equal(store.search({ attr: "db.system=redis" }).length, 0);
   store.close();
 });
+
+// A one-span trace with an explicit duration, for latency-bucketing tests.
+function traceDur(id: string, startMicros: number, durationMicros: number) {
+  const w = new TraceWindow({ horizonMicros: Number.MAX_SAFE_INTEGER });
+  w.add([
+    {
+      traceId: id,
+      spanId: `${id}-s`,
+      participant: "gw",
+      operation: "GET /x",
+      kind: "server",
+      startTime: startMicros,
+      duration: durationMicros,
+      status: "ok",
+      attributes: {},
+    },
+  ]);
+  return w.assemble(id)!;
+}
+
+test("endpointDistribution buckets durations into a histogram + per-minute heatmap", () => {
+  const store = new HistoryStore(":memory:");
+  store.upsertMany([
+    traceDur("a", 1_000_000, 500), // minute 0, <1ms -> bucket 0
+    traceDur("b", 2_000_000, 1_500), // minute 0, 1–2ms -> bucket 1
+    traceDur("c", 3_000_000, 1_500), // minute 0, 1–2ms -> bucket 1
+    traceDur("d", 61_000_000, 60_000), // minute 1, 50–100ms -> bucket 6
+  ]);
+  const dist = store.endpointDistribution("1970-01-01", "GET /x");
+
+  assert.equal(dist.histogram.length, 12);
+  assert.equal(dist.histogram[0], 1);
+  assert.equal(dist.histogram[1], 2);
+  assert.equal(dist.histogram[6], 1);
+  assert.equal(dist.histogram.reduce((a, b) => a + b, 0), 4);
+
+  // Heatmap: two minutes, each row's counts land in the right bucket column.
+  assert.equal(dist.heatmap.length, 2);
+  assert.equal(dist.heatmap[0]!.minute < dist.heatmap[1]!.minute, true);
+  assert.equal(dist.heatmap[0]!.counts[0], 1);
+  assert.equal(dist.heatmap[0]!.counts[1], 2);
+  assert.equal(dist.heatmap[1]!.counts[6], 1);
+
+  // Filtered by endpoint — a different operation has nothing.
+  const other = store.endpointDistribution("1970-01-01", "GET /nope");
+  assert.equal(other.histogram.reduce((a, b) => a + b, 0), 0);
+  assert.equal(other.heatmap.length, 0);
+  store.close();
+});
