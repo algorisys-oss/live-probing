@@ -33,7 +33,11 @@ heatmap, aggregate flamegraph) shipped 2026-07-09. Several items below build dir
 
 ## Group 2 — Alerting (the active sequel to health-coloring)
 
-### 2. Anomaly / alert hooks — **M–L**
+### 2. Anomaly / alert hooks — **M–L** — 🟡 IN-UI SLICE DONE (2026-07-09); webhook pending
+- Shipped: `core/alert-rules.ts` (`evaluateAlerts()`) → server evaluates on the topology WS tick,
+  tracks `since`, pushes active alerts → `/alerts` page + a nav count badge. Error-rate alerts on
+  services, latency alerts on edges (2× median). **Still to do:** the outbound webhook on an
+  inactive→active transition (timeout + retry/backoff, config via env) — its own commit.
 - **What:** threshold rules (error-rate > X%, or p95 > Y, per service/edge) → a live banner in the UI
   **and** an optional outbound webhook.
 - **Approach:** evaluate rules server-side on each topology tick — reuse `topologyHealth` thresholds

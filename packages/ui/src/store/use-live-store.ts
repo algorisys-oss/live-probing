@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { RedMetric, Topology, TraceSummary, WsMessage } from "../lib/types";
+import type { Alert, RedMetric, Topology, TraceSummary, WsMessage } from "../lib/types";
 
 const MAX_TRACES = 200;
 
@@ -19,6 +19,7 @@ interface LiveState {
   topology: Topology;
   mermaidFlow: string;
   red: RedMetric[];
+  alerts: Alert[];
   connected: boolean;
   selectedTraceId: string | null;
   paused: boolean;
@@ -35,12 +36,13 @@ interface LiveState {
   resumeFeed: () => void;
   applyWsMessage: (msg: WsMessage) => void;
   applyTraces: (traces: TraceSummary[]) => void;
-  applyTopology: (topology: Topology, mermaidFlow: string, red?: RedMetric[]) => void;
+  applyTopology: (topology: Topology, mermaidFlow: string, red?: RedMetric[], alerts?: Alert[]) => void;
   applySnapshot: (
     traces: TraceSummary[],
     topology: Topology,
     mermaidFlow: string,
     red?: RedMetric[],
+    alerts?: Alert[],
   ) => void;
 }
 
@@ -51,6 +53,7 @@ export const useLiveStore = create<LiveState>((set, get) => ({
   topology: emptyTopology,
   mermaidFlow: "",
   red: [],
+  alerts: [],
   connected: false,
   selectedTraceId: null,
   paused: false,
@@ -106,10 +109,15 @@ export const useLiveStore = create<LiveState>((set, get) => ({
     set({ traces: toSortedCapped(map) });
   },
 
-  applyTopology: (topology, mermaidFlow, red) =>
-    set(red ? { topology, mermaidFlow, red } : { topology, mermaidFlow }),
+  applyTopology: (topology, mermaidFlow, red, alerts) =>
+    set({
+      topology,
+      mermaidFlow,
+      ...(red ? { red } : {}),
+      ...(alerts ? { alerts } : {}),
+    }),
 
-  applySnapshot: (traces, topology, mermaidFlow, red) => {
+  applySnapshot: (traces, topology, mermaidFlow, red, alerts) => {
     const map = new Map<string, TraceSummary>();
     for (const t of traces) map.set(t.traceId, t);
     set({
@@ -119,19 +127,20 @@ export const useLiveStore = create<LiveState>((set, get) => ({
       topology,
       mermaidFlow,
       red: red ?? [],
+      alerts: alerts ?? [],
     });
   },
 
   applyWsMessage: (msg) => {
     switch (msg.type) {
       case "snapshot":
-        get().applySnapshot(msg.traces, msg.topology, msg.mermaidFlow, msg.red);
+        get().applySnapshot(msg.traces, msg.topology, msg.mermaidFlow, msg.red, msg.alerts);
         break;
       case "traces":
         get().applyTraces(msg.traces);
         break;
       case "topology":
-        get().applyTopology(msg.topology, msg.mermaidFlow, msg.red);
+        get().applyTopology(msg.topology, msg.mermaidFlow, msg.red, msg.alerts);
         break;
     }
   },

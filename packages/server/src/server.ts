@@ -10,6 +10,8 @@ import {
   maskEvents,
   toMermaidFlow,
   redMetrics,
+  evaluateAlerts,
+  type Alert,
   type AssembledTrace,
   type Event,
   type MaskOptions,
@@ -168,18 +170,41 @@ export function createServer(opts: ServerOptions = {}): LiveProbeServer {
         .filter((t): t is NonNullable<typeof t> => t !== null),
     );
 
+  // Active alerts, with a persistent first-seen time per alert id so the UI can show "firing for
+  // Xs" and so an alert that keeps firing isn't re-stamped each tick. Cleared ids drop out.
+  const activeSince = new Map<string, number>();
+  const computeAlerts = (edges: ReturnType<typeof window.topology>["edges"], redList: ReturnType<typeof red>): (Alert & { since: number })[] => {
+    const fired = evaluateAlerts({ services: redList, edges });
+    const now = Date.now();
+    const seen = new Set<string>();
+    const out = fired.map((a) => {
+      seen.add(a.id);
+      let since = activeSince.get(a.id);
+      if (since === undefined) {
+        since = now;
+        activeSince.set(a.id, since);
+      }
+      return { ...a, since };
+    });
+    for (const id of [...activeSince.keys()]) if (!seen.has(id)) activeSince.delete(id);
+    const rank = { error: 0, warn: 1 } as const;
+    return out.sort((a, b) => rank[a.severity] - rank[b.severity] || a.since - b.since);
+  };
+
   wss.on("connection", (ws) => {
     clients.add(ws);
     ws.on("close", () => clients.delete(ws));
     ws.on("error", () => clients.delete(ws));
     const topology = window.topology();
+    const redList = red();
     ws.send(
       JSON.stringify({
         type: "snapshot",
         traces: recentSummaries(100),
         topology,
         mermaidFlow: toMermaidFlow(topology),
-        red: red(),
+        red: redList,
+        alerts: computeAlerts(topology.edges, redList),
       }),
     );
   });
@@ -188,7 +213,14 @@ export function createServer(opts: ServerOptions = {}): LiveProbeServer {
     if (!topologyDirty) return;
     topologyDirty = false;
     const topology = window.topology();
-    broadcast({ type: "topology", topology, mermaidFlow: toMermaidFlow(topology), red: red() });
+    const redList = red();
+    broadcast({
+      type: "topology",
+      topology,
+      mermaidFlow: toMermaidFlow(topology),
+      red: redList,
+      alerts: computeAlerts(topology.edges, redList),
+    });
   }, opts.topologyIntervalMs ?? 750);
   timer.unref();
 

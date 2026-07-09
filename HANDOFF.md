@@ -5,7 +5,20 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-**Scoped the feature backlog + shipped Live RED tiles (scope item 1a).** Wrote `docs/feature-scope.md`
+**Alerting / anomaly hooks — in-UI slice (scope item 2).** Threshold rules turn the live health
+signal into active alerts. New pure `packages/core/src/alert-rules.ts` (`evaluateAlerts({services,
+edges})` → error-rate alerts on services + latency alerts on edges at 2× median; stable ids for
+de-dup; 6 tests). The server evaluates each topology WS tick, tracks a per-alert `since` in a
+`Map` (so the UI shows "firing for Xs"), and pushes the active list on the snapshot + topology
+messages (threaded through `use-live-store`). UI: an **Alerts** nav item with a live count badge
+(`components/header.tsx`), and `pages/alerts-page.tsx` (route in `app.tsx`). Verified live (seeded
+25% `order` errors + slow `gateway→reports` edge → 1 error + 1 latency alert, badge "2" red;
+screenshot). **107 unit + 22 e2e green.** Verify server used :4418 (avoids test ports).
+**Deliberately deferred: the outbound webhook** (inactive→active transition → POST with timeout +
+retry/backoff, env config) — outward-facing, its own commit. Next scoped item after that: 3b
+dependency matrix.
+
+Prior — **Scoped the feature backlog + shipped Live RED tiles (scope item 1a).** Wrote `docs/feature-scope.md`
 (near-term features with effort/approach/files/risk; auth deferred), linked from the docs index. Then
 built **1a: live RED tiles** — a per-service Rate·Errors·Duration(p95) strip above the live flow graph.
 New pure `packages/core/src/red-metrics.ts` (`redMetrics()` over assembled traces — server-kind spans

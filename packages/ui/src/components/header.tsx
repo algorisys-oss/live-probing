@@ -7,6 +7,7 @@ export function Header() {
   const connected = useLiveStore((s) => s.connected);
   const traces = useLiveStore((s) => s.traces);
   const topology = useLiveStore((s) => s.topology);
+  const alerts = useLiveStore((s) => s.alerts);
   const location = useLocation();
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
@@ -19,6 +20,7 @@ export function Header() {
   };
 
   const serviceCount = useMemo(() => topology.nodes.length, [topology.nodes]);
+  const alertSeverity = alerts.some((a) => a.severity === "error") ? "error" : "warn";
 
   // Keep "History" highlighted while drilling into a specific day.
   const historyActive =
@@ -72,6 +74,15 @@ export function Header() {
             className={({ isActive }) => (isActive ? "nav-link nav-link-active" : "nav-link")}
           >
             Search
+          </NavLink>
+          <NavLink
+            to="/alerts"
+            className={({ isActive }) => (isActive ? "nav-link nav-link-active" : "nav-link")}
+          >
+            Alerts
+            {alerts.length > 0 && (
+              <span className={`nav-badge nav-badge-${alertSeverity}`}>{alerts.length}</span>
+            )}
           </NavLink>
         </nav>
       </div>

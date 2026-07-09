@@ -105,6 +105,18 @@ export interface RedMetric {
   errors: number;
 }
 
+export interface Alert {
+  id: string;
+  kind: "service" | "edge";
+  target: string;
+  metric: "error-rate" | "latency";
+  severity: "warn" | "error";
+  value: number;
+  threshold: number;
+  message: string;
+  since: number; // epoch ms the alert first started firing
+}
+
 export type WsMessage =
   | {
       type: "snapshot";
@@ -112,9 +124,16 @@ export type WsMessage =
       topology: Topology;
       mermaidFlow: string;
       red?: RedMetric[];
+      alerts?: Alert[];
     }
   | { type: "traces"; traces: TraceSummary[] }
-  | { type: "topology"; topology: Topology; mermaidFlow: string; red?: RedMetric[] };
+  | {
+      type: "topology";
+      topology: Topology;
+      mermaidFlow: string;
+      red?: RedMetric[];
+      alerts?: Alert[];
+    };
 
 export interface ErrorGroup {
   endpoint: string;

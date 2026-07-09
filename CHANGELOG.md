@@ -3,6 +3,17 @@
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
 ## [2026-07-09]
+- **Alerting / anomaly hooks — in-UI slice (scope item 2, TDD).** Threshold rules turn the live
+  health signal into active alerts: an **error-rate** alert fires on the *service* handling failing
+  requests (warn ≥1%, error ≥5%), a **latency** alert fires on the *edge* whose avg ≥ 2× the graph's
+  median — same thresholds as the topology coloring and RED tiles, so everything agrees on "red". New
+  pure `core/alert-rules.ts` (`evaluateAlerts()`, stable alert ids for de-dup; 6 tests). The server
+  evaluates each topology WebSocket tick, tracks a per-alert `since` (so the UI shows "firing for
+  Xs"), and pushes the active list on the snapshot + topology messages. UI: an **Alerts** nav item
+  with a live count badge (red if any error), and an `/alerts` page listing active alerts (severity,
+  metric, firing duration, link to the service). Verified live (seeded 25% `order` errors + a slow
+  `gateway→reports` edge → one error + one latency alert, badge "2" red). 107 unit + 22 e2e green.
+  **Webhook delivery is a deliberate follow-up** (outward-facing; own commit).
 - **UI: live RED tiles (feature 1a from the scope, TDD).** A per-service Rate · Errors · Duration(p95)
   strip above the live flow graph — the at-a-glance triage view, computed from the in-memory window
   (server-kind spans = requests a service handled; datastores/ghosts omitted). New pure

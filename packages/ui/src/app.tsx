@@ -11,6 +11,7 @@ import { HistoryPage } from "./pages/history-page";
 import { DayPage } from "./pages/day-page";
 import { SearchPage } from "./pages/search-page";
 import { ErrorsPage } from "./pages/errors-page";
+import { AlertsPage } from "./pages/alerts-page";
 import { ServicePage } from "./pages/service-page";
 import { ComparePage } from "./pages/compare-page";
 
@@ -58,6 +59,7 @@ export function App() {
           <Route path="/day/:date" element={<DayPage />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/errors" element={<ErrorsPage />} />
+          <Route path="/alerts" element={<AlertsPage />} />
           <Route path="/service/:name" element={<ServicePage />} />
           <Route path="/compare" element={<ComparePage />} />
           <Route path="/trace/:traceId" element={<TracePage />} />
