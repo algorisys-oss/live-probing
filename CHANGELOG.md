@@ -3,6 +3,15 @@
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
 ## [2026-07-09]
+- **Docs: revised `LOOPS.md` — tightened, de-drifted, made project-agnostic (new or migration).**
+  Kept every rule numeral (so `CLAUDE.md`'s references stay valid) and reworded in place. Reframed
+  three rules that fought a git workflow: XXIII (backup files → "stay recoverable" via VCS), XXVI
+  (per-response session-tracker footer → one rolling handoff doc, matching `HANDOFF.md`), XII (dropped
+  the arbitrary 80% coverage floor for "every breakable behavior has a failing-without-the-change
+  test"). Folded in migration lessons from the Bun Zig→Rust port: XXXVI gained a migration-strategy
+  block (complete-over-half-incremental, de-risk on a few files, write the idiom mapping down,
+  compiler-errors-as-work-queue, isolate parallel worktrees) and XXXVII gained "count what you skip —
+  no silent test deletions." Intro notes it applies greenfield or migration.
 - **Fix: containerized deploy — collector couldn't reach the server (`ingest failed: fetch failed`).**
   The `liveprobe` service in `docker-compose.yml` didn't set `HOST`, so the server bound `127.0.0.1`
   inside its container. Sibling containers (`collector`, `otel-collector`) target `http://liveprobe:4319`

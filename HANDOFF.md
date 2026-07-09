@@ -5,7 +5,14 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-**Fix: containerized deploy — `docker-compose.yml` `liveprobe` service now binds `HOST=0.0.0.0`.**
+**Docs: revised `LOOPS.md`** — tightened prose, made it project-agnostic (greenfield or migration),
+and folded in the Bun Zig→Rust migration lessons. Rule numerals are unchanged, so `CLAUDE.md`'s
+by-number references still resolve. Reframed XXIII (VCS recovery, not `.backup` files), XXVI (rolling
+handoff doc, not a per-response footer), and XII (breakable-behavior coverage, not an 80% floor);
+enriched XXXVI (migration strategy) and XXXVII (no silent test skips). Word count is ~flat (denser,
+not shorter) because the migration material refilled the trimmed padding.
+
+Earlier — **Fix: containerized deploy — `docker-compose.yml` `liveprobe` service now binds `HOST=0.0.0.0`.**
 Surfaced on an HRMS staging deploy: `collector-1 | ingest failed: fetch failed` against
 `http://liveprobe:4319/v1/events` while `liveprobe-1` logged `listening on 127.0.0.1:4319`. The
 service set `PORT`/`DB_PATH`/`RETENTION_DAYS` but not `HOST`, so the server bound loopback inside its
