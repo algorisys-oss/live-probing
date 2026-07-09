@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ApiError, fetchDaySummary, fetchEndpointLatency } from "../lib/api";
+import { ApiError, fetchDaySummary, fetchEndpointLatency, fetchEndpointFlamegraph } from "../lib/api";
 import { formatMicros } from "../lib/format";
 import { ThroughputChart } from "../components/throughput-chart";
 import { LatencyChart } from "../components/latency-chart";
 import { LatencyHistogram } from "../components/latency-histogram";
 import { LatencyHeatmap } from "../components/latency-heatmap";
-import type { DaySummary, LatencyBucket, LatencyDistribution } from "../lib/types";
+import { FlamegraphView } from "../components/flamegraph-view";
+import type { DaySummary, LatencyBucket, LatencyDistribution, FlameNode } from "../lib/types";
 
 type LoadState =
   | { kind: "loading" }
@@ -29,12 +30,14 @@ export function DayPage() {
   const [latEndpoint, setLatEndpoint] = useState<string | null>(null);
   const [latBuckets, setLatBuckets] = useState<LatencyBucket[] | null>(null);
   const [latDist, setLatDist] = useState<LatencyDistribution | null>(null);
+  const [flame, setFlame] = useState<FlameNode | null>(null);
 
   const selectEndpoint = (op: string) => {
     if (!date) return;
     setLatEndpoint(op);
     setLatBuckets(null);
     setLatDist(null);
+    setFlame(null);
     fetchEndpointLatency(date, op)
       .then((r) => {
         setLatBuckets(r.buckets);
@@ -44,6 +47,9 @@ export function DayPage() {
         setLatBuckets([]);
         setLatDist({ histogram: [], heatmap: [] });
       });
+    fetchEndpointFlamegraph(date, op)
+      .then((r) => setFlame(r.flame))
+      .catch(() => setFlame({ operation: "", participant: "", totalMicros: 0, selfMicros: 0, count: 0, children: [] }));
   };
 
   useEffect(() => {
@@ -194,6 +200,18 @@ export function DayPage() {
                   Heatmap over time (slowest on top — a rising band is a regression)
                 </div>
                 <LatencyHeatmap heatmap={latDist.heatmap} />
+              </div>
+            </section>
+          )}
+
+          {latEndpoint !== null && flame !== null && flame.children.length > 0 && (
+            <section className="day-section">
+              <h2 className="section-title">Where time goes — {latEndpoint}</h2>
+              <div className="chart-card">
+                <div className="chart-subtitle">
+                  Aggregate flamegraph over the endpoint's recent traces (width = share of time)
+                </div>
+                <FlamegraphView root={flame} />
               </div>
             </section>
           )}

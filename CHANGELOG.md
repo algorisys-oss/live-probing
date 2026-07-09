@@ -3,6 +3,16 @@
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
 ## [2026-07-09]
+- **UI: aggregate flamegraph per endpoint (feature 3/3, TDD).** The day page's per-endpoint drilldown
+  now has a "Where time goes" icicle that folds the endpoint's recent traces into one tree — where an
+  endpoint spends its time on average, not in a single waterfall (static tools can't show this; it's
+  observed). New pure `core/flamegraph.ts` (`aggregateFlamegraph()` merges spans by operation-path,
+  computes total/self/count; same op under different parents stays distinct; 5 tests) → new
+  `HistoryStore.endpointFlamegraph(day, endpoint, limit=150)` (folds up to 150 recent trace details)
+  → `/api/day/:date/flamegraph`. Hand-rolled SVG icicle (`flamegraph-view.tsx`): width = share of
+  time, uncovered right of a bar = self time, per-service color, hover detail. Verified end to end
+  against 12 seeded N+1 traces — the 60 aggregated `INSERT orders` calls render as one fat node.
+  96 unit + 22 e2e green, typecheck + build clean. **Completes the 3-feature triage value-add track.**
 - **UI: latency distribution histogram + heatmap (feature 2/3, TDD).** The day page's per-endpoint
   latency section now shows two hand-rolled SVG charts beside the percentile lines: a **histogram**
   (how requests spread across fixed latency buckets — reveals long tails and bimodal fast/slow splits

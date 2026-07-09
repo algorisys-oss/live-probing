@@ -5,8 +5,27 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-**UI value-add track (live incident triage, hand-rolled SVG) — feature 1 of 3: health-colored live
-topology.** Direction set with the user: audience = live incident triage; build (1) health-colored
+**UI value-add track (live incident triage, hand-rolled SVG) — ALL 3 FEATURES SHIPPED.** Direction
+set with the user: audience = live incident triage; hand-rolled SVG (no chart dep). All three built
+TDD, verified end to end in headless Chromium, and synced individually. **96 unit + 22 e2e green,
+typecheck + build clean.**
+- **#1 health-colored live topology** — `packages/ui/src/lib/topology-health.ts` → `flow-view.tsx`
+  edge/node traffic-lights + legend (error rate + latency-vs-median).
+- **#2 latency histogram + heatmap** — `core/latency-buckets.ts` → `HistoryStore.endpointDistribution`
+  → `/api/day/:date/latency` (now returns `{buckets, distribution}`); `latency-histogram.tsx` +
+  `latency-heatmap.tsx` on the day page per selected endpoint.
+- **#3 aggregate flamegraph** — `core/flamegraph.ts` (`aggregateFlamegraph`) →
+  `HistoryStore.endpointFlamegraph(day, endpoint, limit=150)` → `/api/day/:date/flamegraph`;
+  `flamegraph-view.tsx` icicle on the day page. Merges an endpoint's recent traces into one
+  where-time-goes tree (N+1s show as a fat aggregated node).
+- **Gotchas captured:** (a) verify servers must avoid test-used ports (a leftover on :4409 broke
+  `server.test.ts` with EADDRINUSE) — used :4416 for this track; (b) a plain `npx tsx` server does
+  NOT reload on code changes — restart it to pick up new routes (hit this when the flamegraph route
+  404'd to the SPA); (c) `npm run test:e2e` exceeds a 2-min foreground timeout — run it backgrounded.
+
+Old direction note (kept for context): audience = live incident triage; build order was #1 → #2 → #3.
+
+**Earlier task — UI value-add feature 1 of 3 (superseded by the summary above):** Direction set with the user: audience = live incident triage; build (1) health-colored
 topology, (2) latency histogram + heatmap, (3) aggregate flamegraph per endpoint; hand-rolled SVG
 (no chart dep). **#1 shipped:** new pure `packages/ui/src/lib/topology-health.ts` (`topologyHealth()`
 → per-node/edge `ok|warn|error` from error rate + latency-vs-median; tunable `DEFAULT_THRESHOLDS`;

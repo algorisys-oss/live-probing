@@ -281,6 +281,12 @@ export function createServer(opts: ServerOptions = {}): LiveProbeServer {
           distribution: store.endpointDistribution(day, endpoint),
         });
       }
+      if (req.method === "GET" && /^\/api\/day\/[^/]+\/flamegraph$/.test(path)) {
+        const day = decodeURIComponent(path.split("/")[3]!);
+        const endpoint = url.searchParams.get("endpoint");
+        if (!endpoint) return json(res, 400, { error: "endpoint_required" });
+        return json(res, 200, { flame: store.endpointFlamegraph(day, endpoint) });
+      }
       if (req.method === "GET" && path === "/api/search") {
         const q = url.searchParams;
         const errParam = q.get("error");

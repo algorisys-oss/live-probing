@@ -19,6 +19,7 @@ export {
   type SequenceGroup,
 } from "./sequence-layout.js";
 export { criticalPath } from "./critical-path.js";
+export { aggregateFlamegraph, type FlameNode, type FlameSpan } from "./flamegraph.js";
 export {
   latencyBucketIndex,
   LATENCY_EDGES_MICROS,

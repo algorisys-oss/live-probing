@@ -1,6 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import type { AssembledTrace, Event } from "@liveprobe/core";
 import { LATENCY_EDGES_MICROS, NUM_LATENCY_BUCKETS } from "@liveprobe/core";
+import { aggregateFlamegraph, type FlameNode } from "@liveprobe/core";
 import { detail, summarize, type TraceDetail, type TraceSummary } from "./summary.js";
 
 export interface ErrorGroup {
@@ -325,6 +326,23 @@ export class HistoryStore {
       .sort((a, b) => a[0] - b[0])
       .map(([minute, counts]) => ({ minute, counts }));
     return { histogram, heatmap };
+  }
+
+  // Aggregate flamegraph for one endpoint on a day: fold the most recent N traces of that root
+  // operation into a single tree of where time goes (total/self per operation path). Bounded by
+  // `limit` so a hot endpoint doesn't assemble the whole day on one click.
+  endpointFlamegraph(day: string, endpoint: string, limit = 150): FlameNode {
+    const rows = this.db
+      .prepare(
+        "SELECT trace_id FROM traces WHERE day = ? AND root_operation = ? ORDER BY start_time DESC LIMIT ?",
+      )
+      .all(day, endpoint, limit);
+    const traces = [];
+    for (const r of rows) {
+      const d = this.getDetail(String(r["trace_id"]));
+      if (d) traces.push(d.spans); // SpanRow satisfies FlameSpan structurally
+    }
+    return aggregateFlamegraph(traces);
   }
 
   // Search across all persisted traces. Every filter is optional and ANDed together.

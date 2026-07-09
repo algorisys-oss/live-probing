@@ -143,3 +143,12 @@ export interface LatencyDistribution {
   histogram: number[]; // count per latency bucket (length NUM_LATENCY_BUCKETS)
   heatmap: { minute: number; counts: number[] }[]; // per-minute bucket counts
 }
+
+export interface FlameNode {
+  operation: string;
+  participant: string;
+  totalMicros: number;
+  selfMicros: number;
+  count: number;
+  children: FlameNode[];
+}

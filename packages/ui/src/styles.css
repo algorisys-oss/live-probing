@@ -1521,6 +1521,41 @@ body {
   stroke-width: 1;
 }
 
+/* aggregate flamegraph (day page) */
+.flame {
+  width: 100%;
+  height: auto;
+}
+.flame-cell {
+  cursor: default;
+}
+.flame-cell:hover rect {
+  stroke: var(--text);
+  stroke-width: 1;
+}
+.flame-label {
+  fill: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.35);
+  stroke-width: 2px;
+  stroke-linejoin: round;
+}
+.flame-hover {
+  margin-top: 8px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+/* Six theme-neutral mid-tone hues; the same service keeps its color across the chart. */
+.flame-c0 { fill: #3b82f6; }
+.flame-c1 { fill: #a855f7; }
+.flame-c2 { fill: #14b8a6; }
+.flame-c3 { fill: #f59e0b; }
+.flame-c4 { fill: #ec4899; }
+.flame-c5 { fill: #22c55e; }
+
 .search-input-wide {
   min-width: 300px;
   flex: 1;

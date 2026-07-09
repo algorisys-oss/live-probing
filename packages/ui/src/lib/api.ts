@@ -2,6 +2,7 @@ import type {
   DayInfo,
   DaySummary,
   ErrorGroup,
+  FlameNode,
   LatencyBucket,
   LatencyDistribution,
   ServiceDetail,
@@ -86,6 +87,12 @@ export function fetchEndpointLatency(
 ): Promise<{ buckets: LatencyBucket[]; distribution: LatencyDistribution }> {
   return getJson<{ buckets: LatencyBucket[]; distribution: LatencyDistribution }>(
     `/api/day/${encodeURIComponent(date)}/latency?endpoint=${encodeURIComponent(endpoint)}`,
+  );
+}
+
+export function fetchEndpointFlamegraph(date: string, endpoint: string): Promise<{ flame: FlameNode }> {
+  return getJson<{ flame: FlameNode }>(
+    `/api/day/${encodeURIComponent(date)}/flamegraph?endpoint=${encodeURIComponent(endpoint)}`,
   );
 }
 
