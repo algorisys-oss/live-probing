@@ -26,8 +26,10 @@ on the LiveProbe server (default `:4319`):
 | `POST /v1/traces` | **OTLP/JSON** spans | Anything OpenTelemetry-instrumented (the main path) |
 | `POST /v1/events` | Pre-normalized `{ "events": [...] }` | Custom formats via the collector adapter; hand-rolled tests |
 
-Both accept plain or gzipped JSON, and CORS is wide open (`access-control-allow-origin: *`),
-so browsers can post directly.
+Both accept plain or gzipped JSON. Server-to-server posts (collectors, SDKs, curl) need no
+special handling. For a **browser** posting directly, CORS is reflected only for loopback origins
+by default — allow your app's origin with `CORS_ORIGINS` (see the reverse-proxy notes in the
+README).
 
 ## The one fact that shapes every integration
 

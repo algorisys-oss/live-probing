@@ -259,7 +259,10 @@ Environment variables (set in `.env` or the shell): `PORT` (default 4319), `RETE
 `LIVE_WINDOW_MINUTES` (default 5 — the live real-time streaming window) and `MAX_TRACES`
 (default 2000 — live in-memory trace cap), `COLLECTOR_PORT` (default 4320), `OTEL_GRPC_PORT` /
 `OTEL_HTTP_PORT` (defaults 4317 / 4318). Tear down with `docker compose down` (add `-v` to drop
-history).
+history). Network/security: `HOST` (default `127.0.0.1` — set `0.0.0.0` to expose to other
+containers or a reverse proxy), `CORS_ORIGINS` (comma-separated browser origins allowed for CORS
+and the live WebSocket, beyond loopback), `MASK_PII` (`off` disables the built-in PII/secret
+scrubbing). See [Behind a reverse proxy](#behind-a-reverse-proxy-tls--basic-auth).
 
 When LiveProbe runs in Docker and your app stack is in a separate compose project, point the
 app's OTel collector at `http://<liveprobe-host>:4319` (or join both stacks on a shared Docker
@@ -382,6 +385,10 @@ PORT=4319
 RETENTION_DAYS=30
 # LIVE_WINDOW_MINUTES=5   # live real-time streaming window
 # MAX_TRACES=2000         # live in-memory trace cap
+# behind a reverse proxy (see the section below):
+# HOST=0.0.0.0                                # expose beyond loopback
+# CORS_ORIGINS=https://liveprobe.example.com  # exact browser origin(s) for CORS + WebSocket
+# MASK_PII=off            # disable built-in PII/secret masking (not recommended)
 # optional profiles:
 # COLLECTOR_PORT=4320
 # OTEL_GRPC_PORT=4317
@@ -400,6 +407,75 @@ docker compose --profile otel up -d        # OTel collector on :4317/:4318 -> Li
 
 Point instrumented apps at `http://<your-server>:4318` (OTel HTTP) or
 `http://<your-server>:4319/v1/traces` (OTLP/JSON direct to LiveProbe).
+
+### Behind a reverse proxy (TLS + basic auth)
+
+LiveProbe has no auth of its own and binds `127.0.0.1` by default, so the usual production
+shape is nginx terminating TLS + HTTP basic auth in front of it. Two things trip people up — the
+**WebSocket** and LiveProbe's **origin check** — so both are spelled out here.
+
+**1. LiveProbe env** — expose it to the proxy and allow the public origin:
+
+```bash
+HOST=0.0.0.0                               # bind all interfaces so nginx can reach it
+CORS_ORIGINS=https://liveprobe.example.com # the EXACT browser origin (see note below)
+```
+
+`CORS_ORIGINS` must match the `Origin` the browser sends, character for character: scheme +
+host + port, **no trailing slash, no path**. Include the port if you serve on a non-standard one
+(`https://liveprobe.example.com:4321` is a *different* origin from `https://liveprobe.example.com`).
+The live WebSocket upgrade is refused server-side unless its origin is loopback or listed here —
+this is the #1 reason the feed stays blank behind a proxy.
+
+**2. nginx** — proxy the WebSocket upgrade, and do **not** put basic auth on `/ws`:
+
+```nginx
+server {
+    listen 443 ssl;                        # or another port; then use it in CORS_ORIGINS
+    server_name liveprobe.example.com;
+    # ... certbot TLS lines ...
+
+    # UI + API: basic auth here is fine (normal requests carry cached credentials).
+    location / {
+        auth_basic           "LiveProbe";
+        auth_basic_user_file /etc/nginx/.htpasswd;
+        proxy_pass           http://127.0.0.1:4319;
+        proxy_set_header     Host $http_host;
+        proxy_set_header     X-Forwarded-Proto $scheme;
+    }
+
+    # Live WebSocket: NO basic auth — a browser can't send an auth header on the WS
+    # handshake, so basic auth here means a failed upgrade and an auth prompt on every
+    # route change. Protect it with an IP allow-list instead if you need to.
+    location /ws {
+        auth_basic         off;
+        proxy_pass         http://127.0.0.1:4319;
+        proxy_http_version 1.1;
+        proxy_set_header   Upgrade $http_upgrade;
+        proxy_set_header   Connection "upgrade";
+        proxy_set_header   Host $http_host;
+        proxy_read_timeout 86400;          # keep the long-lived socket open
+    }
+
+    # Ingest from a remote instrumented app (algo/native/OTLP through the collector on :4320).
+    # Lock it to the sending host; it must bypass basic auth (the emitter can't authenticate).
+    location /v1/event/ {
+        allow 203.0.113.10;                # your app's egress IP
+        deny  all;
+        proxy_pass         http://127.0.0.1:4320;
+        proxy_http_version 1.1;
+        proxy_set_header   Host $http_host;
+        client_max_body_size 5m;
+    }
+}
+```
+
+`auth_basic off` on `/ws` is the fix for both a dead feed **and** repeated auth prompts. The
+trade-off: the read-only trace stream is then reachable by any client that can hit the port
+(LiveProbe's origin check stops other *browsers*, not a direct client). For a private/staging
+box that's usually fine; add an `allow <ip>; deny all;` to the `/ws` block to lock it to known
+operator IPs. Keep the `auth_basic` **realm string identical** across locations — differing
+realms re-prompt on their own.
 
 ### Manual deploy steps
 
@@ -423,6 +499,8 @@ to pick it up (or let the script do that for you).
 | `ssh connect failed`                               | Check host, port, key, and that the user exists                                                  |
 | `remote docker compose up failed`                  | SSH in and run `docker compose logs`; confirm Docker works for that user                         |
 | UI loads but no traces                             | Open firewall for OTLP (4318/4319); point your app's `OTEL_EXPORTER_OTLP_ENDPOINT` at the server |
+| Live feed blank behind a proxy / WS won't connect  | Set `CORS_ORIGINS` to the exact browser origin (with port), and proxy the WS upgrade in nginx    |
+| Auth prompt on every route change (basic auth)     | Remove `auth_basic` from the `/ws` location — a browser can't authenticate the WS handshake      |
 
 The remote host does **not** need the git repo or Node.js — only Docker, the compose file,
 the collector config, and the loaded image.

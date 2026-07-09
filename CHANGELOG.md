@@ -3,6 +3,15 @@
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
 ## [2026-07-09]
+- **Docs: reverse-proxy (TLS + basic auth) deployment recipe.** Running LiveProbe behind nginx broke
+  the live WebSocket two ways: the server's origin check (from the hardening commit) refuses a WS
+  upgrade whose `Origin` isn't loopback or in `CORS_ORIGINS`, and basic auth on the `/ws` location
+  makes the handshake fail and re-prompt on every route change (a browser can't authenticate a WS
+  handshake). Added a "Behind a reverse proxy" section to the README (exact-origin `CORS_ORIGINS`,
+  `HOST=0.0.0.0`, an nginx block that proxies the WS upgrade and keeps `auth_basic off` on `/ws`),
+  surfaced `HOST`/`CORS_ORIGINS`/`MASK_PII` in the env tables, added two troubleshooting rows, and
+  corrected the stale "CORS is `*`" claim in `docs/integrating-your-app.md`. Docs only — no code
+  change; `HOST` and `CORS_ORIGINS` already exist from the hardening commit.
 - **Docs: revised `LOOPS.md` — tightened, de-drifted, made project-agnostic (new or migration).**
   Kept every rule numeral (so `CLAUDE.md`'s references stay valid) and reworded in place. Reframed
   three rules that fought a git workflow: XXIII (backup files → "stay recoverable" via VCS), XXVI

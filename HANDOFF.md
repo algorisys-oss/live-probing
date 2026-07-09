@@ -5,7 +5,18 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-**Docs: revised `LOOPS.md`** — tightened prose, made it project-agnostic (greenfield or migration),
+**Docs: reverse-proxy (TLS + basic auth) deployment recipe.** A real deploy (tme.qubefini.com:4321,
+nginx + basic auth) had a dead live feed + an auth prompt on every route change. Two causes: (1) the
+server's WS origin check (hardening commit, `server.ts` `originAllowed`) refuses an upgrade whose
+`Origin` isn't loopback or in `CORS_ORIGINS` — so set `CORS_ORIGINS` to the **exact** browser origin
+including the non-default port; (2) `auth_basic` on the nginx `/ws` location — a browser can't send
+an auth header on the WS handshake, so it 401s and the client's backoff reconnect re-prompts. Fix is
+config-only: `HOST=0.0.0.0` + `CORS_ORIGINS=https://tme.qubefini.com:4321` in LiveProbe env, and
+`auth_basic off;` on the nginx `/ws` block (keep the WS upgrade headers). **No code change** —
+`HOST`/`CORS_ORIGINS` already exist. Documented in the README "Behind a reverse proxy" section
+(+ env tables, troubleshooting rows) and a corrected CORS line in `docs/integrating-your-app.md`.
+
+Earlier — **Docs: revised `LOOPS.md`** — tightened prose, made it project-agnostic (greenfield or migration),
 and folded in the Bun Zig→Rust migration lessons. Rule numerals are unchanged, so `CLAUDE.md`'s
 by-number references still resolve. Reframed XXIII (VCS recovery, not `.backup` files), XXVI (rolling
 handoff doc, not a per-response footer), and XII (breakable-behavior coverage, not an 80% floor);
