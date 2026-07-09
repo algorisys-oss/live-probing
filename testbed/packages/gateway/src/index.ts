@@ -3,12 +3,19 @@ import {
   start,
   env,
   envInt,
+  resilientFetch,
+  policyFromEnv,
   type FastifyReply,
   type FastifyRequest,
 } from "@shopwave/shared";
 
 async function main(): Promise<void> {
   const app = createServer();
+
+  // Resilience for the gateway's fan-out to downstream services (default off). GATEWAY_RESILIENCE_*
+  // turns on timeout/retry/breaker so a slow or failing downstream is retried and, if it stays
+  // down, shed — both visible in LiveProbe.
+  const resilience = policyFromEnv("GATEWAY_RESILIENCE");
 
   // Open CORS: the SPA is served from a different origin than the gateway. Fine for a
   // local testbed; a real deployment would allowlist origins.
@@ -36,11 +43,15 @@ async function main(): Promise<void> {
     if (opts.body !== undefined) headers["content-type"] = "application/json";
     if (opts.userId) headers["x-user-id"] = opts.userId;
 
-    const res = await fetch(url, {
-      method: opts.method ?? "GET",
-      headers,
-      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
-    });
+    const res = await resilientFetch(
+      url,
+      {
+        method: opts.method ?? "GET",
+        headers,
+        body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+      },
+      resilience,
+    );
     const text = await res.text();
     reply.code(res.status);
     reply.header("content-type", res.headers.get("content-type") ?? "application/json");
@@ -58,7 +69,7 @@ async function main(): Promise<void> {
       reply.code(401).send({ error: "unauthorized" });
       return null;
     }
-    const res = await fetch(`${authUrl}/verify`, { headers: { authorization } });
+    const res = await resilientFetch(`${authUrl}/verify`, { headers: { authorization } }, resilience);
     if (!res.ok) {
       reply.code(401).send({ error: "unauthorized" });
       return null;

@@ -1,4 +1,4 @@
-import { createServer, start, connectRabbit, envInt, RoutingKeys, type OrderCreated } from "@shopwave/shared";
+import { createServer, start, connectRabbit, envInt, RoutingKeys, applyFault, faultFromEnv, faultActive, type OrderCreated } from "@shopwave/shared";
 import { runSaga } from "./saga.js";
 import { initDb } from "./db.js";
 import { OrderRepo, type OrderItem } from "./repo.js";
@@ -31,7 +31,14 @@ async function main(): Promise<void> {
   // so these updates stay linked to the originating checkout.
   await runSaga(rabbit, repo);
 
+  // Demo chaos (default off): make order a flaky/slow dependency so cart→order goes red and the
+  // caller's retries + circuit breaker kick in. Configured via ORDER_FAULT_* env.
+  const fault = faultFromEnv("ORDER_FAULT");
+  if (faultActive(fault)) app.log.warn({ fault }, "order fault injection ACTIVE");
+
   app.post<{ Body: CreateOrderBody }>("/orders", async (req, reply) => {
+    // Fault before any DB work so a failed request never leaves a half-written order.
+    await applyFault(fault);
     const body = req.body;
     const items = body.items;
     if (typeof body.userId !== "string" || !Array.isArray(items) || items.length === 0 || !items.every(isItem)) {

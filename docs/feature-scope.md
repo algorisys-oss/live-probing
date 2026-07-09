@@ -81,9 +81,15 @@ heatmap, aggregate flamegraph) shipped 2026-07-09. Several items below build dir
 - Proves the polyglot-via-OTLP MVP claim; renders identically through the collector. Touches
   `testbed/` + compose only, not LiveProbe core.
 
-### 4b. More failure modes — **M**
+### 4b. More failure modes — **M** — ✅ DONE (2026-07-09)
 - Timeouts, retries, circuit-breaking, a slow dependency — makes the health/alert features demo-able
   with real red/amber. `testbed/` only.
+- **Shipped:** two shared modules (env-gated, default off) — `chaos.ts` (`applyFault` — latency +
+  error injection) and `resilient.ts` (`resilientFetch` — per-attempt timeout, backoff retries,
+  per-host circuit breaker); 22 tests. Faults injected in catalog (slow reads) + order (flaky
+  `POST /orders`); resilience wraps cart→{catalog,order} and gateway→downstream. `docker-compose.chaos.yml`
+  is a curated scenario, `./dev-start.sh --chaos` turns it on. Verified live: order error alert +
+  latency alerts fire, `cart→order` goes red, catalog p95 ~1.5s.
 
 ## Group 5 — Packaging / adoption
 

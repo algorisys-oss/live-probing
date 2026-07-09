@@ -1,4 +1,4 @@
-import type { Redis, Product } from "@shopwave/shared";
+import { resilientFetch, NO_RESILIENCE, type Redis, type Product, type ResiliencePolicy } from "@shopwave/shared";
 
 const cartKey = (userId: string) => `cart:${userId}`;
 
@@ -18,9 +18,14 @@ export interface CartView {
 
 // Fetches a single product from catalog. Catalog wraps the product in
 // { product, cache }, and returns 404 for unknown ids. The fetch keeps catalog
-// on the trace via HTTP-client instrumentation.
-async function fetchProduct(catalogUrl: string, id: string): Promise<Product | null> {
-  const res = await fetch(`${catalogUrl}/products/${encodeURIComponent(id)}`);
+// on the trace via HTTP-client instrumentation. `policy` (default off) adds
+// timeout/retry/breaker so a slow or flaky catalog is handled resiliently.
+async function fetchProduct(
+  catalogUrl: string,
+  id: string,
+  policy: ResiliencePolicy = NO_RESILIENCE,
+): Promise<Product | null> {
+  const res = await resilientFetch(`${catalogUrl}/products/${encodeURIComponent(id)}`, {}, policy);
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`catalog ${res.status} for product ${id}`);
   const body = (await res.json()) as { product: Product };
@@ -33,13 +38,14 @@ export async function getCart(
   redis: Redis,
   catalogUrl: string,
   userId: string,
+  policy: ResiliencePolicy = NO_RESILIENCE,
 ): Promise<CartView> {
   const hash = await redis.hgetall(cartKey(userId));
   const items: CartItem[] = [];
   let totalCents = 0;
 
   for (const [productId, rawQty] of Object.entries(hash)) {
-    const product = await fetchProduct(catalogUrl, productId);
+    const product = await fetchProduct(catalogUrl, productId, policy);
     if (!product) continue;
     const quantity = Number.parseInt(rawQty, 10);
     const lineTotalCents = product.priceCents * quantity;

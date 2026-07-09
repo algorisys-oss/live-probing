@@ -1,4 +1,6 @@
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
+import { InjectedFault } from "./chaos.js";
+import { CircuitOpenError } from "./resilient.js";
 
 export type { FastifyInstance, FastifyReply, FastifyRequest };
 
@@ -9,6 +11,22 @@ export function createServer(): FastifyInstance {
     },
     // OpenTelemetry's HTTP instrumentation manages the request id / trace context.
     disableRequestLogging: false,
+  });
+
+  // Map the testbed's deliberate faults to clean HTTP statuses so a handler only has to
+  // `await applyFault(...)` (chaos) and a caller can just let a shed call throw (breaker), with
+  // no try/catch at every site. When chaos is off these are never thrown, so the default
+  // Fastify error handling is unaffected.
+  app.setErrorHandler((err, _req, reply) => {
+    if (err instanceof InjectedFault) {
+      return reply.code(err.statusCode).send({ error: "injected_fault" });
+    }
+    if (err instanceof CircuitOpenError) {
+      return reply.code(err.statusCode).send({ error: "circuit_open" });
+    }
+    reply.log.error(err);
+    const e = err as { statusCode?: number; message?: string };
+    return reply.code(e.statusCode ?? 500).send({ error: e.message || "internal_error" });
   });
 
   app.get("/healthz", async () => ({ status: "ok" }));

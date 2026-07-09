@@ -186,7 +186,7 @@ items: **S** = hours, **M** = ~a day, **L** = multi-day.
 
 ### F. Testbed realism
 - [ ] A Python (or Go) service — prove polyglot-via-OTLP renders identically **M**
-- [ ] More failure modes (timeouts, retries, circuit-breaking, slow dependency) **M**
+- [x] More failure modes (timeouts, retries, circuit-breaking, slow dependency) **M** — shared `chaos.ts` + `resilient.ts` (default off), injected in catalog/order, wrapped cart/gateway; `docker-compose.chaos.yml` + `./dev-start.sh --chaos`; 22 tests (2026-07-09)
 
 ### G. Deployment & Docker
 - [x] **Docker deployment** (merged PR) — multi-stage `Dockerfile`, `docker-compose.yml`

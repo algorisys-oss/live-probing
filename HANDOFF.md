@@ -5,7 +5,28 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-**Dependency matrix — caller×callee adjacency heatmap (scope item 3b).** A second projection of the
+**Testbed failure modes — demoable red/amber (scope item 4b, testbed-only).** The Shopwave testbed
+ran all-green, so LiveProbe's health/alert/matrix views had nothing to show in a live demo. Added
+two shared modules (`testbed/packages/shared/src/`), both **env-gated and default off** so the
+testbed is unchanged without config:
+- `chaos.ts` — `applyFault(faultFromEnv(prefix))`: probabilistic latency + error injection;
+  `InjectedFault` is mapped to its HTTP status by a new shared `createServer` error handler.
+- `resilient.ts` — `resilientFetch(url, init, policy)`: per-attempt `AbortController` timeout,
+  exponential-backoff retries (retries 5xx/transport, never 4xx), per-host circuit breaker
+  (`CircuitOpenError` → 503). `policyFromEnv(prefix)`; `resetBreakers()` for tests.
+
+Faults injected in **catalog** (slow `/products*`) + **order** (flaky `POST /orders`); resilience
+wraps **cart→{catalog,order}** (`CART_RESILIENCE_*`) and **gateway→downstream** (`GATEWAY_RESILIENCE_*`).
+`testbed/docker-compose.chaos.yml` is a curated scenario and **`./dev-start.sh --chaos`** layers it
+on (also wired into the static path). **22 new tests** (`chaos.test.ts` + `resilient.test.ts` via a
+new `testbed/package.json` `test` script — the testbed had no runner); testbed typecheck clean.
+**Verified live** against the running dev-mounted testbed under chaos: direct catalog probe = 35%
+slow at ~1.5-2s; LiveProbe WS showed the **`order` error-rate alert** + latency alerts firing,
+`cart→order` red (11%), catalog/cart p95 up to ~2.9s — then **restored the testbed to baseline**
+(chaos is opt-in, so I recreated catalog/order/cart/gateway without the overlay). No LiveProbe
+product code changed. Next scoped items: 3a error-rate timeline, 3c small viz, or Group 5 packaging.
+
+Prior — **Dependency matrix — caller×callee adjacency heatmap (scope item 3b).** A second projection of the
 live window for when the node-link graph gets too dense. New pure `packages/ui/src/lib/dependency-matrix.ts`
 (`dependencyMatrix(topology)` → rows = callers, cols = callees, one `MatrixCell` per observed edge
 with health from `topologyHealth`; `cellKey()` for O(1) lookup; 6 tests). New hand-rolled SVG

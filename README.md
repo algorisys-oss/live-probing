@@ -156,6 +156,18 @@ For a demo / non-dev run, build the UI once and serve it statically from the ser
 ./dev-start.sh --static   # then open http://localhost:4319
 ```
 
+To make the health colouring, RED tiles, alerts, and dependency matrix show **real red/amber**,
+inject failure modes into the testbed (a slow catalog, a flaky order service, client-side retries
+and a circuit breaker):
+
+```bash
+./dev-start.sh --chaos    # combine with any mode; see testbed/docker-compose.chaos.yml
+```
+
+Every fault knob is env-gated and off by default, so without `--chaos` the testbed runs all-green.
+The scenario and the `CATALOG_FAULT_*` / `ORDER_FAULT_*` / `CART_RESILIENCE_*` / `GATEWAY_RESILIENCE_*`
+vars are documented in [testbed/docker-compose.chaos.yml](testbed/docker-compose.chaos.yml).
+
 To run **only the LiveProbe server** (UI + ingest, no testbed) — e.g. on a machine where a
 real app is the trace source:
 

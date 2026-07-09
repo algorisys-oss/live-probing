@@ -3,6 +3,20 @@
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
 ## [2026-07-09]
+- **Testbed failure modes for demoable red/amber (scope item 4b, TDD; testbed-only).** The Shopwave
+  testbed ran all-green, so LiveProbe's health colouring / RED tiles / alerts / dependency matrix had
+  nothing to show. Added two shared modules, both env-gated and **default off** (no config = the
+  testbed behaves exactly as before): `chaos.ts` (`applyFault` — probabilistic latency + error
+  injection, `InjectedFault` mapped to an HTTP status by the shared error handler) and `resilient.ts`
+  (`resilientFetch` — per-attempt `AbortController` timeout, exponential-backoff retries, per-host
+  circuit breaker; `CircuitOpenError` → 503). Faults injected in **catalog** (slow product reads) and
+  **order** (flaky `POST /orders`); resilience wraps **cart→{catalog,order}** and **gateway→downstream**.
+  `docker-compose.chaos.yml` is a curated scenario (slow catalog, 35% order failures, cart retries +
+  breaker) and `./dev-start.sh --chaos` layers it on. **22 tests** (chaos + resilient, incl. breaker
+  open/half-open/per-host, retry-on-5xx-not-4xx, timeout-abort). Typecheck clean. Verified live against
+  the running testbed under chaos: the `order` error-rate alert + latency alerts fire, `cart→order`
+  goes red (11%), catalog p95 ~1.5s — then restored the testbed to baseline (chaos is opt-in). New
+  `testbed/package.json` `test` script (node:test) since the testbed had no runner.
 - **Dependency matrix — caller×callee adjacency heatmap (scope item 3b, TDD).** A second projection
   of the live window that scales past the point where the node-link graph turns to spaghetti. New
   pure `ui/lib/dependency-matrix.ts` (`dependencyMatrix()`: rows = services that make calls, cols =

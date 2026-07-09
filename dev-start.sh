@@ -12,6 +12,9 @@
 #                       No hot reload (good for a demo / just using it).
 #   ./dev-start.sh --no-load  Don't start the traffic generator.
 #   ./dev-start.sh --no-build (static mode only) Reuse the existing UI build.
+#   ./dev-start.sh --chaos    Inject failure modes (slow catalog, flaky order, retries + circuit
+#                             breaking) so LiveProbe's health/alert views show real red/amber.
+#                             See testbed/docker-compose.chaos.yml. Combine with any mode.
 #
 # The foreground process is the LiveProbe server; Ctrl-C stops it (and, in watch mode, the
 # UI dev server). The Docker stack keeps running — stop it all with ./dev-stop.sh.
@@ -26,15 +29,24 @@ UI_DEV_PORT="${UI_DEV_PORT:-5173}"
 WATCH=1
 DO_BUILD=1
 DO_LOAD=1
+CHAOS=0
 for arg in "$@"; do
   case "$arg" in
     --watch) WATCH=1 ;;                 # default; kept for back-compat
     --static | --build) WATCH=0 ;;      # build the UI and serve it statically
     --no-build) DO_BUILD=0 ;;
     --no-load) DO_LOAD=0 ;;
+    --chaos) CHAOS=1 ;;                 # inject failure modes (see testbed/docker-compose.chaos.yml)
     *) echo "unknown option: $arg" >&2; exit 1 ;;
   esac
 done
+
+# Optional chaos overlay: adds the fault/resilience env so LiveProbe shows real red/amber.
+CHAOS_FILE=()
+if [[ "$CHAOS" == "1" ]]; then
+  CHAOS_FILE=(-f docker-compose.chaos.yml)
+  echo "==> CHAOS mode: injecting failure modes (slow catalog, flaky order, retries + breaker)"
+fi
 
 echo "==> Installing LiveProbe dependencies"
 npm install --silent
@@ -45,9 +57,9 @@ if [[ "$WATCH" == "1" ]]; then
   echo "==> WATCH mode: hot reload for UI, server, and testbed"
 
   echo "==> Starting the testbed under tsx watch (docker)"
-  ( cd testbed && docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build )
+  ( cd testbed && docker compose -f docker-compose.yml -f docker-compose.dev.yml "${CHAOS_FILE[@]}" up -d --build )
   if [[ "$DO_LOAD" == "1" ]]; then
-    ( cd testbed && docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile load up -d loadgen )
+    ( cd testbed && docker compose -f docker-compose.yml -f docker-compose.dev.yml "${CHAOS_FILE[@]}" --profile load up -d loadgen )
   fi
 
   echo "==> Starting the LiveProbe UI dev server (Vite HMR)"
@@ -87,11 +99,11 @@ else
 fi
 
 echo "==> Starting the Shopwave testbed (Docker; first run builds images)"
-( cd testbed && docker compose up -d --build )
+( cd testbed && docker compose -f docker-compose.yml "${CHAOS_FILE[@]}" up -d --build )
 
 if [[ "$DO_LOAD" == "1" ]]; then
   echo "==> Starting the traffic generator"
-  ( cd testbed && docker compose --profile load up -d loadgen )
+  ( cd testbed && docker compose -f docker-compose.yml "${CHAOS_FILE[@]}" --profile load up -d loadgen )
 fi
 
 sleep 1

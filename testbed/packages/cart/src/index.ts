@@ -1,4 +1,13 @@
-import { createServer, start, createRedis, env, envInt, type FastifyReply } from "@shopwave/shared";
+import {
+  createServer,
+  start,
+  createRedis,
+  env,
+  envInt,
+  resilientFetch,
+  policyFromEnv,
+  type FastifyReply,
+} from "@shopwave/shared";
 import { getCart, fetchProduct, cartKey } from "./cart.js";
 
 async function main(): Promise<void> {
@@ -6,6 +15,10 @@ async function main(): Promise<void> {
   const redis = createRedis();
   const catalogUrl = env("CATALOG_URL", "http://localhost:3002");
   const orderUrl = env("ORDER_URL", "http://localhost:3004");
+  // Resilience for cart's outbound calls to catalog + order (default off). When a fault is
+  // injected downstream, CART_RESILIENCE_* turns on retries/timeout/breaker — retries show as
+  // repeated spans in LiveProbe, a tripped breaker sheds load off the sick service.
+  const resilience = policyFromEnv("CART_RESILIENCE");
 
   // The gateway authenticates and forwards the user via x-user-id. Missing it
   // means the request never passed auth, so reject before touching Redis.
@@ -22,7 +35,7 @@ async function main(): Promise<void> {
   app.get("/cart", async (req, reply) => {
     const userId = requireUser(req, reply);
     if (!userId) return reply;
-    return getCart(redis, catalogUrl, userId);
+    return getCart(redis, catalogUrl, userId, resilience);
   });
 
   app.post<{ Body: { productId?: unknown; quantity?: unknown } }>(
@@ -42,13 +55,13 @@ async function main(): Promise<void> {
         return reply.code(400).send({ error: "invalid_input" });
       }
 
-      const product = await fetchProduct(catalogUrl, productId);
+      const product = await fetchProduct(catalogUrl, productId, resilience);
       if (!product) {
         return reply.code(404).send({ error: "product_not_found" });
       }
 
       await redis.hincrby(cartKey(userId), productId, quantity);
-      return getCart(redis, catalogUrl, userId);
+      return getCart(redis, catalogUrl, userId, resilience);
     },
   );
 
@@ -58,7 +71,7 @@ async function main(): Promise<void> {
       const userId = requireUser(req, reply);
       if (!userId) return reply;
       await redis.hdel(cartKey(userId), req.params.productId);
-      return getCart(redis, catalogUrl, userId);
+      return getCart(redis, catalogUrl, userId, resilience);
     },
   );
 
@@ -74,18 +87,22 @@ async function main(): Promise<void> {
     const items: Array<{ productId: string; quantity: number; priceCents: number }> = [];
     let totalCents = 0;
     for (const [productId, rawQty] of Object.entries(hash)) {
-      const product = await fetchProduct(catalogUrl, productId);
+      const product = await fetchProduct(catalogUrl, productId, resilience);
       if (!product) continue;
       const quantity = Number.parseInt(rawQty, 10);
       totalCents += product.priceCents * quantity;
       items.push({ productId, quantity, priceCents: product.priceCents });
     }
 
-    const res = await fetch(`${orderUrl}/orders`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ userId, items, totalCents, currency: "USD" }),
-    });
+    const res = await resilientFetch(
+      `${orderUrl}/orders`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ userId, items, totalCents, currency: "USD" }),
+      },
+      resilience,
+    );
 
     const body = await res.text();
     if (!res.ok) {
