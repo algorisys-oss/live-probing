@@ -5,7 +5,21 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-**Alerting — outbound webhook (completes scope item 2).** The deferred second half of the alerting
+**Dependency matrix — caller×callee adjacency heatmap (scope item 3b).** A second projection of the
+live window for when the node-link graph gets too dense. New pure `packages/ui/src/lib/dependency-matrix.ts`
+(`dependencyMatrix(topology)` → rows = callers, cols = callees, one `MatrixCell` per observed edge
+with health from `topologyHealth`; `cellKey()` for O(1) lookup; 6 tests). New hand-rolled SVG
+`packages/ui/src/components/dependency-matrix.tsx` — rotated callee headers, a **calls/errors/latency**
+metric toggle, cell **color = health** + **opacity = traffic**, header/cell click → service page,
+tooltip with counts. A **Graph | Matrix** segmented toggle in `pages/live-page.tsx` swaps the views
+(both honor the service filter). Added missing `.flow-legend-ok` (green) CSS. **No server change.**
+**121 unit green**, typecheck + UI build clean. Verified headless (built UI on an isolated :4418
+`:memory:` server, seeded 7-service/6-edge traffic → 6 cells, 3 caller rows × 6 callee cols, exactly
+1 error (`gateway→order` 15%) + 1 slow amber (`gateway→reports` 40ms) + 4 healthy, latency metric
+view, column-header click → `/service/order`, zero console errors; screenshots). Next scoped items:
+3a error-rate timeline, 3c small viz (D2 export / side-by-side waterfalls), or Group 4 testbed realism.
+
+Prior — **Alerting — outbound webhook (completes scope item 2).** The deferred second half of the alerting
 feature. New `packages/server/src/alert-webhook.ts` (`createWebhookNotifier`): POSTs one JSON body
 (`{event:"alert.firing", firedAt, alert}`) each time an alert crosses **inactive→active**, with a
 per-attempt AbortController timeout, exponential-backoff retries, and a **per-alert-id cooldown**

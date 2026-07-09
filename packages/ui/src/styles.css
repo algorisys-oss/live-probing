@@ -534,11 +534,117 @@ body {
   border-radius: 2px;
   background: var(--border-strong);
 }
+.flow-legend-ok {
+  background: var(--live);
+}
 .flow-legend-warn {
   background: var(--new);
 }
 .flow-legend-error {
   background: var(--error);
+}
+
+/* --- segmented toggle (live view switch, matrix metric) --- */
+.seg-btn {
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  text-transform: capitalize;
+}
+.seg-btn:hover {
+  color: var(--text);
+}
+.seg-btn-active {
+  color: var(--text);
+  background: var(--bg-elevated);
+  box-shadow: 0 0 0 1px var(--border-strong);
+}
+.live-view-toggle,
+.depmatrix-metric {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+}
+.live-view-toggle {
+  margin-left: auto; /* push the graph/matrix switch to the toolbar's right edge */
+}
+
+/* --- dependency matrix (caller×callee adjacency heatmap) --- */
+.depmatrix {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  position: relative;
+}
+.depmatrix-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 2px 8px;
+}
+.depmatrix-caption {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.depmatrix-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.depmatrix-svg {
+  display: block;
+}
+.depmatrix-collabel,
+.depmatrix-rowlabel {
+  font-size: 11px;
+  fill: var(--text-dim);
+}
+.depmatrix-collabel {
+  text-anchor: start;
+}
+.depmatrix-collabel.clickable,
+.depmatrix-rowlabel.clickable {
+  fill: var(--text);
+  cursor: pointer;
+}
+.depmatrix-collabel.clickable:hover,
+.depmatrix-rowlabel.clickable:hover {
+  fill: var(--accent);
+  text-decoration: underline;
+}
+.depmatrix-empty {
+  fill: var(--bg-elevated);
+  opacity: 0.5;
+}
+.depmatrix-cell.clickable {
+  cursor: pointer;
+}
+.depmatrix-cell rect {
+  transition: opacity 0.2s ease;
+}
+.depmatrix-cell.clickable:hover rect {
+  stroke: var(--text);
+  stroke-width: 1.5;
+}
+.depmatrix-cell-text {
+  font-size: 9px;
+  fill: #fff;
+  text-anchor: middle;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.depmatrix-legend-note {
+  color: var(--text-faint);
 }
 
 .flow-edge-label text {

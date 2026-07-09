@@ -3,6 +3,19 @@
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
 ## [2026-07-09]
+- **Dependency matrix — caller×callee adjacency heatmap (scope item 3b, TDD).** A second projection
+  of the live window that scales past the point where the node-link graph turns to spaghetti. New
+  pure `ui/lib/dependency-matrix.ts` (`dependencyMatrix()`: rows = services that make calls, cols =
+  services/datastores that receive them, one cell per observed edge; cell health reuses
+  `topologyHealth` so the matrix, flow graph, and RED tiles all agree on "red"; 6 tests). New
+  hand-rolled SVG `ui/components/dependency-matrix.tsx` — rotated callee headers, a **calls / errors
+  / latency** metric toggle, cell **color = health** and **opacity = traffic** (busier edge reads
+  darker), header + cell click → the service page, `<title>` tooltip with full counts. A **Graph |
+  Matrix** segmented toggle on the live view swaps the two views; both honor the service filter. No
+  server change. Also added the missing `.flow-legend-ok` (green) swatch style. 121 unit green,
+  typecheck + UI build clean. Verified headless (seeded 7-service / 6-edge traffic → 6 cells, correct
+  1 error / 1 slow / 4 healthy coloring, latency view, column-header click → `/service/order`, zero
+  console errors).
 - **Alerting — outbound webhook (completes scope item 2, TDD).** An alert crossing inactive→active
   now optionally POSTs a JSON body to a configured endpoint (`{"event":"alert.firing","firedAt":
   <ms>,"alert":{…}}`). New `server/alert-webhook.ts` (`createWebhookNotifier`): per-attempt timeout

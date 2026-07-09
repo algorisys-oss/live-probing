@@ -60,13 +60,16 @@ heatmap, aggregate flamegraph) shipped 2026-07-09. Several items below build dir
 - **Files:** new `ui/components/error-timeline.tsx`, `errors-page.tsx`, minor server rollup.
 - **Risk:** low.
 
-### 3b. Dependency matrix — **M**
+### 3b. Dependency matrix — **M** — ✅ DONE (2026-07-09)
 - **What:** a services × services adjacency heatmap (cell = calls / error-rate / latency) — scales
   better than the node-link graph for many services.
-- **Approach:** pure projection of the topology edges; reuse `topologyHealth` for cell color;
-  hand-rolled SVG grid. No server change.
-- **Files:** `ui/components/dependency-matrix.tsx`, a toggle on the live view.
-- **Risk:** low–medium (label crowding at high service counts).
+- **Shipped:** pure `ui/lib/dependency-matrix.ts` (`dependencyMatrix()` — rows=callers, cols=callees,
+  cell health reuses `topologyHealth`; 6 tests) → `ui/components/dependency-matrix.tsx` (hand-rolled
+  SVG grid, rotated callee headers, calls/errors/latency metric toggle, color=health / opacity=
+  traffic, header+cell click → service page). A **Graph | Matrix** toggle on the live view swaps the
+  two projections (both honor the service filter). No server change.
+- **Files:** `ui/lib/dependency-matrix.ts` (+ test), `ui/components/dependency-matrix.tsx`,
+  `pages/live-page.tsx` toggle, `styles.css`.
 
 ### 3c. Small viz backlog — **S each**
 - D2 export (sibling of the existing Mermaid export); side-by-side waterfalls in `/compare`. Cheap,

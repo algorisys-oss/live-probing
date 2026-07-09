@@ -128,6 +128,7 @@ items: **S** = hours, **M** = ~a day, **L** = multi-day.
 - [x] Search by span attribute (key=value or value; e.g. http.status_code=500, a userId)
 - [x] Trace compare / diff (/compare: operation-level timing A vs B vs delta)
 - [x] Anomaly/alert hooks (error-rate or latency spike → banner/webhook) **M–L** — `/alerts` page + nav badge + outbound `ALERT_WEBHOOK_URL` webhook (2026-07-09)
+- [x] Dependency matrix (scope 3b) — caller×callee adjacency heatmap on the live view (Graph|Matrix toggle; calls/errors/latency metric; health colors reuse `topologyHealth`) (2026-07-09)
 
 ### C. Data & scale
 - [x] Retention / pruning — `RETENTION_DAYS` (default 14, 0 disables) drops day-partitions
