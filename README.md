@@ -264,6 +264,14 @@ containers or a reverse proxy), `CORS_ORIGINS` (comma-separated browser origins 
 and the live WebSocket, beyond loopback), `MASK_PII` (`off` disables the built-in PII/secret
 scrubbing). See [Behind a reverse proxy](#behind-a-reverse-proxy-tls--basic-auth).
 
+Alerting webhook (optional): set `ALERT_WEBHOOK_URL` to POST a JSON body once each time an alert
+crosses inactive→active (`{"event":"alert.firing","firedAt":<ms>,"alert":{…}}`). It de-dups per
+alert id (fires on the transition, not every tick) with a cooldown so a flapping condition doesn't
+spam the endpoint. Tune with `ALERT_WEBHOOK_TIMEOUT_MS` (default 5000, per attempt),
+`ALERT_WEBHOOK_RETRIES` (default 2 extra attempts, exponential backoff), and
+`ALERT_WEBHOOK_COOLDOWN_MS` (default 60000). Unset `ALERT_WEBHOOK_URL` = disabled. The same
+thresholds drive the in-app `/alerts` page and nav badge.
+
 When LiveProbe runs in Docker and your app stack is in a separate compose project, point the
 app's OTel collector at `http://<liveprobe-host>:4319` (or join both stacks on a shared Docker
 network and use `http://liveprobe:4319`). The testbed's collector config uses
@@ -392,6 +400,8 @@ RETENTION_DAYS=30
 # HOST=0.0.0.0                                # expose beyond loopback
 # CORS_ORIGINS=https://liveprobe.example.com  # exact browser origin(s) for CORS + WebSocket
 # MASK_PII=off            # disable built-in PII/secret masking (not recommended)
+# ALERT_WEBHOOK_URL=https://hooks.example.com/liveprobe  # POST on inactive→active alert (unset = off)
+# ALERT_WEBHOOK_COOLDOWN_MS=60000  # min gap before re-firing the same alert (also _TIMEOUT_MS, _RETRIES)
 # optional profiles:
 # COLLECTOR_PORT=4320
 # OTEL_GRPC_PORT=4317

@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { existsSync, mkdirSync } from "node:fs";
+import type { Alert } from "@liveprobe/core";
 import { createServer } from "./server.js";
 
 export { createServer } from "./server.js";
@@ -40,6 +41,20 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     .split(",")
     .map((o) => o.trim())
     .filter((o) => o.length > 0);
+  // ALERT_WEBHOOK_URL: POST target fired once per inactive→active alert transition. Unset = off.
+  // Tune with ALERT_WEBHOOK_TIMEOUT_MS / _RETRIES / _COOLDOWN_MS (see alert-webhook.ts defaults).
+  const alertWebhookUrl = process.env.ALERT_WEBHOOK_URL?.trim();
+  const alertWebhook = alertWebhookUrl
+    ? {
+        url: alertWebhookUrl,
+        timeoutMs: numEnv("ALERT_WEBHOOK_TIMEOUT_MS", { min: 1 }),
+        retries: numEnv("ALERT_WEBHOOK_RETRIES", { min: 0 }),
+        cooldownMs: numEnv("ALERT_WEBHOOK_COOLDOWN_MS", { min: 0 }),
+        onSent: (a: Alert & { since: number }) => console.log(`alert webhook sent: ${a.id}`),
+        onError: (err: unknown, a: Alert & { since: number }) =>
+          console.warn(`alert webhook failed for ${a.id}:`, err instanceof Error ? err.message : err),
+      }
+    : undefined;
   const server = createServer({
     publicDir: existsSync(publicDir) ? publicDir : undefined,
     dbPath,
@@ -50,6 +65,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     // MASK_PII=off disables the built-in PII/secret scrubbing (not recommended).
     mask: process.env.MASK_PII === "off" ? false : undefined,
     corsOrigins: corsOrigins.length > 0 ? corsOrigins : undefined,
+    alertWebhook,
   });
 
   const shutdown = () => void server.close().then(() => process.exit(0));

@@ -3,6 +3,18 @@
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
 ## [2026-07-09]
+- **Alerting — outbound webhook (completes scope item 2, TDD).** An alert crossing inactive→active
+  now optionally POSTs a JSON body to a configured endpoint (`{"event":"alert.firing","firedAt":
+  <ms>,"alert":{…}}`). New `server/alert-webhook.ts` (`createWebhookNotifier`): per-attempt timeout
+  (AbortController), exponential-backoff retries, and a **per-alert-id cooldown** so a flapping
+  condition notifies once — not on every bounce. Fires on the *transition* only (the server tracks
+  `activeSince`, so a still-firing alert never re-fires each tick), fire-and-forget (never stalls the
+  topology tick; never throws). Config via env: `ALERT_WEBHOOK_URL` (unset = disabled) +
+  `ALERT_WEBHOOK_TIMEOUT_MS` / `_RETRIES` / `_COOLDOWN_MS`. 8 tests (7 delivery — happy path, retry+
+  backoff, exhaustion, non-2xx, cooldown, per-id, abort/timeout — + 1 server transition-fire). 115
+  unit green, typecheck clean. Verified end to end: seeded 100%-error `order` traffic → one webhook
+  POST to a local receiver with the correct payload, no re-fire on a second error batch. README env
+  tables + sample `.env` updated.
 - **Alerting / anomaly hooks — in-UI slice (scope item 2, TDD).** Threshold rules turn the live
   health signal into active alerts: an **error-rate** alert fires on the *service* handling failing
   requests (warn ≥1%, error ≥5%), a **latency** alert fires on the *edge* whose avg ≥ 2× the graph's

@@ -281,3 +281,57 @@ test("CORS reflects loopback origins only; cross-site origins are denied", async
     await server.close();
   }
 });
+
+test("an inactive→active alert transition fires the outbound webhook exactly once", async () => {
+  const PORT = 4411;
+  const calls: any[] = [];
+  const fetchImpl = (async (_url: string | URL, init: RequestInit = {}) => {
+    calls.push(JSON.parse(String(init.body)));
+    return new Response("", { status: 200 });
+  }) as unknown as typeof fetch;
+
+  const server = createServer({
+    topologyIntervalMs: 20, // fire the tick quickly so the transition is observed
+    alertWebhook: { url: "http://hook.test", fetchImpl, cooldownMs: 60_000 },
+  });
+  await server.listen(PORT);
+  const base = `http://localhost:${PORT}`;
+
+  // A service ("order") handling only failing requests → error rate 100% → an error alert.
+  const nowMicros = Math.floor(Date.now() * 1000);
+  const events = [0, 1, 2, 3].map((i) => ({
+    traceId: `t${i}`,
+    spanId: `s${i}`,
+    participant: "order",
+    operation: "POST /order",
+    kind: "server" as const,
+    startTime: nowMicros + i,
+    duration: 5000,
+    status: "error" as const,
+    attributes: {},
+  }));
+
+  try {
+    const res = await fetch(`${base}/v1/events`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(events),
+    });
+    assert.equal(res.status, 200);
+
+    // Wait for the tick to observe the transition and the (async) delivery to land.
+    const deadline = Date.now() + 2000;
+    while (calls.length === 0 && Date.now() < deadline) await new Promise((r) => setTimeout(r, 20));
+
+    assert.equal(calls.length, 1, "webhook fired once for the new alert");
+    assert.equal(calls[0].event, "alert.firing");
+    assert.equal(calls[0].alert.id, "service:order:error-rate");
+    assert.equal(calls[0].alert.severity, "error");
+
+    // Subsequent ticks with the same firing alert must NOT re-fire (de-dup on transition).
+    await new Promise((r) => setTimeout(r, 80));
+    assert.equal(calls.length, 1, "no re-fire while the alert stays active");
+  } finally {
+    await server.close();
+  }
+});

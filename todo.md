@@ -127,7 +127,7 @@ items: **S** = hours, **M** = ~a day, **L** = multi-day.
 - [x] Latency-over-time per endpoint (p50/p95/p99 line chart on the day dashboard)
 - [x] Search by span attribute (key=value or value; e.g. http.status_code=500, a userId)
 - [x] Trace compare / diff (/compare: operation-level timing A vs B vs delta)
-- [ ] Anomaly/alert hooks (error-rate or latency spike → banner/webhook) **M–L**
+- [x] Anomaly/alert hooks (error-rate or latency spike → banner/webhook) **M–L** — `/alerts` page + nav badge + outbound `ALERT_WEBHOOK_URL` webhook (2026-07-09)
 
 ### C. Data & scale
 - [x] Retention / pruning — `RETENTION_DAYS` (default 14, 0 disables) drops day-partitions

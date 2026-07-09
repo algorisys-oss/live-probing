@@ -19,6 +19,7 @@ import {
 } from "@liveprobe/core";
 import { detail, summarize, type TraceSummary } from "./summary.js";
 import { HistoryStore } from "./history-store.js";
+import { createWebhookNotifier, type WebhookOptions } from "./alert-webhook.js";
 
 export interface ServerOptions {
   publicDir?: string; // built UI, if present
@@ -42,6 +43,9 @@ export interface ServerOptions {
   // Extra browser origins allowed for CORS / WebSocket beyond the always-allowed loopback
   // origins (localhost / 127.0.0.1 / ::1, any port).
   corsOrigins?: string[];
+  // Outbound webhook fired once per inactive→active alert transition (POST JSON, per-attempt
+  // timeout, exponential-backoff retries, per-alert-id cooldown). Omit / no url to disable.
+  alertWebhook?: WebhookOptions;
 }
 
 // Hard limits on a single ingest request. The body cap bounds buffering; the decompression
@@ -170,6 +174,10 @@ export function createServer(opts: ServerOptions = {}): LiveProbeServer {
         .filter((t): t is NonNullable<typeof t> => t !== null),
     );
 
+  // Outbound webhook (optional): notified once when an alert crosses inactive→active. Delivery
+  // (timeout / retry / cooldown) lives in the notifier; here we only detect the transition.
+  const notifier = opts.alertWebhook?.url ? createWebhookNotifier(opts.alertWebhook) : null;
+
   // Active alerts, with a persistent first-seen time per alert id so the UI can show "firing for
   // Xs" and so an alert that keeps firing isn't re-stamped each tick. Cleared ids drop out.
   const activeSince = new Map<string, number>();
@@ -183,6 +191,9 @@ export function createServer(opts: ServerOptions = {}): LiveProbeServer {
       if (since === undefined) {
         since = now;
         activeSince.set(a.id, since);
+        // Newly active → fire-and-forget the webhook. Never awaited (mustn't stall the tick) and
+        // the notifier never rejects; a delivery failure is logged, not thrown.
+        void notifier?.notify({ ...a, since });
       }
       return { ...a, since };
     });

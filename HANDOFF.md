@@ -5,7 +5,25 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-**Alerting / anomaly hooks — in-UI slice (scope item 2).** Threshold rules turn the live health
+**Alerting — outbound webhook (completes scope item 2).** The deferred second half of the alerting
+feature. New `packages/server/src/alert-webhook.ts` (`createWebhookNotifier`): POSTs one JSON body
+(`{event:"alert.firing", firedAt, alert}`) each time an alert crosses **inactive→active**, with a
+per-attempt AbortController timeout, exponential-backoff retries, and a **per-alert-id cooldown**
+so a flapping condition notifies once (not every bounce). Wired in `server.ts` — the existing
+`activeSince` map already detects the transition (a brand-new id), so the notifier is called
+fire-and-forget there (never awaited → can't stall the tick; never rejects). Env config in
+`index.ts`: `ALERT_WEBHOOK_URL` (unset = off) + `ALERT_WEBHOOK_TIMEOUT_MS` / `_RETRIES` /
+`_COOLDOWN_MS`; `onSent`/`onError` log to the console. **8 new tests** (7 delivery: happy path,
+retry+backoff, exhaustion, non-2xx, cooldown, per-id isolation, abort/timeout; + 1 server
+integration proving a transition fires exactly once & de-dups while active). **115 unit green**,
+typecheck clean. Verified end to end through the real env path: server on :4420 with
+`ALERT_WEBHOOK_URL` → local receiver on :4421, seeded 100%-error `order` traffic → one POST with
+the correct payload + `alert webhook sent` log; a second error batch did **not** re-fire (still 1
+receipt). README env tables + sample `.env` updated. **This fully closes scope item 2.** Next
+scoped item: **3b dependency matrix** (services×services adjacency heatmap, pure topology
+projection, no server change).
+
+Prior — **Alerting / anomaly hooks — in-UI slice (scope item 2).** Threshold rules turn the live health
 signal into active alerts. New pure `packages/core/src/alert-rules.ts` (`evaluateAlerts({services,
 edges})` → error-rate alerts on services + latency alerts on edges at 2× median; stable ids for
 de-dup; 6 tests). The server evaluates each topology WS tick, tracks a per-alert `since` in a
@@ -13,10 +31,7 @@ de-dup; 6 tests). The server evaluates each topology WS tick, tracks a per-alert
 messages (threaded through `use-live-store`). UI: an **Alerts** nav item with a live count badge
 (`components/header.tsx`), and `pages/alerts-page.tsx` (route in `app.tsx`). Verified live (seeded
 25% `order` errors + slow `gateway→reports` edge → 1 error + 1 latency alert, badge "2" red;
-screenshot). **107 unit + 22 e2e green.** Verify server used :4418 (avoids test ports).
-**Deliberately deferred: the outbound webhook** (inactive→active transition → POST with timeout +
-retry/backoff, env config) — outward-facing, its own commit. Next scoped item after that: 3b
-dependency matrix.
+screenshot). **107 unit + 22 e2e green.**
 
 Prior — **Scoped the feature backlog + shipped Live RED tiles (scope item 1a).** Wrote `docs/feature-scope.md`
 (near-term features with effort/approach/files/risk; auth deferred), linked from the docs index. Then
