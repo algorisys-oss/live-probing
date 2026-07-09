@@ -167,6 +167,12 @@ export function algoInstrumentation(raw: unknown): Event[] {
     for (const [k, v] of Object.entries(payload)) add(k, v);
   }
 
+  // `timestamp` is the request's *completion* time (the event is logged when handling ends),
+  // but the spans[] children carry their real, earlier starts. Anchor the request/root at the
+  // start (completion − duration) so the entry arrow sorts before its children — otherwise the
+  // sequence view seeds the leftmost lifeline with a child call and pushes `client` to the right.
+  const requestStart = duration > 0 ? startTime - duration : startTime;
+
   const span: Event = {
     traceId,
     // Use the real request.spanId when present so HRMS's spans[] children attach to it;
@@ -176,7 +182,7 @@ export function algoInstrumentation(raw: unknown): Event[] {
     participant,
     operation,
     kind,
-    startTime,
+    startTime: requestStart,
     duration,
     status,
     attributes,
@@ -207,7 +213,7 @@ export function algoInstrumentation(raw: unknown): Event[] {
     // opaque requestId — that's what the trace feed shows.
     operation,
     kind: "client",
-    startTime,
+    startTime: requestStart,
     duration: 0,
     status: "unset",
     attributes: {},

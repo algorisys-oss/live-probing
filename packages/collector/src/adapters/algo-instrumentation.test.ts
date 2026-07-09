@@ -40,7 +40,7 @@ test("algoInstrumentation maps an instrumentation event to a synthetic root + se
   assert.equal(span.participant, "propeak.invoice"); // application + module on the lifeline
   assert.equal(span.operation, "POST /api/payroll/process");
   assert.equal(span.kind, "server");
-  assert.equal(span.startTime, TS_MICROS);
+  assert.equal(span.startTime, TS_MICROS - 135_000); // anchored at start (completion − duration)
   assert.equal(span.duration, 135_000); // durationMs -> micros
   assert.equal(span.status, "ok");
   assert.equal(span.attributes["application"], "propeak");
@@ -200,6 +200,41 @@ test("algoInstrumentation captures service, version, severity, message, tags, me
   assert.equal(span.attributes["message"], "Web access");
   assert.equal(span.attributes["tags.route_type"], "loader");
   assert.equal(span.attributes["memory_usage_mb"], 407.52);
+});
+
+test("algoInstrumentation back-dates the request start by its duration so the entry sorts first", () => {
+  // An instrumentation event's `timestamp` is the request's *completion* time, but its
+  // spans[] children carry earlier starts. Stamping the root/handler at `timestamp` makes the
+  // client→handler entry arrow sort after the child arrows, so the sequence view puts the
+  // client lifeline on the right. The root + handler must start at timestamp − duration.
+  const raw = {
+    eventId: "e1",
+    eventType: "instrumentation",
+    timestamp: TS,
+    application: { name: "hrms", module: "register-employee" },
+    request: { requestId: "rq-1", traceId: "trace-1", spanId: "req-span-1" },
+    payload: { endpoint: "/register-employee", method: "GET", status_code: 200, durationMs: 56, success: true },
+  };
+  const [root, span] = algoInstrumentation(raw);
+  const start = TS_MICROS - 56_000; // completion − duration (56ms → micros)
+  assert.equal(span!.startTime, start);
+  assert.equal(root!.startTime, start);
+  // The reported duration is unchanged — only the start moved earlier.
+  assert.equal(span!.duration, 56_000);
+});
+
+test("algoInstrumentation leaves the start alone when there is no duration", () => {
+  // A log/audit event (or an instrumentation event with no durationMs) has no request span to
+  // back-date; the start stays at the event timestamp.
+  const [, span] = algoInstrumentation({
+    eventId: "e2",
+    eventType: "log",
+    timestamp: TS,
+    application: { name: "hrms", module: "employee" },
+    request: { requestId: "rq-2" },
+    payload: { level: "INFO", message: "hi" },
+  });
+  assert.equal(span!.startTime, TS_MICROS);
 });
 
 test("adapterId2 prefers real request.traceId/spanId and unpacks spans[] children", () => {

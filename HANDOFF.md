@@ -5,7 +5,21 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-**Docs: reverse-proxy (TLS + basic auth) deployment recipe.** A real deploy (tme.qubefini.com:4321,
+**Fix: algo-instrumentation adapter back-dates the request span so `client` renders on the left.**
+An HRMS `instrumentation` event is logged at request *completion* (`timestamp` = end), but its
+`spans[]` children carry earlier starts. The adapter stamped the synthetic `client` root and the
+handler span at `timestamp`, so the `client→handler` entry arrow sorted after the child arrows and
+the sequence view (lifelines ordered by first-seen, `sequence.ts`) put `client` on the far right.
+Fix (`packages/collector/src/adapters/algo-instrumentation.ts`): anchor root + handler at
+`requestStart = duration > 0 ? timestamp − duration : timestamp`. Restores parent-before-child order
+and fixes activation-bar nesting (sequence-layout infers containment from time). TDD: 2 new tests + 1
+updated assertion, **79 unit green**, typecheck clean; verified end to end (register-employee-shaped
+event → participants `[client, HRMS…, redis, database]`). **Adapter-only — no HRMS change.**
+Note: the live collector caches the old adapter code — **restart the collector** to pick this up.
+Flake seen: `core coerceEvents clamps a far-future timestamp` failed once under full-suite ordering,
+passed in isolation and on re-run (unrelated to this change; uses a live "now" reference).
+
+Earlier — **Docs: reverse-proxy (TLS + basic auth) deployment recipe.** A real deploy (tme.qubefini.com:4321,
 nginx + basic auth) had a dead live feed + an auth prompt on every route change. Two causes: (1) the
 server's WS origin check (hardening commit, `server.ts` `originAllowed`) refuses an upgrade whose
 `Origin` isn't loopback or in `CORS_ORIGINS` — so set `CORS_ORIGINS` to the **exact** browser origin

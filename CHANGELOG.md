@@ -3,6 +3,16 @@
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
 ## [2026-07-09]
+- **Fix: algo-instrumentation adapter back-dates the request span to its start (TDD).** An HRMS
+  `instrumentation` event is logged at request *completion*, so its `timestamp` is the end, while the
+  `spans[]` children carry earlier starts. Stamping the synthetic `client` root and the handler span
+  at `timestamp` made the `client → handler` entry arrow sort *after* the child arrows, so the
+  sequence view seeded the leftmost lifeline with a db/redis call and pushed `client` to the far
+  right. The adapter now anchors both at `timestamp − duration` (the real request start) when a
+  duration is known — restoring parent-before-child order (client goes left) and fixing activation-bar
+  nesting. Verified end to end: an HRMS-shaped `register-employee` event now yields participant order
+  `[client, HRMS…, redis, database]`. 2 new tests + one updated assertion (79 green), typecheck clean.
+  Adapter-only — no HRMS change.
 - **Docs: reverse-proxy (TLS + basic auth) deployment recipe.** Running LiveProbe behind nginx broke
   the live WebSocket two ways: the server's origin check (from the hardening commit) refuses a WS
   upgrade whose `Origin` isn't loopback or in `CORS_ORIGINS`, and basic auth on the `/ws` location
