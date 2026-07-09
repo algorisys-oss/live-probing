@@ -5,7 +5,17 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-**Fix: algo-instrumentation adapter back-dates the request span so `client` renders on the left.**
+**UI: mobile/tablet responsive pass (CSS only).** The UI was desktop-only (zero `@media` queries).
+Added two breakpoints at the end of `packages/ui/src/styles.css`: **≤900px** wraps the header, stacks
+the live view (trace feed capped at 45vh above the flow graph), makes wide tables/toolbars scroll/wrap;
+**≤560px** stacks the trace page's waterfall/sequence over the (previously fixed 320px) `.wf-detail`
+panel, tightens gutters, hides the version chip, grows tap targets to ≥34px, and switches `.app` to
+`100dvh`. No component/JS changes — pure CSS. Verified in headless Chromium at 390px + 820px across
+live/trace/errors/history (8/8 zero horizontal overflow, screenshots confirmed the header wrap, feed↔
+graph stack, and waterfall↔detail stack). **Gotcha reconfirmed:** don't `pkill -f` in this env — it
+tripped the session-kill guard; stop isolated servers by exact PID instead.
+
+Earlier — **Fix: algo-instrumentation adapter back-dates the request span so `client` renders on the left.**
 An HRMS `instrumentation` event is logged at request *completion* (`timestamp` = end), but its
 `spans[]` children carry earlier starts. The adapter stamped the synthetic `client` root and the
 handler span at `timestamp`, so the `client→handler` entry arrow sorted after the child arrows and

@@ -3,6 +3,15 @@
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
 ## [2026-07-09]
+- **UI: mobile/tablet responsive pass (CSS only).** The app had no breakpoints — the fixed two-column
+  live view, the 52px single-row header, the fixed 320px trace-detail panel, and unwrapped tables all
+  overflowed on narrow screens. Added two `@media` breakpoints in `packages/ui/src/styles.css`: at
+  ≤900px the header wraps to rows, the live view stacks the trace feed (capped 45vh) above the flow
+  graph, and wide tables/toolbars scroll/wrap within the page; at ≤560px the trace page stacks the
+  waterfall/sequence over the span-detail panel, gutters tighten, the version chip hides, tap targets
+  grow to ≥34px, and `.app` uses `100dvh`. No component/JS changes. Verified in headless Chromium at
+  390px and 820px across live/trace/errors/history: 0px horizontal overflow on all 8, layouts confirmed
+  by screenshot.
 - **Fix: algo-instrumentation adapter back-dates the request span to its start (TDD).** An HRMS
   `instrumentation` event is logged at request *completion*, so its `timestamp` is the end, while the
   `spans[]` children carry earlier starts. Stamping the synthetic `client` root and the handler span

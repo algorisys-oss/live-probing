@@ -1554,3 +1554,126 @@ body {
 .cmp-table {
   max-width: 820px;
 }
+
+/* ==========================================================================
+   Responsive — tablet & phone. The app is desktop-first (no breakpoints
+   above); these stack the two-column live view, wrap the header, and keep
+   wide content (tables, SVG diagrams) scrolling inside its own box so the
+   page body never scrolls sideways.
+   ========================================================================== */
+
+/* ---------- tablet & down (≤900px) ---------- */
+@media (max-width: 900px) {
+  /* Dynamic viewport height dodges the mobile browser address-bar jump. */
+  .app {
+    height: 100dvh;
+  }
+
+  /* Header: let it grow to two rows instead of clipping its contents. */
+  .header {
+    height: auto;
+    min-height: 52px;
+    flex-wrap: wrap;
+    padding: 8px 14px;
+    gap: 8px 12px;
+  }
+  .header-left,
+  .header-right {
+    flex-wrap: wrap;
+    gap: 10px 12px;
+  }
+  .header-right {
+    margin-left: auto;
+  }
+  .header-search {
+    flex: 1 1 160px;
+  }
+  .header-search-input {
+    width: 100%;
+  }
+
+  /* Live view: stack the trace feed above the flow graph instead of side by
+     side. The feed gets a capped, scrollable height; the graph takes the rest. */
+  .body {
+    flex-direction: column;
+  }
+  .sidebar {
+    width: 100%;
+    max-height: 45vh;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* Wide tables scroll within the page, not the window. */
+  .errors-page,
+  .service-page,
+  .search-page {
+    overflow-x: auto;
+  }
+
+  /* Toolbars, trace summary, and detail rows wrap rather than overflow. */
+  .trace-page-bar,
+  .seq-summary-meta,
+  .seq-summary-services,
+  .live-toolbar {
+    flex-wrap: wrap;
+  }
+}
+
+/* ---------- phone (≤560px) ---------- */
+@media (max-width: 560px) {
+  /* Reclaim horizontal space: drop the version chip, tighten page gutters. */
+  .version {
+    display: none;
+  }
+  .errors-page,
+  .service-page,
+  .search-page {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .day-scroll,
+  .history-head {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+  .page-title {
+    font-size: 16px;
+  }
+
+  /* A little more room for the feed before the graph on a short screen. */
+  .sidebar {
+    max-height: 40vh;
+  }
+
+  /* Trace page: stack the waterfall/sequence over the span-detail panel instead
+     of a fixed 320px side panel that would leave the diagram a sliver. */
+  .trace-body {
+    flex-direction: column;
+    overflow: auto;
+  }
+  .wf-detail {
+    width: 100%;
+    flex-shrink: 1;
+    border-left: none;
+    border-top: 1px solid var(--border);
+    padding: 10px 0 4px;
+    max-height: 45vh;
+  }
+
+  /* Comfortable touch targets (≥34px) for the primary tap controls. */
+  .nav-link,
+  .tab,
+  .pause-btn,
+  .flow-btn,
+  .theme-toggle,
+  .header-search-input,
+  .live-filter {
+    min-height: 34px;
+  }
+  .nav-link,
+  .tab {
+    display: inline-flex;
+    align-items: center;
+  }
+}
