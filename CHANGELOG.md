@@ -3,6 +3,11 @@
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
 ## [2026-07-09]
+- **Docs: added `CONTRIBUTING.md`.** Writes down the branch/PR workflow the team just agreed to —
+  work on `dev`, `main` only ever fast-forwards to `dev` (the `sync` flow), never commit directly to
+  `main` — plus how to reconcile if `main` diverges, a recommendation to branch-protect `main`,
+  pre-push checks (test/typecheck/e2e + verify behavior), the load-bearing LOOPS rules, and which
+  tracking doc updates with each change. Linked from the README working-docs list.
 - **Deploy: `scripts/deploy.js` can optionally ship a local `.env`.** Previously it uploaded the image
   + rewritten compose but never the `.env`, so `CORS_ORIGINS`/`RETENTION_DAYS`/`HOST`/etc. had to be
   created on the server by hand. It now offers to upload a local `.env` — but only when one exists,

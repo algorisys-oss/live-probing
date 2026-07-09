@@ -5,7 +5,14 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-**Deploy: `scripts/deploy.js` optional `.env` upload.** The script shipped the image + rewritten
+**Docs: added `CONTRIBUTING.md`** — the branch/PR workflow now that the team agreed to work on `dev`
+going forward: `dev` is the working branch, `main` only fast-forwards to `dev` (the `sync` flow),
+never commit directly to `main`, and how to reconcile if `main` diverges (as happened once when a
+teammate pushed straight to `main`). Also recommends branch-protecting `main` on GitHub, lists the
+pre-push checks and the load-bearing LOOPS rules, and notes which tracking doc updates per change.
+Linked from the README working-docs list. Docs only.
+
+Earlier — **Deploy: `scripts/deploy.js` optional `.env` upload.** The script shipped the image + rewritten
 compose but never a `.env`, so env vars (`CORS_ORIGINS`, `RETENTION_DAYS`, `HOST`, `MASK_PII`) had to
 be hand-created on the server. Added an opt-in prompt — shown **only** when a local `.env` exists,
 default **No**, warns it overwrites the remote `.env` — and an upload step alongside the compose file

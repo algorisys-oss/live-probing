@@ -520,3 +520,4 @@ the collector config, and the loaded image.
 - [IMPLEMENT.md](IMPLEMENT.md) — decision-to-code audit trail.
 - [CHANGELOG.md](CHANGELOG.md) — timestamped functional changes.
 - [LOOPS.md](LOOPS.md) — engineering principles this project runs under.
+- [CONTRIBUTING.md](CONTRIBUTING.md) — branch/PR workflow: work on `dev`, `main` mirrors it.
