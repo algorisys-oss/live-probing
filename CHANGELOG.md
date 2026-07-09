@@ -3,6 +3,13 @@
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
 ## [2026-07-09]
+- **Fix: containerized deploy — collector couldn't reach the server (`ingest failed: fetch failed`).**
+  The `liveprobe` service in `docker-compose.yml` didn't set `HOST`, so the server bound `127.0.0.1`
+  inside its container. Sibling containers (`collector`, `otel-collector`) target `http://liveprobe:4319`
+  and the published host port both hit the container's eth0/NAT, which a loopback-only listener refuses
+  — only the in-container healthcheck (its own loopback) passed, so the container reported Healthy while
+  ingest was dead. Added `HOST: "0.0.0.0"` to the `liveprobe` service. Same root cause as the dev-start
+  fix below; the server's loopback default is unchanged.
 - **Fix: testbed traces stopped landing after the ingest-hardening commit.** That commit changed the
   server's default bind to `127.0.0.1`, but the dockerized testbed collector reaches LiveProbe on the
   host via `host.docker.internal:4319` (host-gateway) — traffic that arrives on the Docker bridge and

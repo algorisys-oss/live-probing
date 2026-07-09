@@ -5,7 +5,18 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-**Fix: `dev-start.sh` — testbed traces stopped landing after the ingest-hardening commit.** The
+**Fix: containerized deploy — `docker-compose.yml` `liveprobe` service now binds `HOST=0.0.0.0`.**
+Surfaced on an HRMS staging deploy: `collector-1 | ingest failed: fetch failed` against
+`http://liveprobe:4319/v1/events` while `liveprobe-1` logged `listening on 127.0.0.1:4319`. The
+service set `PORT`/`DB_PATH`/`RETENTION_DAYS` but not `HOST`, so the server bound loopback inside its
+container — sibling containers (`collector`, `otel-collector`) and the published host port all reach
+it via eth0/NAT, which a loopback listener refuses. The in-container healthcheck hits its own
+loopback, so the container reports **Healthy** while ingest is dead (a trap to remember). Added
+`HOST: "0.0.0.0"` to the `liveprobe` service. Redeploy: `docker compose up -d liveprobe` (env-only,
+no rebuild), then `docker compose restart collector`. Same root cause as the dev-start fix below;
+server code / loopback default unchanged.
+
+Earlier — **Fix: `dev-start.sh` — testbed traces stopped landing after the ingest-hardening commit.** The
 hardening commit changed the server's default bind to `127.0.0.1`; the dockerized testbed collector
 reaches LiveProbe on the host via `host.docker.internal:4319` (host-gateway, `testbed/otel/
 collector-config.yaml:25`), which arrives on the Docker bridge — a loopback-only socket refuses it,
