@@ -3,6 +3,15 @@
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
 ## [2026-07-09]
+- **UI: responsive layout now handles landscape too.** The earlier breakpoints were width-only, so a
+  phone in landscape (wide but ~400px tall) got the stacked layout that split its scarce height into
+  slivers. Added a `@media (max-height: 500px) and (orientation: landscape)` rule that reclaims the
+  vertical axis: the live view goes back to feed-beside-graph, the trace page puts the detail panel
+  beside the waterfall, and the header collapses to one tight row (counters/version hidden). The
+  height cutoff targets landscape phones without catching tablets (which stay tall enough for the
+  portrait layouts). Verified in headless Chromium across phone/tablet × portrait/landscape (12
+  combos): 0px horizontal overflow and the live view uses the correct orientation (stacked in
+  portrait, side-by-side in landscape) in every one.
 - **Docs: added `CONTRIBUTING.md`.** Writes down the branch/PR workflow the team just agreed to —
   work on `dev`, `main` only ever fast-forwards to `dev` (the `sync` flow), never commit directly to
   `main` — plus how to reconcile if `main` diverges, a recommendation to branch-protect `main`,

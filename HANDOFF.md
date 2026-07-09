@@ -5,7 +5,17 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-**Docs: added `CONTRIBUTING.md`** — the branch/PR workflow now that the team agreed to work on `dev`
+**UI: landscape support for the responsive layout.** The mobile/tablet breakpoints were width-only,
+so a phone in landscape (short height) got the stacked layout and lost its vertical space. Added a
+`@media (max-height: 500px) and (orientation: landscape)` block at the end of
+`packages/ui/src/styles.css`: live view back to feed-beside-graph, trace page detail-panel beside the
+waterfall, header to one tight row (counters/version hidden). Cutoff targets landscape phones, not
+tablets. Verified headless across phone/tablet × portrait/landscape (12 combos: 0px overflow + correct
+live-view orientation each). CSS only. **Gotcha:** a background server started with `&` inside a
+foreground Bash call dies when that shell exits (SIGHUP) — start verify servers via a persistent
+background task instead, and stop them by exact PID (never `pkill -f`).
+
+Earlier — **Docs: added `CONTRIBUTING.md`** — the branch/PR workflow now that the team agreed to work on `dev`
 going forward: `dev` is the working branch, `main` only fast-forwards to `dev` (the `sync` flow),
 never commit directly to `main`, and how to reconcile if `main` diverges (as happened once when a
 teammate pushed straight to `main`). Also recommends branch-protecting `main` on GitHub, lists the

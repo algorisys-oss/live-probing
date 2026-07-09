@@ -1677,3 +1677,46 @@ body {
     align-items: center;
   }
 }
+
+/* ---------- short landscape (phones on their side) ----------
+   Here height is the scarce axis, not width, so the width-based rules above
+   would stack panels and split the ~400px of height into unusable slivers.
+   Undo the stacking: use the width instead (side-by-side), and keep the
+   header to one tight row. Height cutoff (≤500px) targets landscape phones
+   without catching tablets, which stay tall enough for the layouts above. */
+@media (max-height: 500px) and (orientation: landscape) {
+  /* Tighter header; drop the bulky counters/version so it stays one row. */
+  .header {
+    min-height: 44px;
+    padding: 6px 12px;
+  }
+  .counter,
+  .version {
+    display: none;
+  }
+
+  /* Live view: back to feed-beside-graph so the short height isn't halved. */
+  .body {
+    flex-direction: row;
+  }
+  .sidebar {
+    width: 230px;
+    max-height: none;
+    border-right: 1px solid var(--border);
+    border-bottom: none;
+  }
+
+  /* Trace page: waterfall beside the detail panel, not stacked. */
+  .trace-body {
+    flex-direction: row;
+    overflow: hidden;
+  }
+  .wf-detail {
+    width: 280px;
+    flex-shrink: 0;
+    border-left: 1px solid var(--border);
+    border-top: none;
+    padding: 4px 0 4px 14px;
+    max-height: none;
+  }
+}
