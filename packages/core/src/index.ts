@@ -20,6 +20,7 @@ export {
 } from "./sequence-layout.js";
 export { criticalPath } from "./critical-path.js";
 export { aggregateFlamegraph, type FlameNode, type FlameSpan } from "./flamegraph.js";
+export { redMetrics, type RedMetric } from "./red-metrics.js";
 export {
   latencyBucketIndex,
   LATENCY_EDGES_MICROS,

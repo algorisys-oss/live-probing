@@ -9,6 +9,7 @@ import {
   coerceEvents,
   maskEvents,
   toMermaidFlow,
+  redMetrics,
   type AssembledTrace,
   type Event,
   type MaskOptions,
@@ -158,6 +159,15 @@ export function createServer(opts: ServerOptions = {}): LiveProbeServer {
     path: "/ws",
     verifyClient: (info: { origin?: string }) => originAllowed(info.origin),
   });
+  // Per-service RED (rate/errors/p95) over the live window — the triage strip on the live view.
+  const red = () =>
+    redMetrics(
+      window
+        .traceIds()
+        .map((id) => window.assemble(id))
+        .filter((t): t is NonNullable<typeof t> => t !== null),
+    );
+
   wss.on("connection", (ws) => {
     clients.add(ws);
     ws.on("close", () => clients.delete(ws));
@@ -169,6 +179,7 @@ export function createServer(opts: ServerOptions = {}): LiveProbeServer {
         traces: recentSummaries(100),
         topology,
         mermaidFlow: toMermaidFlow(topology),
+        red: red(),
       }),
     );
   });
@@ -177,7 +188,7 @@ export function createServer(opts: ServerOptions = {}): LiveProbeServer {
     if (!topologyDirty) return;
     topologyDirty = false;
     const topology = window.topology();
-    broadcast({ type: "topology", topology, mermaidFlow: toMermaidFlow(topology) });
+    broadcast({ type: "topology", topology, mermaidFlow: toMermaidFlow(topology), red: red() });
   }, opts.topologyIntervalMs ?? 750);
   timer.unref();
 

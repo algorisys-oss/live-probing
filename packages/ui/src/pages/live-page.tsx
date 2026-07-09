@@ -1,6 +1,7 @@
 import { useLiveStore } from "../store/use-live-store";
 import { TraceList } from "../components/trace-list";
 import { FlowView } from "../components/flow-view";
+import { RedTiles } from "../components/red-tiles";
 
 export function LivePage() {
   const paused = useLiveStore((s) => s.paused);
@@ -29,6 +30,7 @@ export function LivePage() {
       </aside>
 
       <main className="main">
+        <RedTiles />
         <div className="live-toolbar">
           <span className="live-toolbar-label">Filter</span>
           <select

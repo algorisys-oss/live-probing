@@ -1561,6 +1561,68 @@ body {
   flex: 1;
 }
 
+/* --- RED tiles (live triage strip) --- */
+.red-tiles {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.red-tile {
+  flex: 0 0 auto;
+  min-width: 118px;
+  text-align: left;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border-strong);
+  border-radius: 7px;
+  padding: 7px 10px;
+  cursor: pointer;
+  color: var(--text);
+  font: inherit;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+.red-tile:hover:not(:disabled) {
+  background: var(--bg-elevated);
+  border-color: var(--accent);
+}
+.red-tile:disabled {
+  cursor: default;
+}
+.red-tile-warn {
+  border-left-color: var(--new);
+}
+.red-tile-error {
+  border-left-color: var(--error);
+}
+.red-tile-name {
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+.red-tile-metrics {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.red-metric {
+  color: var(--text-dim);
+}
+.red-metric-muted {
+  color: var(--text-faint);
+}
+.red-metric-err {
+  color: var(--error);
+  font-weight: 600;
+}
+
 /* --- live filter toolbar --- */
 .live-toolbar {
   display: flex;

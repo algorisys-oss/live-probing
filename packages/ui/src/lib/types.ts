@@ -96,15 +96,25 @@ export interface DaySummary {
   slowest: TraceSummary[];
 }
 
+export interface RedMetric {
+  service: string;
+  ratePerSec: number;
+  errorRate: number; // 0..1
+  p95Micros: number;
+  calls: number;
+  errors: number;
+}
+
 export type WsMessage =
   | {
       type: "snapshot";
       traces: TraceSummary[];
       topology: Topology;
       mermaidFlow: string;
+      red?: RedMetric[];
     }
   | { type: "traces"; traces: TraceSummary[] }
-  | { type: "topology"; topology: Topology; mermaidFlow: string };
+  | { type: "topology"; topology: Topology; mermaidFlow: string; red?: RedMetric[] };
 
 export interface ErrorGroup {
   endpoint: string;

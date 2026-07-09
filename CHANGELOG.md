@@ -3,6 +3,15 @@
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
 ## [2026-07-09]
+- **UI: live RED tiles (feature 1a from the scope, TDD).** A per-service Rate · Errors · Duration(p95)
+  strip above the live flow graph — the at-a-glance triage view, computed from the in-memory window
+  (server-kind spans = requests a service handled; datastores/ghosts omitted). New pure
+  `core/red-metrics.ts` (`redMetrics()` over assembled traces: rate over the observed span range,
+  error rate, p95; 5 tests) computed server-side and pushed on the existing topology WebSocket tick
+  (added `red` to the snapshot + topology messages, threaded through the store). `red-tiles.tsx`
+  renders the strip; a tile's left border reuses the topology error-rate thresholds (red ≥5%, amber
+  ≥1%), click → service page. Verified live against 24 seeded multi-service traces: gateway/auth
+  healthy, `order` flagged red at 21% error. 101 unit + 22 e2e green, typecheck + build clean.
 - **UI: aggregate flamegraph per endpoint (feature 3/3, TDD).** The day page's per-endpoint drilldown
   now has a "Where time goes" icicle that folds the endpoint's recent traces into one tree — where an
   endpoint spends its time on average, not in a single waterfall (static tools can't show this; it's

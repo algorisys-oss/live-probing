@@ -11,7 +11,10 @@ heatmap, aggregate flamegraph) shipped 2026-07-09. Several items below build dir
 
 ## Group 1 — Live-view analytics (extends the triage track)
 
-### 1a. Live RED tiles (p95) — **S–M**
+### 1a. Live RED tiles (p95) — **S–M** — ✅ DONE (2026-07-09)
+- Shipped: `core/red-metrics.ts` (`redMetrics()`) → server computes on the topology WS tick →
+  `red-tiles.tsx` strip above the live flow graph. Tiles colored by error-rate thresholds, click →
+  service page. What follows is the original scope.
 - **What:** a per-service Rate / Errors / Duration(p95) strip on the live view (and/or service page).
 - **Approach:** compute from the in-memory `TraceWindow` in the server's `serviceDetail` (it already
   scans a service's spans); add p95. No history dependency — this is a *live* view.

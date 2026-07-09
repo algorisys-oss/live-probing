@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Topology, TraceSummary, WsMessage } from "../lib/types";
+import type { RedMetric, Topology, TraceSummary, WsMessage } from "../lib/types";
 
 const MAX_TRACES = 200;
 
@@ -18,6 +18,7 @@ interface LiveState {
   traces: TraceSummary[];
   topology: Topology;
   mermaidFlow: string;
+  red: RedMetric[];
   connected: boolean;
   selectedTraceId: string | null;
   paused: boolean;
@@ -34,11 +35,12 @@ interface LiveState {
   resumeFeed: () => void;
   applyWsMessage: (msg: WsMessage) => void;
   applyTraces: (traces: TraceSummary[]) => void;
-  applyTopology: (topology: Topology, mermaidFlow: string) => void;
+  applyTopology: (topology: Topology, mermaidFlow: string, red?: RedMetric[]) => void;
   applySnapshot: (
     traces: TraceSummary[],
     topology: Topology,
     mermaidFlow: string,
+    red?: RedMetric[],
   ) => void;
 }
 
@@ -48,6 +50,7 @@ export const useLiveStore = create<LiveState>((set, get) => ({
   traces: [],
   topology: emptyTopology,
   mermaidFlow: "",
+  red: [],
   connected: false,
   selectedTraceId: null,
   paused: false,
@@ -103,9 +106,10 @@ export const useLiveStore = create<LiveState>((set, get) => ({
     set({ traces: toSortedCapped(map) });
   },
 
-  applyTopology: (topology, mermaidFlow) => set({ topology, mermaidFlow }),
+  applyTopology: (topology, mermaidFlow, red) =>
+    set(red ? { topology, mermaidFlow, red } : { topology, mermaidFlow }),
 
-  applySnapshot: (traces, topology, mermaidFlow) => {
+  applySnapshot: (traces, topology, mermaidFlow, red) => {
     const map = new Map<string, TraceSummary>();
     for (const t of traces) map.set(t.traceId, t);
     set({
@@ -114,19 +118,20 @@ export const useLiveStore = create<LiveState>((set, get) => ({
       pendingCount: 0,
       topology,
       mermaidFlow,
+      red: red ?? [],
     });
   },
 
   applyWsMessage: (msg) => {
     switch (msg.type) {
       case "snapshot":
-        get().applySnapshot(msg.traces, msg.topology, msg.mermaidFlow);
+        get().applySnapshot(msg.traces, msg.topology, msg.mermaidFlow, msg.red);
         break;
       case "traces":
         get().applyTraces(msg.traces);
         break;
       case "topology":
-        get().applyTopology(msg.topology, msg.mermaidFlow);
+        get().applyTopology(msg.topology, msg.mermaidFlow, msg.red);
         break;
     }
   },

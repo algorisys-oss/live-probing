@@ -5,7 +5,18 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-**UI value-add track (live incident triage, hand-rolled SVG) — ALL 3 FEATURES SHIPPED.** Direction
+**Scoped the feature backlog + shipped Live RED tiles (scope item 1a).** Wrote `docs/feature-scope.md`
+(near-term features with effort/approach/files/risk; auth deferred), linked from the docs index. Then
+built **1a: live RED tiles** — a per-service Rate·Errors·Duration(p95) strip above the live flow graph.
+New pure `packages/core/src/red-metrics.ts` (`redMetrics()` over assembled traces — server-kind spans
+only; rate over the observed span range; 5 tests) computed server-side and pushed on the **existing
+topology WebSocket tick** (`red` added to snapshot + topology messages, threaded through
+`use-live-store`). `red-tiles.tsx` renders the strip (left-border health via the topology error-rate
+thresholds, click → service page). Verified live (24 seeded multi-service traces → gateway/auth ok,
+`order` red at 21%). **101 unit + 22 e2e green.** Verify server used :4417 (avoids test ports).
+Next scoped items: 3b dependency matrix, 2 alerting (both build on `topologyHealth`).
+
+Prior — **UI value-add track (live incident triage, hand-rolled SVG) — ALL 3 FEATURES SHIPPED.** Direction
 set with the user: audience = live incident triage; hand-rolled SVG (no chart dep). All three built
 TDD, verified end to end in headless Chromium, and synced individually. **96 unit + 22 e2e green,
 typecheck + build clean.**
