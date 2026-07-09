@@ -2,6 +2,14 @@
 
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
+## [2026-07-09]
+- **Fix: testbed traces stopped landing after the ingest-hardening commit.** That commit changed the
+  server's default bind to `127.0.0.1`, but the dockerized testbed collector reaches LiveProbe on the
+  host via `host.docker.internal:4319` (host-gateway) — traffic that arrives on the Docker bridge and
+  a loopback-only socket refuses. `dev-start.sh` now sets `HOST=0.0.0.0` (overridable) on both server
+  invocations so local dev exposes the ingest port to the bridge, as before. No server-code change;
+  the loopback default stands for non-dev deployments.
+
 ## [2026-07-08]
 - **Security hardening of the ingest server (review-driven, TDD).** Fixed five issues found by a
   critical review and reproduced end-to-end against the Shopwave testbed:

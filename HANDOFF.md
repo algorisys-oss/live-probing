@@ -5,7 +5,17 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-**Security hardening of the ingest server (review-driven, TDD).** A critical review — validated
+**Fix: `dev-start.sh` — testbed traces stopped landing after the ingest-hardening commit.** The
+hardening commit changed the server's default bind to `127.0.0.1`; the dockerized testbed collector
+reaches LiveProbe on the host via `host.docker.internal:4319` (host-gateway, `testbed/otel/
+collector-config.yaml:25`), which arrives on the Docker bridge — a loopback-only socket refuses it,
+so no testbed traces flowed. `dev-start.sh` now sets `HOST="${HOST:-0.0.0.0}"` on **both** server
+invocations (watch + static). Server code unchanged — loopback stays the safe default for real
+deployments; only the local dev runner opts into exposing the bridge. The collector's OTLP POST is
+not subject to the CORS/WebSocket origin policy (no `Origin` header → passes through), so the bind
+was the sole blocker.
+
+Earlier — **Security hardening of the ingest server (review-driven, TDD).** A critical review — validated
 end-to-end against the Shopwave testbed — found five issues in the network-facing server; all fixed,
 77 tests green (5 new server + 1 new core), typecheck clean.
 - **Remote crash (Critical).** A native event with an out-of-range `startTime` (e.g. `1e30`) made

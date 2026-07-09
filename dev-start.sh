@@ -70,7 +70,9 @@ if [[ "$WATCH" == "1" ]]; then
 EOF
 
   echo "==> Starting the LiveProbe server under tsx watch on :${LIVEPROBE_PORT}"
-  PORT="${LIVEPROBE_PORT}" npx tsx watch packages/server/src/index.ts
+  # Bind all interfaces so the dockerized testbed collector can reach us via
+  # host.docker.internal (host-gateway); the server defaults to loopback-only.
+  HOST="${HOST:-0.0.0.0}" PORT="${LIVEPROBE_PORT}" npx tsx watch packages/server/src/index.ts
   exit 0
 fi
 
@@ -107,4 +109,6 @@ cat <<EOF
 EOF
 
 echo "==> Starting the LiveProbe server on :${LIVEPROBE_PORT} (serves UI + API + ws)"
-PORT="${LIVEPROBE_PORT}" exec npx tsx packages/server/src/index.ts
+# Bind all interfaces so the dockerized testbed collector can reach us via
+# host.docker.internal (host-gateway); the server defaults to loopback-only.
+HOST="${HOST:-0.0.0.0}" PORT="${LIVEPROBE_PORT}" exec npx tsx packages/server/src/index.ts
