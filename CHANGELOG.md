@@ -3,6 +3,12 @@
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
 ## [2026-07-09]
+- **Deploy: `scripts/deploy.js` can optionally ship a local `.env`.** Previously it uploaded the image
+  + rewritten compose but never the `.env`, so `CORS_ORIGINS`/`RETENTION_DAYS`/`HOST`/etc. had to be
+  created on the server by hand. It now offers to upload a local `.env` — but only when one exists,
+  defaulting to No and warning that it **overwrites** the remote `.env` (which may hold prod config).
+  Uploaded alongside the compose file via the same multiplexed SSH session. README deploy section +
+  prompt table updated. No behavior change when no local `.env` is present.
 - **UI: mobile/tablet responsive pass (CSS only).** The app had no breakpoints — the fixed two-column
   live view, the 52px single-row header, the fixed 320px trace-detail panel, and unwrapped tables all
   overflowed on narrow screens. Added two `@media` breakpoints in `packages/ui/src/styles.css`: at

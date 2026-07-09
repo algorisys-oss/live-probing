@@ -327,6 +327,7 @@ The script is interactive. It prompts for each value (press Enter to accept the 
 | SSH username                | `root`                    | User with Docker access                                           |
 | SSH port                    | `22`                      |                                                                   |
 | Remote directory            | `/var/www/liveprobe`      | Created if missing                                                |
+| Upload local `.env`?        | no                        | Only asked if a `.env` exists locally; **overwrites** the remote `.env` |
 | Run `docker compose up -d`? | no                        | Answer `y` to start (or restart) services after upload            |
 
 After a summary, confirm with `y` to proceed. The script then:
@@ -334,7 +335,7 @@ After a summary, confirm with `y` to proceed. The script then:
 1. Builds `liveprobe:<version>` locally from the `Dockerfile`
 2. Saves the image to a tarball
 3. Opens one multiplexed SSH session (password asked at most once)
-4. Uploads the tarball, a remote-ready `docker-compose.yml`, and `otel-collector-config.yaml`
+4. Uploads the tarball, a remote-ready `docker-compose.yml`, `otel-collector-config.yaml`, and the local `.env` if you opted in
 5. Runs `docker load` on the server and removes the tarball
 6. Optionally runs `docker compose up -d --no-build` in the remote directory
 
@@ -377,8 +378,10 @@ curl -s http://localhost:4319/api/topology | head
 
 Open `http://<your-server>:4319` in a browser (ensure the host firewall allows that port).
 
-**Environment variables** — create `/var/www/liveprobe/.env` on the server before or after the
-first `compose up` (same variables as local Docker):
+**Environment variables** — `deploy.js` uploads the image and compose file but **not** a `.env`
+unless you have one locally and answer `y` to "Upload local `.env`?" (it overwrites the remote one).
+Otherwise create `/var/www/liveprobe/.env` on the server before or after the first `compose up`
+(same variables as local Docker):
 
 ```bash
 PORT=4319

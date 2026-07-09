@@ -5,7 +5,14 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-**UI: mobile/tablet responsive pass (CSS only).** The UI was desktop-only (zero `@media` queries).
+**Deploy: `scripts/deploy.js` optional `.env` upload.** The script shipped the image + rewritten
+compose but never a `.env`, so env vars (`CORS_ORIGINS`, `RETENTION_DAYS`, `HOST`, `MASK_PII`) had to
+be hand-created on the server. Added an opt-in prompt — shown **only** when a local `.env` exists,
+default **No**, warns it overwrites the remote `.env` — and an upload step alongside the compose file
+(same multiplexed SSH session). `node --check` clean; no local `.env` in the repo so the default path
+is unchanged. README deploy prompt-table + `.env` note updated.
+
+Earlier — **UI: mobile/tablet responsive pass (CSS only).** The UI was desktop-only (zero `@media` queries).
 Added two breakpoints at the end of `packages/ui/src/styles.css`: **≤900px** wraps the header, stacks
 the live view (trace feed capped at 45vh above the flow graph), makes wide tables/toolbars scroll/wrap;
 **≤560px** stacks the trace page's waterfall/sequence over the (previously fixed 320px) `.wf-detail`

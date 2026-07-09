@@ -26,6 +26,7 @@ const execFileAsync = promisify(execFile);
 const IMAGE_NAME = "liveprobe";
 const COMPOSE_FILE = "docker-compose.yml";
 const COLLECTOR_CONFIG = "otel-collector-config.yaml";
+const ENV_FILE = ".env";
 
 async function prompt(question) {
   const rl = createInterface({ input, output });
@@ -242,6 +243,15 @@ async function main() {
     (await prompt(`Remote directory [${defaultRemoteDir}]: `)) || defaultRemoteDir,
   );
 
+  // Offer to ship a local .env (CORS_ORIGINS, RETENTION_DAYS, HOST, …) only when one exists.
+  // Default No: it overwrites the server's .env, which may already hold production config.
+  const hasLocalEnv = await fileExists(ENV_FILE);
+  const uploadEnv =
+    hasLocalEnv &&
+    (await prompt("Upload local .env to the server? Overwrites the remote .env [y/N]: "))
+      .toLowerCase()
+      .startsWith("y");
+
   const runRemote = (
     await prompt("Run `docker compose up -d` on the remote host? [y/N]: ")
   )
@@ -252,6 +262,7 @@ async function main() {
   console.log(`  Image            : ${tag}`);
   console.log(`  Remote host      : ${user}@${host}:${port}`);
   console.log(`  Remote directory : ${remoteDir}`);
+  console.log(`  Upload .env      : ${uploadEnv ? "yes (overwrites remote)" : "no"}`);
   console.log(`  Run remote up    : ${runRemote ? "yes" : "no"}`);
 
   const confirm = (await prompt("Proceed? [y/N]: "))
@@ -325,6 +336,14 @@ async function main() {
           "scp collector config failed:",
           err.stderr?.toString() || err.message,
         );
+        process.exit(1);
+      });
+    }
+
+    if (uploadEnv) {
+      console.log("==> Uploading .env");
+      await ssh.copy(ENV_FILE, `${remoteDir}/.env`).catch((err) => {
+        console.error("scp .env failed:", err.stderr?.toString() || err.message);
         process.exit(1);
       });
     }
