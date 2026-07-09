@@ -26,6 +26,7 @@ Planning / contract specs (the testable "done" checklists):
 
 - [plan.md](plan.md) — LiveProbe phased plan and the MVP/Phase-1 contract.
 - [plan-testbed.md](plan-testbed.md) — the Shopwave testbed plan and its contract.
+- [feature-scope.md](feature-scope.md) — near-term feature backlog, scoped (effort, approach, files).
 
 Top-level [CLAUDE.md](../CLAUDE.md) is the short architectural overview; these go deeper.
 The rolling project-state and audit docs stay at the repo root: `HANDOFF.md`, `todo.md`,
