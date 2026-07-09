@@ -3,6 +3,16 @@
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
 ## [2026-07-09]
+- **UI: health-colored live topology (feature 1/3, TDD).** The flow graph now traffic-lights nodes and
+  edges from the live call counts it already carries — red at ≥5% error rate, amber at ≥1% or when an
+  edge's latency is ≥2× the graph's median (relative, so it adapts to the system's normal). A node is
+  colored by the calls *into* it, pointing at the failing/slow dependency rather than lighting up every
+  caller. New pure `packages/ui/src/lib/topology-health.ts` (`topologyHealth()`, tunable thresholds),
+  8 unit tests; wired into `flow-view.tsx` (edge/arrow/node classes + a bottom-left legend) with new
+  CSS reusing `--error`/`--new` so it stays theme-aware. Hand-rolled SVG, no new deps. Also excluded
+  `*.test.ts` from the UI's `tsc -b` build (tests run via the root tsx runner). Verified against seeded
+  mixed-health data in headless Chromium (red order edge+node, amber reports edge+node, healthy rest,
+  legend present, 0 overflow) and the live testbed's slow gateway edges.
 - **UI: responsive layout now handles landscape too.** The earlier breakpoints were width-only, so a
   phone in landscape (wide but ~400px tall) got the stacked layout that split its scarce height into
   slivers. Added a `@media (max-height: 500px) and (orientation: landscape)` rule that reclaims the

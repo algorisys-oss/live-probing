@@ -5,7 +5,19 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-**UI: landscape support for the responsive layout.** The mobile/tablet breakpoints were width-only,
+**UI value-add track (live incident triage, hand-rolled SVG) — feature 1 of 3: health-colored live
+topology.** Direction set with the user: audience = live incident triage; build (1) health-colored
+topology, (2) latency histogram + heatmap, (3) aggregate flamegraph per endpoint; hand-rolled SVG
+(no chart dep). **#1 shipped:** new pure `packages/ui/src/lib/topology-health.ts` (`topologyHealth()`
+→ per-node/edge `ok|warn|error` from error rate + latency-vs-median; tunable `DEFAULT_THRESHOLDS`;
+8 tests) wired into `flow-view.tsx` (edge/arrow/node health classes + bottom-left legend) with CSS
+reusing `--error`/`--new`. Node colored by *inbound* calls (points at the culprit). Excluded
+`*.test.ts` from the UI `tsc -b` (tests run via root tsx runner). Verified headless (seeded
+mixed-health → red/amber/healthy correct, legend present, 0 overflow) + against the live testbed
+(:4319, slow gateway edges go amber). **Next: #2 latency histogram + heatmap, then #3 flamegraph.**
+Verify server for this track runs on :4409 (isolated, `:memory:`), reused across the three features.
+
+Earlier — **UI: landscape support for the responsive layout.** The mobile/tablet breakpoints were width-only,
 so a phone in landscape (short height) got the stacked layout and lost its vertical space. Added a
 `@media (max-height: 500px) and (orientation: landscape)` block at the end of
 `packages/ui/src/styles.css`: live view back to feed-beside-graph, trace page detail-panel beside the

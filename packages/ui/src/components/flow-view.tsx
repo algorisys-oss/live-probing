@@ -4,6 +4,7 @@ import { useLiveStore } from "../store/use-live-store";
 import { computeLayout, type LayoutResult } from "../lib/layout";
 import { formatMicros, isDatastore } from "../lib/format";
 import { copyText, downloadPng, downloadSvg } from "../lib/export-diagram";
+import { topologyHealth, type Health } from "../lib/topology-health";
 import type { Edge } from "../lib/types";
 
 const NODE_W = 132;
@@ -60,16 +61,19 @@ function contentBox(positions: Record<string, { x: number; y: number }>, nodes: 
   };
 }
 
-function NodeShape({ id, x, y, ghost, onClick }: { id: string; x: number; y: number; ghost?: boolean; onClick?: () => void }) {
+function NodeShape({ id, x, y, ghost, health, onClick }: { id: string; x: number; y: number; ghost?: boolean; health?: Health; onClick?: () => void }) {
   const ds = isDatastore(id);
   const left = x - NODE_W / 2;
   const top = y - NODE_H / 2;
   const label = id.length > 16 ? id.slice(0, 15) + "…" : id;
-  const nodeClass = ds
+  const base = ds
     ? "flow-node flow-node-datastore"
     : ghost
       ? "flow-node flow-node-external"
       : "flow-node flow-node-service";
+  // Health modifier layers on top of the base (it wins in the cascade) so a failing
+  // or slow node stands out regardless of whether it's a service, datastore, or ghost.
+  const nodeClass = health && health !== "ok" ? `${base} flow-node-${health}` : base;
   return (
     <g
       className={onClick ? "flow-node-group clickable" : "flow-node-group"}
@@ -101,6 +105,9 @@ export function FlowView() {
 
   // Uninstrumented "ghost" peers render dashed and aren't clickable (no service page).
   const externals = useMemo(() => new Set(topology.externals ?? []), [topology.externals]);
+
+  // Traffic-light health per node/edge from the live call counts (error rate + latency).
+  const health = useMemo(() => topologyHealth(topology), [topology]);
 
   // Stable layout: recompute only when the *set* of node ids changes.
   const nodeKey = useMemo(() => [...topology.nodes].sort().join("|"), [topology.nodes]);
@@ -190,15 +197,17 @@ export function FlowView() {
     const bend = Math.min(28, len * 0.12);
     const cx = mx + (-dy / len) * bend;
     const cy = my + (dx / len) * bend;
-    const hasError = e.errors > 0;
+    const h = health.edgeHealth[i] ?? "ok";
+    const edgeClass = h === "ok" ? "flow-edge" : `flow-edge flow-edge-${h}`;
+    const marker = h === "ok" ? "url(#arrow)" : `url(#arrow-${h})`;
 
     return (
       <g key={`${e.from}->${e.to}-${i}`} className="flow-edge-group">
         <path
           d={`M ${start.x} ${start.y} Q ${cx} ${cy} ${end.x} ${end.y}`}
-          className={hasError ? "flow-edge flow-edge-error" : "flow-edge"}
+          className={edgeClass}
           strokeWidth={edgeWidth(e.calls)}
-          markerEnd={hasError ? "url(#arrow-error)" : "url(#arrow)"}
+          markerEnd={marker}
         />
         <g className="flow-edge-label">
           <text x={cx} y={cy - 4}>
@@ -256,6 +265,9 @@ export function FlowView() {
           <marker id="arrow-error" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z" className="flow-arrow-error" />
           </marker>
+          <marker id="arrow-warn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" className="flow-arrow-warn" />
+          </marker>
         </defs>
 
         <g>{topology.edges.map(renderEdge)}</g>
@@ -270,12 +282,18 @@ export function FlowView() {
                 x={p.x}
                 y={p.y}
                 ghost={externals.has(n)}
+                health={health.nodeHealth[n]}
                 onClick={isDatastore(n) || externals.has(n) ? undefined : () => navigate(`/service/${encodeURIComponent(n)}`)}
               />
             );
           })}
         </g>
       </svg>
+      <div className="flow-legend" aria-hidden="true">
+        <span className="flow-legend-item"><span className="flow-legend-swatch flow-legend-ok" /> healthy</span>
+        <span className="flow-legend-item"><span className="flow-legend-swatch flow-legend-warn" /> slow</span>
+        <span className="flow-legend-item"><span className="flow-legend-swatch flow-legend-error" /> errors</span>
+      </div>
     </div>
   );
 }

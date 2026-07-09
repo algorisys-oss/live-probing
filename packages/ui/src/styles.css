@@ -476,7 +476,10 @@ body {
 .flow-edge {
   fill: none;
   stroke: var(--border-strong);
-  transition: stroke-width 0.25s ease;
+  transition: stroke-width 0.25s ease, stroke 0.25s ease;
+}
+.flow-edge-warn {
+  stroke: var(--new);
 }
 .flow-edge-error {
   stroke: var(--error);
@@ -485,8 +488,57 @@ body {
 .flow-arrow {
   fill: var(--border-strong);
 }
+.flow-arrow-warn {
+  fill: var(--new);
+}
 .flow-arrow-error {
   fill: var(--error);
+}
+
+/* Health colouring for nodes — layered after the base service/datastore/external
+   rules so a slow (amber) or failing (red) node overrides the default stroke. */
+.flow-node-warn {
+  stroke: var(--new);
+  stroke-width: 2;
+}
+.flow-node-error {
+  stroke: var(--error);
+  stroke-width: 2;
+  fill: var(--error-soft);
+}
+
+/* traffic-light legend, pinned bottom-left over the graph */
+.flow-legend {
+  position: absolute;
+  left: 12px;
+  bottom: 10px;
+  display: flex;
+  gap: 12px;
+  padding: 5px 9px;
+  background: color-mix(in srgb, var(--bg-panel) 88%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font-size: 10px;
+  color: var(--text-dim);
+  pointer-events: none;
+}
+.flow-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.flow-legend-swatch {
+  width: 18px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border-strong);
+}
+.flow-legend-warn {
+  background: var(--new);
+}
+.flow-legend-error {
+  background: var(--error);
 }
 
 .flow-edge-label text {
