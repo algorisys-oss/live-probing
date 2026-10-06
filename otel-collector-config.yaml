@@ -17,10 +17,12 @@ exporters:
     encoding: json
     tls:
       insecure: true
+  debug:
+    verbosity: detailed
 
 service:
   pipelines:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [otlphttp/liveprobe]
+      exporters: [otlphttp/liveprobe, debug]
