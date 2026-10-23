@@ -530,6 +530,12 @@ to pick it up (or let the script do that for you).
 The remote host does **not** need the git repo or Node.js — only Docker, the compose file,
 the collector config, and the loaded image.
 
+## Deploying on Windows Server (no Docker)
+
+See [docs/deploy-windows.md](docs/deploy-windows.md): build with `npm ci` + the UI build, then run
+the server as a Windows service via NSSM (`node --import tsx packages\server\src\index.ts`).
+Needs Node 22.13+ for `node:sqlite`.
+
 ## Working docs
 
 - [todo.md](todo.md) — what's done (`[x]`) and the enhancement backlog.

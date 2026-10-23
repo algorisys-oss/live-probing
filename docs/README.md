@@ -22,6 +22,9 @@ Detailed docs for the two halves of this repo.
   and the zero-instrumentation story (React / Node / Elixir): findings, per-stack intrusion
   floors, and the partial-rollout blind spot. Actionable items mirrored in `todo.md`.
 
+- [deploy-windows.md](deploy-windows.md) — build and run LiveProbe on Windows Server without
+  Docker: Node 22.13+, UI build, NSSM service, firewall, IIS reverse proxy, updates.
+
 Planning / contract specs (the testable "done" checklists):
 
 - [plan.md](plan.md) — LiveProbe phased plan and the MVP/Phase-1 contract.

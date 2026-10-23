@@ -5,7 +5,12 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-**Testbed failure modes — demoable red/amber (scope item 4b, testbed-only).** The Shopwave testbed
+**Docs: Windows Server deploy without Docker** — new `docs/deploy-windows.md` (build, NSSM
+service, collector service, firewall, IIS proxy, updates, troubleshooting); linked from `README.md`
+and `docs/README.md`. Docs only, no code; not yet exercised on a real Windows host. Note: the
+root `engines` says `node >=20` but `node:sqlite` needs **22.13+** — candidate fix.
+
+Prior — **Testbed failure modes — demoable red/amber (scope item 4b, testbed-only).** The Shopwave testbed
 ran all-green, so LiveProbe's health/alert/matrix views had nothing to show in a live demo. Added
 two shared modules (`testbed/packages/shared/src/`), both **env-gated and default off** so the
 testbed is unchanged without config:

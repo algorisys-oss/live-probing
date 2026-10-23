@@ -2,6 +2,13 @@
 
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
+## [2026-10-23]
+- **Docs: Windows Server deploy without Docker** (`docs/deploy-windows.md`). Build (`npm ci` +
+  UI build + copy to `packages/server/public`), run as an NSSM service via
+  `node --import tsx`, optional collector service, firewall, IIS reverse proxy (WebSocket +
+  `CORS_ORIGINS`), update procedure, troubleshooting. Notes Node **22.13+** is required for
+  `node:sqlite`. Linked from `README.md` and `docs/README.md`. Docs only.
+
 ## [2026-07-09]
 - **Testbed failure modes for demoable red/amber (scope item 4b, TDD; testbed-only).** The Shopwave
   testbed ran all-green, so LiveProbe's health colouring / RED tiles / alerts / dependency matrix had
