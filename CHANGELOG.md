@@ -3,6 +3,10 @@
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
 ## [2026-10-25]
+- **Docker retention default aligned 14 → 30 days.** `docker-compose.yml` fell back to
+  `RETENTION_DAYS=14` while the server defaults to 30, so an unset `.env` silently halved history
+  under Docker. Now 30 everywhere. Also restored the executable bit on `serve.sh`, `dev-start.sh`,
+  `dev-stop.sh` (lost in `9a3ded2`; `./serve.sh` failed with permission denied on a fresh clone).
 - **Docs: Linux / macOS deploy without Docker** (`docs/deploy-linux.md`). Build, foreground smoke
   test, env file with data-retention settings (`RETENTION_DAYS` semantics: whole UTC days, pruned
   at startup + hourly, `0` = keep forever), systemd units for the server and optional collector,

@@ -131,7 +131,7 @@ items: **S** = hours, **M** = ~a day, **L** = multi-day.
 - [x] Dependency matrix (scope 3b) — caller×callee adjacency heatmap on the live view (Graph|Matrix toggle; calls/errors/latency metric; health colors reuse `topologyHealth`) (2026-07-09)
 
 ### C. Data & scale
-- [x] Retention / pruning — `RETENTION_DAYS` (default 14, 0 disables) drops day-partitions
+- [x] Retention / pruning — `RETENTION_DAYS` (default 30, 0 disables) drops day-partitions
       older than the window at startup + hourly, VACUUMs so the file shrinks; history writes
       debounced (staged per trace, flushed on timer or before any /api read — read-your-writes
       kept) fixing the per-batch re-upsert amplification (`docs/implementation-review.md` #4)

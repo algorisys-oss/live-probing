@@ -12,7 +12,7 @@ services:
       HOST: "${HOST:-0.0.0.0}"
       PORT: "4319"
       DB_PATH: /data/liveprobe.db
-      RETENTION_DAYS: "${RETENTION_DAYS:-14}"
+      RETENTION_DAYS: "${RETENTION_DAYS:-30}"
       CORS_ORIGINS: "${CORS_ORIGINS:-}"
     volumes:
       - liveprobe-data:/data

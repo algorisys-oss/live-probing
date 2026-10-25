@@ -545,8 +545,7 @@ PORT=4319 DB_PATH=/var/lib/liveprobe/liveprobe.db RETENTION_DAYS=30 \
 
 (`./serve.sh` does the same build and run in one step.) All the env vars listed under
 [Docker](#running-liveprobe-with-docker) work here. Set them in the shell or in a service env file.
-Unlike Docker there's no `.env` file. `RETENTION_DAYS` defaults to **30** here (the compose file
-falls back to 14).
+Unlike Docker there's no `.env` file. `RETENTION_DAYS` defaults to **30**, the same as Docker.
 
 To keep it running as a service:
 

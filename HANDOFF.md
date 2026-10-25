@@ -8,8 +8,9 @@ latest commit unless a "Last task" note says otherwise.
 **Docs: run LiveProbe without Docker on Linux/macOS + Windows** — new `docs/deploy-linux.md`
 (build, env file incl. `RETENTION_DAYS`, systemd server + collector units, macOS, firewall, updates,
 troubleshooting); README section is now "Running LiveProbe without Docker" linking both platform docs.
-`serve.sh` comment retention default fixed 14 → 30. Docs only, uncommitted. Open: `docker-compose.yml`
-still falls back to `RETENTION_DAYS=14` (server default is 30) — align or keep deliberately.
+`serve.sh` comment retention default fixed 14 → 30. Commit `1debbb8`. Follow-ups: `b1bed69` restored the
+executable bit on `serve.sh`/`dev-start.sh`/`dev-stop.sh` (lost in `9a3ded2`), and
+`docker-compose.yml` now falls back to `RETENTION_DAYS=30`, matching the server default.
 
 Prior — **Docs: Windows Server deploy without Docker** (`docs/deploy-windows.md`, NSSM). Root
 `engines` says `node >=20` but `node:sqlite` needs **22.13+** — candidate fix.
