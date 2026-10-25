@@ -20,7 +20,7 @@
 #   PORT            server listen port                    (default 4319)
 #   COLLECTOR_PORT  collector http-source port (--collector only) (default 4320)
 #   DB_PATH         history SQLite file                   (default packages/server/data/liveprobe.db)
-#   RETENTION_DAYS  keep N most recent days of history    (default 14; 0 disables)
+#   RETENTION_DAYS  keep N most recent days of history    (default 30; 0 disables)
 
 set -euo pipefail
 

@@ -22,6 +22,8 @@ Detailed docs for the two halves of this repo.
   and the zero-instrumentation story (React / Node / Elixir): findings, per-stack intrusion
   floors, and the partial-rollout blind spot. Actionable items mirrored in `todo.md`.
 
+- [deploy-linux.md](deploy-linux.md) — build and run LiveProbe on Linux / macOS without
+  Docker: Node 22.13+, UI build, env file (incl. `RETENTION_DAYS`), systemd units, updates.
 - [deploy-windows.md](deploy-windows.md) — build and run LiveProbe on Windows Server without
   Docker: Node 22.13+, UI build, NSSM service, firewall, IIS reverse proxy, updates.
 

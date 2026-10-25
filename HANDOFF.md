@@ -5,10 +5,14 @@ Current state and how to resume. Rolling doc — reflects the latest, not histor
 latest commit unless a "Last task" note says otherwise.
 
 ## Last task
-**Docs: Windows Server deploy without Docker** — new `docs/deploy-windows.md` (build, NSSM
-service, collector service, firewall, IIS proxy, updates, troubleshooting); linked from `README.md`
-and `docs/README.md`. Docs only, no code; not yet exercised on a real Windows host. Note: the
-root `engines` says `node >=20` but `node:sqlite` needs **22.13+** — candidate fix.
+**Docs: run LiveProbe without Docker on Linux/macOS + Windows** — new `docs/deploy-linux.md`
+(build, env file incl. `RETENTION_DAYS`, systemd server + collector units, macOS, firewall, updates,
+troubleshooting); README section is now "Running LiveProbe without Docker" linking both platform docs.
+`serve.sh` comment retention default fixed 14 → 30. Docs only, uncommitted. Open: `docker-compose.yml`
+still falls back to `RETENTION_DAYS=14` (server default is 30) — align or keep deliberately.
+
+Prior — **Docs: Windows Server deploy without Docker** (`docs/deploy-windows.md`, NSSM). Root
+`engines` says `node >=20` but `node:sqlite` needs **22.13+** — candidate fix.
 
 Prior — **Testbed failure modes — demoable red/amber (scope item 4b, testbed-only).** The Shopwave testbed
 ran all-green, so LiveProbe's health/alert/matrix views had nothing to show in a live demo. Added

@@ -2,6 +2,14 @@
 
 Timestamped functional changes (LOOPS rule XXIV). Newest first.
 
+## [2026-10-25]
+- **Docs: Linux / macOS deploy without Docker** (`docs/deploy-linux.md`). Build, foreground smoke
+  test, env file with data-retention settings (`RETENTION_DAYS` semantics: whole UTC days, pruned
+  at startup + hourly, `0` = keep forever), systemd units for the server and optional collector,
+  macOS notes, firewall, nginx pointer, updates, troubleshooting. README's Windows-only section
+  became **Running LiveProbe without Docker** covering both platforms; linked from `docs/README.md`.
+  Fixed the stale `serve.sh` comment (retention default 14 → 30). Docs only.
+
 ## [2026-10-23]
 - **Docs: Windows Server deploy without Docker** (`docs/deploy-windows.md`). Build (`npm ci` +
   UI build + copy to `packages/server/public`), run as an NSSM service via

@@ -530,11 +530,31 @@ to pick it up (or let the script do that for you).
 The remote host does **not** need the git repo or Node.js — only Docker, the compose file,
 the collector config, and the loaded image.
 
-## Deploying on Windows Server (no Docker)
+## Running LiveProbe without Docker
 
-See [docs/deploy-windows.md](docs/deploy-windows.md): build with `npm ci` + the UI build, then run
-the server as a Windows service via NSSM (`node --import tsx packages\server\src\index.ts`).
-Needs Node 22.13+ for `node:sqlite`.
+LiveProbe is plain Node, so Docker is optional. You need **Node 22.13+** (for `node:sqlite`), then
+build once and run the server directly:
+
+```bash
+npm ci
+npm run build -w @liveprobe/ui
+rm -rf packages/server/public && cp -r packages/ui/dist packages/server/public
+PORT=4319 DB_PATH=/var/lib/liveprobe/liveprobe.db RETENTION_DAYS=30 \
+  node --import tsx packages/server/src/index.ts
+```
+
+(`./serve.sh` does the same build and run in one step.) All the env vars listed under
+[Docker](#running-liveprobe-with-docker) work here. Set them in the shell or in a service env file.
+Unlike Docker there's no `.env` file. `RETENTION_DAYS` defaults to **30** here (the compose file
+falls back to 14).
+
+To keep it running as a service:
+
+- **Linux / macOS:** [docs/deploy-linux.md](docs/deploy-linux.md) covers a systemd unit (plus an
+  optional collector unit), the env file with retention settings, firewall, updates and
+  troubleshooting.
+- **Windows Server:** [docs/deploy-windows.md](docs/deploy-windows.md) covers an NSSM service,
+  firewall and an IIS reverse proxy.
 
 ## Working docs
 
